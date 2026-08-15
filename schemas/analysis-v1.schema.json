@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai.wagvid.local/schemas/analysis-v1.schema.json",
+  "title": "Ai.WAGVID Analysis Export v1",
+  "type": "object",
+  "required": ["schema", "analysis_id", "routine", "rulepack", "state", "judging", "provenance"],
+  "properties": {
+    "schema": {"const": "ai.wagvid.analysis.v1"},
+    "analysis_id": {"type": "string", "minLength": 1},
+    "routine": {
+      "type": "object",
+      "required": ["apparatus"],
+      "properties": {
+        "external_event_id": {"type": ["string", "null"]},
+        "external_athlete_id": {"type": ["string", "null"]},
+        "apparatus": {"enum": ["VT", "UB", "BB", "FX"]}
+      },
+      "additionalProperties": true
+    },
+    "rulepack": {"type": "string"},
+    "state": {
+      "enum": ["DRAFT_AI", "NEEDS_REVIEW", "HUMAN_CONFIRMED", "PANEL_CONFIRMED", "FROZEN", "INVALID_INPUT", "INCOMPLETE_EVIDENCE"]
+    },
+    "judging": {
+      "type": "object",
+      "required": ["d_ledger", "execution", "neutral"],
+      "properties": {
+        "d_score": {"type": ["number", "null"]},
+        "e_score": {"type": ["number", "null"]},
+        "final_score": {"type": ["number", "null"]},
+        "d_ledger": {"type": "array"},
+        "execution": {"type": "array"},
+        "artistry": {"type": "array"},
+        "neutral": {"type": "array"},
+        "unresolved": {"type": "array"}
+      },
+      "additionalProperties": true
+    },
+    "evidence": {"type": "array"},
+    "provenance": {
+      "type": "object",
+      "required": ["software_version", "model_bundle"],
+      "properties": {
+        "software_version": {"type": "string"},
+        "model_bundle": {"type": "string"},
+        "rulepack_digest": {"type": ["string", "null"]},
+        "media_hashes": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}
