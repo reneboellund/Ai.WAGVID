@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Ai.WAGVID app icon</title>
+  <defs>
+    <linearGradient id="bg" x1="64" y1="48" x2="448" y2="464" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#111C31"/>
+      <stop offset="1" stop-color="#07101E"/>
+    </linearGradient>
+    <linearGradient id="motion" x1="116" y1="182" x2="396" y2="334" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#18D4A3"/>
+      <stop offset="1" stop-color="#32B8FF"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <path d="M128 176v-32a32 32 0 0 1 32-32h48M304 112h48a32 32 0 0 1 32 32v32M384 336v32a32 32 0 0 1-32 32h-48M208 400h-48a32 32 0 0 1-32-32v-32" fill="none" stroke="#EAF8F5" stroke-width="24" stroke-linecap="round"/>
+  <path d="M112 236c52-60 82-60 116 8l30 60 38-112 32 80c18 44 40 50 72 4" fill="none" stroke="url(#motion)" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="384" cy="144" r="28" fill="#FF5D6C"/>
+</svg>
