@@ -1,3 +1,11 @@
-{% extends "base.html" %}{% block content %}
-<h1>KIGA import-preview</h1><section class="card"><p>Ingen data er skrevet endnu.</p><ul>{% for action in preview.actions %}<li>{{ action }}</li>{% endfor %}</ul><form method="post" action="{% url 'kiga-import-commit' %}">{% csrf_token %}<button class="primary">Gennemfør atomisk import</button></form></section>
+{% extends "base.html" %}
+{% block title %}KIGA import-preview · Ai.WAGVID{% endblock %}
+{% block breadcrumb %}Import/eksport / KIGA preview{% endblock %}
+{% block content %}
+<section class="page-head"><div><p class="eyebrow">No-write validation</p><h1>KIGA import-<span class="text-gradient">preview</span></h1><p>Payloaden er valideret og planlagt, men der er endnu ikke skrevet data. Gennemgå handlingerne før den atomiske commit.</p></div><div class="page-actions"><a class="button" href="{% url 'exchange' %}">Annullér og gå tilbage</a></div></section>
+<section class="surface surface-pad">
+  <header class="section-head"><div><h2>Planlagte handlinger</h2><p>Deterministisk preview fra `competition-video-v1`-importen</p></div><span class="status-badge warning">Ingen mutation endnu</span></header>
+  <div class="activity-list">{% for action in preview.actions %}<div class="activity-item"><span class="activity-icon" style="--accent:var(--cyan)"><svg><use href="#i-check"/></svg></span><span class="activity-copy"><strong>Planlagt ændring</strong><small>{{ action }}</small></span></div>{% empty %}<div class="empty-state"><h3>Ingen ændringer nødvendige</h3><p>Payloaden giver ingen nye handlinger i den aktuelle organisation.</p></div>{% endfor %}</div>
+  <div class="surface" style="padding:18px;margin-top:20px"><div class="section-head"><div><h3>Commit-gate</h3><p>Commit opretter eller opdaterer kun de poster, previewet har valideret, og registrerer udvekslingen i audit-sporet.</p></div><span class="status-badge">Atomic</span></div><form method="post" action="{% url 'kiga-import-commit' %}">{% csrf_token %}<div class="page-actions"><a class="button" href="{% url 'exchange' %}">Tilbage</a><button class="button button-primary" type="submit"><svg><use href="#i-shield"/></svg>Gennemfør atomisk import</button></div></form></div>
+</section>
 {% endblock %}
