@@ -12,6 +12,7 @@ license = {text = "Proprietary/Research - license to be defined"}
 authors = [{name = "Ai.WAGVID project"}]
 dependencies = [
   "Django>=5.2,<6.0",
+  "psycopg[binary]>=3.2,<4",
   "jsonschema>=4.23,<5",
   "PyYAML>=6.0,<7",
 ]
