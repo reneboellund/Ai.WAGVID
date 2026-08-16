@@ -1,13 +1,38 @@
 {% extends "base.html" %}
+{% block title %}Enheder · Ai.WAGVID{% endblock %}
+{% block breadcrumb %}Enheder{% endblock %}
 {% block content %}
-<h1>Android-enheder</h1>
-{% if can_manage %}<form method="post">{% csrf_token %}<button class="primary">Opret pairingkode</button></form>{% endif %}
-{% if pairing_offer %}<section class="card"><h2>Pairingkode: {{ pairing_offer.code }}</h2><p>Session {{ pairing_offer.session.id }}</p><p>Udløber {{ pairing_offer.session.expires_at }}. Koden vises kun i dette svar.</p></section>{% endif %}
-<div class="cards">{% for device in devices %}<div class="card">
-  <h2>{{ device.name }}</h2><p>{{ device.get_state_display }}</p>
-  <p>Batteri {{ device.battery_percent|default:"–" }}% · lager {{ device.free_storage_bytes|filesizeformat }}</p>
-  <p>{{ device.network_type|default:"Netværk ukendt" }} · app {{ device.app_version|default:"ukendt" }}</p>
-  <p>{{ device.queued_uploads }} i uploadkø · senest set {{ device.last_seen_at|default:"aldrig" }}</p>
-  {% with latest=device.commands.last %}{% if latest %}<p>Kommando: {{ latest.get_command_display }} / {{ latest.get_state_display }}</p>{% endif %}{% endwith %}
-</div>{% empty %}<p>Ingen enheder parret.</p>{% endfor %}</div>
+<section class="page-head">
+  <div><p class="eyebrow">Capture network</p><h1>Android-<span class="text-gradient">enheder</span></h1><p>Pairing, forbindelse, lager, uploadkø og capture-state fra den rigtige device-backend.</p></div>
+  <div class="page-actions">
+    <button class="button" type="button" data-refresh><svg><use href="#i-activity"/></svg>Opdatér</button>
+    {% if can_manage %}<form method="post" class="inline-form">{% csrf_token %}<button class="button button-primary" type="submit"><svg><use href="#i-plus"/></svg>Opret pairingkode</button></form>{% endif %}
+  </div>
+</section>
+
+{% if pairing_offer %}
+<section class="surface surface-pad pairing-panel">
+  <header class="section-head"><div><p class="eyebrow">One-time pairing</p><h2>Pairingkode <span class="text-gradient">{{ pairing_offer.code }}</span></h2></div><span class="status-badge warning">Kort levetid</span></header>
+  <p>Session <code>{{ pairing_offer.session.id }}</code> · udløber {{ pairing_offer.session.expires_at }}. Koden vises kun i dette svar og skal behandles som en midlertidig credential.</p>
+</section>
+{% endif %}
+
+{% if devices %}
+<section class="device-grid">
+  {% for device in devices %}
+  <article class="surface surface-hover device-card" style="--i:{{ forloop.counter0 }};--state-color:{% if device.state == 'offline' or device.state == 'unpaired' %}var(--coral){% elif device.state == 'recording' %}var(--cyan){% elif device.queued_uploads %}var(--amber){% else %}var(--mint){% endif %}">
+    <div class="device-head"><span class="device-visual"><svg><use href="#i-device"/></svg></span><span class="status-badge {% if device.state == 'offline' or device.state == 'unpaired' %}danger{% elif device.queued_uploads %}warning{% elif device.state == 'recording' %}info{% endif %}">{{ device.get_state_display }}</span></div>
+    <div class="device-title"><h2>{{ device.name }}</h2><p>{{ device.network_type|default:"Netværk ukendt" }} · app {{ device.app_version|default:"ukendt" }}</p></div>
+    <div class="telemetry-grid">
+      <div class="telemetry"><svg><use href="#i-battery"/></svg><strong>{{ device.battery_percent|default:"—" }}{% if device.battery_percent != None %}%{% endif %}</strong><small>Batteri</small></div>
+      <div class="telemetry"><svg><use href="#i-cloud"/></svg><strong>{% if device.free_storage_bytes %}{{ device.free_storage_bytes|filesizeformat }}{% else %}—{% endif %}</strong><small>Ledig lager</small></div>
+      <div class="telemetry"><svg><use href="#i-upload"/></svg><strong>{{ device.queued_uploads }}</strong><small>Uploadkø</small></div>
+    </div>
+    <footer class="device-foot"><span class="status-badge neutral">{% if device.last_seen_at %}Set {{ device.last_seen_at|timesince }} siden{% else %}Aldrig set{% endif %}</span>{% with latest=device.commands.last %}{% if latest %}<span class="status-badge info">{{ latest.get_command_display }} · {{ latest.get_state_display }}</span>{% endif %}{% endwith %}</footer>
+  </article>
+  {% endfor %}
+</section>
+{% else %}
+<section class="surface"><div class="empty-state"><span class="empty-visual"><svg><use href="#i-device"/></svg></span><h3>Ingen enheder parret</h3><p>Opret en pairingkode og forbind en Android CameraX-klient for at aktivere capture og resumable upload.</p>{% if can_manage %}<form method="post">{% csrf_token %}<button class="button button-primary" type="submit"><svg><use href="#i-plus"/></svg>Opret pairingkode</button></form>{% endif %}</div></section>
+{% endif %}
 {% endblock %}

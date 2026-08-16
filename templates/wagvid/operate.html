@@ -1,26 +1,44 @@
 {% extends "base.html" %}
+{% block title %}Operér · Ai.WAGVID{% endblock %}
+{% block breadcrumb %}Operér{% endblock %}
 {% block content %}
-<h1>Fjernoptagelse</h1>
-{% if can_control %}
-<form method="post" class="card">{% csrf_token %}
-  <label>Gymnast<select name="gymnast_id" required><option value="">Vælg gymnast</option>{% for g in gymnasts %}<option value="{{ g.id }}">{{ g.display_name }} · {{ g.level }} · {{ g.license_number }}</option>{% endfor %}</select></label>
-  <label>Enhed<select name="device_id" required><option value="">Vælg enhed</option>{% for d in devices %}<option value="{{ d.id }}">{{ d.name }} · {{ d.get_state_display }}</option>{% endfor %}</select></label>
-  <label>Videoformål<select name="kind">{% for value,label in kind_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></label>
-  <label>Apparat<select name="apparatus"><option value="">Ikke angivet</option>{% for value,label in apparatus_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></label>
-  <div class="cards">
-    <button class="primary" name="command" value="start">Start manuelt</button>
-    <button class="primary" name="command" value="arm">Armér auto</button>
-    <button class="primary" name="command" value="disarm">Deaktivér auto</button>
-    <button class="primary" style="background:#ff5d6c" name="command" value="stop">STOP</button>
-  </div>
-</form>
-{% else %}<p>Du har læseadgang. En organisationsadministrator skal sende optagekommandoer.</p>{% endif %}
-<h2>Enhedsstatus</h2>
-<div class="cards">{% for device in devices %}<section class="card">
-  <h3>{{ device.name }}</h3>
-  <p>{{ device.get_state_display }} · batteri {{ device.battery_percent|default:"–" }}%</p>
-  <p>{{ device.network_type|default:"Netværk ukendt" }} · {{ device.queued_uploads }} uploads</p>
-  <p>Senest set: {{ device.last_seen_at|default:"Aldrig" }}</p>
-  {% with latest=device.commands.last %}{% if latest %}<p>Seneste kommando: {{ latest.get_command_display }} · {{ latest.get_state_display }}</p>{% endif %}{% endwith %}
-</section>{% empty %}<p>Ingen parrede telefoner.</p>{% endfor %}</div>
+<section class="page-head">
+  <div><p class="eyebrow">Remote capture control</p><h1>Operatør<span class="text-gradient">studie</span></h1><p>Vælg gymnast, enhed og capture-type, og send auditerede ARM/DISARM/START/STOP-kommandoer til Android-klienten.</p></div>
+  <div class="page-actions"><a class="button" href="{% url 'devices' %}"><svg><use href="#i-device"/></svg>Enheder</a></div>
+</section>
+
+<section class="studio-grid">
+  <article class="surface studio-stage">
+    <div class="stage-view">
+      <div class="motion-path" aria-hidden="true"></div><div class="athlete-silhouette" aria-hidden="true"><span class="head"></span><span class="body"></span><span class="arm-l"></span><span class="arm-r"></span><span class="leg-l"></span><span class="leg-r"></span></div><div class="scan-beam" aria-hidden="true"></div>
+      <div class="stage-hud"><div class="hud-top"><span class="live-pill"><i></i> REMOTE CAPTURE</span><div class="stage-meta"><span>ANDROID CAMERAX</span><span>HTTPS + AUTH</span></div></div><div class="focus-frame"></div><div class="stage-bottom"><span class="record-time"><strong>CONTROL</strong><small>server-authoritative commands</small></span><div class="tracking-stats"><span><strong>{{ devices|length }}</strong><small>devices</small></span><span><strong>{{ gymnasts|length }}</strong><small>gymnasts</small></span><span><strong>SHA-256</strong><small>uploads</small></span></div></div></div>
+    </div>
+    <div class="waveform" data-waveform aria-label="Capture signalvisualisering"></div>
+  </article>
+
+  <aside class="studio-controls">
+    <section class="surface control-card">
+      <h2>Session setup</h2><p>Manual Stop er altid tilgængelig på Android-enheden; serverkommandoer er idempotente og audit-loggede.</p>
+      {% if can_control %}
+      <form method="post">{% csrf_token %}
+        <div class="field-group"><label for="gymnast-select">Gymnast</label><div class="select-wrap"><select id="gymnast-select" name="gymnast_id" required><option value="">Vælg gymnast</option>{% for g in gymnasts %}<option value="{{ g.id }}">{{ g.display_name }} · {{ g.level }} · {{ g.license_number }}</option>{% endfor %}</select><svg><use href="#i-chevron"/></svg></div></div>
+        <div class="field-group"><label for="device-select">Capture-enhed</label><div class="select-wrap"><select id="device-select" name="device_id" required><option value="">Vælg enhed</option>{% for d in devices %}<option value="{{ d.id }}">{{ d.name }} · {{ d.get_state_display }}</option>{% endfor %}</select><svg><use href="#i-chevron"/></svg></div></div>
+        <div class="field-group"><label for="kind-select">Videoformål</label><div class="select-wrap"><select id="kind-select" name="kind">{% for value,label in kind_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select><svg><use href="#i-chevron"/></svg></div></div>
+        <div class="field-group"><label for="apparatus-select">Apparat</label><div class="select-wrap"><select id="apparatus-select" name="apparatus"><option value="">Ikke angivet</option>{% for value,label in apparatus_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select><svg><use href="#i-chevron"/></svg></div></div>
+        <div class="record-controls">
+          <button class="button button-primary" type="submit" name="command" value="start"><svg><use href="#i-play"/></svg>Start manuelt</button>
+          <button class="button" type="submit" name="command" value="arm"><svg><use href="#i-spark"/></svg>Armér auto</button>
+          <button class="button" type="submit" name="command" value="disarm"><svg><use href="#i-x"/></svg>Deaktivér auto</button>
+          <button class="button button-danger" type="submit" name="command" value="stop"><svg><use href="#i-stop"/></svg>STOP</button>
+        </div>
+      </form>
+      {% else %}<div class="status-badge warning">Læs-only</div><p>En organisationsadministrator skal sende capture-kommandoer.</p>{% endif %}
+    </section>
+  </aside>
+</section>
+
+<section class="surface table-surface" style="margin-top:18px">
+  <header class="section-head surface-pad"><div><h2>Enhedsstatus</h2><p>Seneste heartbeat og command acknowledgement</p></div><a class="section-action" href="{% url 'devices' %}">Administrér enheder <svg><use href="#i-arrow"/></svg></a></header>
+  {% if devices %}<table class="data-table"><thead><tr><th>Enhed</th><th>State</th><th>Batteri</th><th>Netværk</th><th>Uploads</th><th>Seneste kommando</th></tr></thead><tbody>{% for device in devices %}<tr><td><div class="entity-cell"><span class="entity-avatar"><svg class="icon"><use href="#i-device"/></svg></span><span><strong>{{ device.name }}</strong><small>{% if device.last_seen_at %}Set {{ device.last_seen_at|timesince }} siden{% else %}Aldrig set{% endif %}</small></span></div></td><td><span class="status-badge {% if device.state == 'recording' %}info{% elif device.state == 'offline' %}danger{% endif %}">{{ device.get_state_display }}</span></td><td>{{ device.battery_percent|default:"—" }}{% if device.battery_percent != None %}%{% endif %}</td><td>{{ device.network_type|default:"—" }}</td><td>{{ device.queued_uploads }}</td><td>{% with latest=device.commands.last %}{% if latest %}{{ latest.get_command_display }} · {{ latest.get_state_display }}{% else %}—{% endif %}{% endwith %}</td></tr>{% endfor %}</tbody></table>{% else %}<div class="empty-state"><h3>Ingen parrede telefoner</h3><p>Gå til Enheder og opret en pairingkode.</p></div>{% endif %}
+</section>
 {% endblock %}
