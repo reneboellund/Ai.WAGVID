@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/reneboellund/Ai.WAGVID/schemas/competition-video-v1.schema.json",
+  "title": "Ai.WAGVID and KIGA competition video exchange v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "record_id", "competition", "routine", "media", "official_result", "rights"],
+  "properties": {
+    "schema": {"const": "ai.wagvid.competition-video.v1"},
+    "record_id": {"type": "string", "minLength": 1},
+    "created_at": {"type": "string", "format": "date-time"},
+    "competition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["external_id", "name", "start_date", "timezone"],
+      "properties": {
+        "external_id": {"type": "string", "minLength": 1},
+        "provider": {"type": "string", "default": "KIGA"},
+        "name": {"type": "string", "minLength": 1},
+        "start_date": {"type": "string", "format": "date"},
+        "end_date": {"type": ["string", "null"], "format": "date"},
+        "timezone": {"type": "string", "minLength": 1},
+        "venue": {"type": ["string", "null"]},
+        "city": {"type": ["string", "null"]},
+        "country_code": {"type": ["string", "null"], "pattern": "^[A-Z]{2}$"},
+        "organizer": {"type": ["string", "null"]},
+        "federation": {"type": ["string", "null"]},
+        "competition_level": {"type": ["string", "null"]},
+        "rule_profile": {"type": ["string", "null"]}
+      }
+    },
+    "routine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["external_id", "athlete_external_id", "apparatus", "performed_at"],
+      "properties": {
+        "external_id": {"type": "string", "minLength": 1},
+        "athlete_external_id": {"type": "string", "minLength": 1},
+        "team_external_id": {"type": ["string", "null"]},
+        "apparatus": {"enum": ["VT", "UB", "BB", "FX"]},
+        "round": {"type": ["string", "null"]},
+        "rotation": {"type": ["integer", "null"], "minimum": 1},
+        "start_order": {"type": ["integer", "null"], "minimum": 1},
+        "performed_at": {"type": "string", "format": "date-time"},
+        "age_category": {"type": ["string", "null"]},
+        "competition_category": {"type": ["string", "null"]}
+      }
+    },
+    "media": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["media_id", "download_uri", "sha256", "captured_at", "content_type"],
+        "properties": {
+          "media_id": {"type": "string", "minLength": 1},
+          "camera_id": {"type": ["string", "null"]},
+          "view": {"type": ["string", "null"]},
+          "download_uri": {"type": "string", "format": "uri"},
+          "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+          "captured_at": {"type": "string", "format": "date-time"},
+          "content_type": {"type": "string", "pattern": "^video/"},
+          "size_bytes": {"type": ["integer", "null"], "minimum": 1},
+          "duration_ms": {"type": ["integer", "null"], "minimum": 1}
+        }
+      }
+    },
+    "official_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "status", "captured_at", "scores"],
+      "properties": {
+        "source": {"type": "string", "minLength": 1},
+        "status": {"enum": ["provisional", "official", "corrected", "withdrawn"]},
+        "captured_at": {"type": "string", "format": "date-time"},
+        "result_version": {"type": "string", "minLength": 1},
+        "scores": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["final"],
+          "properties": {
+            "d": {"type": ["number", "null"], "minimum": 0},
+            "e": {"type": ["number", "null"], "minimum": 0},
+            "artistry": {"type": ["number", "null"], "minimum": 0},
+            "neutral": {"type": ["number", "null"], "minimum": 0},
+            "final": {"type": "number", "minimum": 0}
+          }
+        }
+      }
+    },
+    "analysis_link": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["analysis_id", "state", "ai_frozen_at"],
+      "properties": {
+        "analysis_id": {"type": "string", "minLength": 1},
+        "state": {"enum": ["DRAFT_AI", "NEEDS_REVIEW", "HUMAN_CONFIRMED", "FROZEN"]},
+        "ai_frozen_at": {"type": "string", "format": "date-time"},
+        "official_result_revealed_at": {"type": ["string", "null"], "format": "date-time"},
+        "difference": {"type": ["number", "null"]}
+      }
+    },
+    "adjudication": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": {
+          "enum": ["pending", "official_confirmed", "ai_supported", "both_partly_wrong", "unresolved"]
+        },
+        "reviewer_id": {"type": ["string", "null"]},
+        "reviewed_at": {"type": ["string", "null"], "format": "date-time"},
+        "reason_codes": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+        "notes": {"type": ["string", "null"]},
+        "appeal_reference": {"type": ["string", "null"]}
+      }
+    },
+    "learning": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["eligible", "label_tier"],
+      "properties": {
+        "eligible": {"type": "boolean"},
+        "label_tier": {"enum": ["unreviewed_official", "expert_adjudicated", "excluded"]},
+        "exclusion_reasons": {"type": "array", "items": {"type": "string"}},
+        "dataset_version": {"type": ["string", "null"]}
+      }
+    },
+    "rights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["download_allowed", "analysis_allowed", "training_allowed", "retention_until"],
+      "properties": {
+        "download_allowed": {"type": "boolean"},
+        "analysis_allowed": {"type": "boolean"},
+        "training_allowed": {"type": "boolean"},
+        "retention_until": {"type": ["string", "null"], "format": "date"},
+        "consent_reference": {"type": ["string", "null"]},
+        "access_policy": {"type": ["string", "null"]}
+      }
+    }
+  }
+}
