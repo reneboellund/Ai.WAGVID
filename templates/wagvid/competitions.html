@@ -1,3 +1,26 @@
-{% extends "base.html" %}{% block content %}
-<h1>Konkurrencer</h1>{% for event in events %}<section class="card"><h2>{{ event.name }}</h2><p>{{ event.starts_at }} · {{ event.venue }} · {{ event.city }} {{ event.country_code }} · {{ event.federation }}</p><table><tr><th>Gymnast</th><th>Apparat</th><th>Tid</th><th>Officiel score</th><th>Video</th><th>Eksport</th></tr>{% for routine in event.routines.all %}<tr><td>{{ routine.gymnast.display_name }}</td><td>{{ routine.get_apparatus_display }}</td><td>{{ routine.performed_at }}</td><td>{{ routine.official_final_score|default:"–" }}</td><td>{% for media in routine.external_media_references.all %}{{ media.get_state_display }} · {{ media.external_media_id }}{% empty %}Ingen{% endfor %}</td><td><a href="{% url 'kiga-routine-export' routine.id %}">KIGA JSON</a></td></tr>{% endfor %}</table></section>{% empty %}<p>Ingen importerede konkurrencer.</p>{% endfor %}
+{% extends "base.html" %}
+{% block title %}Konkurrencer · Ai.WAGVID{% endblock %}
+{% block breadcrumb %}Konkurrencer{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div><p class="eyebrow">Competition evidence</p><h1>Konkurrence<span class="text-gradient">browser</span></h1><p>Importerede konkurrencer, rutiner, officielle resultatsnapshots og autoriserede videoreferencer samlet med stabile identiteter.</p></div>
+  <div class="page-actions"><a class="button button-primary" href="{% url 'exchange' %}"><svg><use href="#i-upload"/></svg>Importér KIGA-data</a></div>
+</section>
+
+{% for event in events %}
+<section class="surface table-surface" style="margin-bottom:18px">
+  <header class="section-head surface-pad"><div><p class="eyebrow">{{ event.federation|default:"Competition" }}</p><h2>{{ event.name }}</h2><p>{{ event.starts_at }}{% if event.venue %} · {{ event.venue }}{% endif %}{% if event.city %} · {{ event.city }} {{ event.country_code }}{% endif %}</p></div><span class="status-badge info">{{ event.routines.all|length }} rutiner</span></header>
+  {% if event.routines.all %}<table class="data-table"><thead><tr><th>Gymnast</th><th>Apparat</th><th>Performance</th><th>Officiel score</th><th>Videoreferencer</th><th>Udveksling</th></tr></thead><tbody>
+  {% for routine in event.routines.all %}<tr>
+    <td><div class="entity-cell"><span class="entity-avatar">{{ routine.gymnast.display_name|slice:":2"|upper }}</span><span><strong>{{ routine.gymnast.display_name }}</strong><small>{{ routine.gymnast.license_number|default:"Stabil gymnast-ID" }}</small></span></div></td>
+    <td><span class="status-badge neutral">{{ routine.get_apparatus_display }}</span></td>
+    <td>{{ routine.performed_at|default:"—" }}</td>
+    <td><strong>{{ routine.official_final_score|default:"—" }}</strong>{% if routine.official_d_score %}<br><small>D {{ routine.official_d_score }} · E {{ routine.official_e_score|default:"—" }}</small>{% endif %}</td>
+    <td>{% for media in routine.external_media_references.all %}<div><span class="status-badge {% if media.state == 'available' %}{% else %}warning{% endif %}">{{ media.get_state_display }}</span> <small>{{ media.external_media_id }}</small></div>{% empty %}<span class="status-badge neutral">Ingen</span>{% endfor %}</td>
+    <td><a class="text-button" href="{% url 'kiga-routine-export' routine.id %}">KIGA JSON <svg><use href="#i-arrow"/></svg></a></td>
+  </tr>{% endfor %}</tbody></table>{% else %}<div class="empty-state"><h3>Ingen rutiner i konkurrencen</h3><p>Eventet er registreret, men har endnu ingen importerede rutiner.</p></div>{% endif %}
+</section>
+{% empty %}
+<section class="surface"><div class="empty-state"><span class="empty-visual"><svg><use href="#i-exchange"/></svg></span><h3>Ingen importerede konkurrencer</h3><p>Importér et `competition-video-v1` KIGA-datasæt gennem preview-flowet. Ingen video downloades under metadataimporten.</p><a class="button button-primary" href="{% url 'exchange' %}"><svg><use href="#i-upload"/></svg>Åbn import/eksport</a></div></section>
+{% endfor %}
 {% endblock %}
