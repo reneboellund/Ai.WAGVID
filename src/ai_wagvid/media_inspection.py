@@ -115,6 +115,25 @@ def ffprobe_command(source: Path) -> tuple[str, ...]:
     )
 
 
+def frame_timeline_probe_command(source: Path) -> tuple[str, ...]:
+    """Plan a frame-level probe preserving source PTS/DTS; does not execute FFprobe."""
+
+    return (
+        "ffprobe",
+        "-v",
+        "error",
+        "-select_streams",
+        "v",
+        "-show_streams",
+        "-show_frames",
+        "-show_entries",
+        "stream=index,codec_type,time_base:frame=media_type,stream_index,pts,pkt_dts,best_effort_timestamp,duration,key_frame",
+        "-of",
+        "json",
+        str(source),
+    )
+
+
 def analysis_proxy_command(source: Path, destination: Path) -> tuple[str, ...]:
     if source.resolve() == destination.resolve():
         raise ValueError("analysis proxy must not overwrite the immutable source")

@@ -3,7 +3,12 @@ from pathlib import Path
 
 import pytest
 
-from ai_wagvid.media_inspection import analysis_proxy_command, ffprobe_command, parse_ffprobe
+from ai_wagvid.media_inspection import (
+    analysis_proxy_command,
+    ffprobe_command,
+    frame_timeline_probe_command,
+    parse_ffprobe,
+)
 
 
 def test_probe_parser_preserves_fps_rotation_audio_and_duration():
@@ -53,3 +58,6 @@ def test_commands_are_argument_vectors_and_proxy_never_overwrites_source(tmp_pat
     assert proxy[proxy.index("-fps_mode") + 1] == "passthrough"
     with pytest.raises(ValueError, match="overwrite"):
         analysis_proxy_command(source, Path(source))
+    frame_probe = frame_timeline_probe_command(source)
+    assert "-show_frames" in frame_probe
+    assert "pkt_dts" in frame_probe[frame_probe.index("-show_entries") + 1]

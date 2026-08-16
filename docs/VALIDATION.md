@@ -1,5 +1,18 @@
 # Validation & Benchmark Strategy
 
+## Annotation integrity
+
+Annotation history uses `ai_wagvid.annotations.AnnotationRevision`. Each revision
+contains immutable evidence, reviewer identity, timezone-aware creation time,
+payload, state, comment and the previous revision digest. Validation rejects gaps,
+identity changes and altered parents. Adjudication requires contributions from at
+least two reviewers and an explicit rationale. Only accepted revisions may enter a
+training-label export; reviewer identity is excluded while athlete/event/routine
+grouping keys are retained for leakage-safe splitting.
+
+UI/database persistence must store these revisions append-only. A correction adds
+a revision; it never updates the meaning of an existing revision in place.
+
 ## Goal
 
 Ai.WAGVID must be validated as a judging system, not merely as a computer-vision demo. Exact element recognition can still yield a wrong score if counting, connections or deductions are wrong; conversely a score can accidentally match while the underlying reasoning is wrong.
