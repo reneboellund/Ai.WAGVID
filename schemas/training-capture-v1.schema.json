@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/reneboellund/Ai.WAGVID/schemas/training-capture-v1.schema.json",
+  "title": "Ai.WAGVID training capture",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "capture_id", "gymnast", "activity", "device", "control", "recording", "analysis"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "capture_id": {"type": "string", "format": "uuid"},
+    "gymnast": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gymnast_id", "name", "level", "license_number"],
+      "properties": {
+        "gymnast_id": {"type": "string", "minLength": 1},
+        "name": {"type": "string", "minLength": 1},
+        "level": {"type": "string", "minLength": 1},
+        "license_number": {"type": "string", "minLength": 1}
+      }
+    },
+    "activity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "apparatus", "recorded_at"],
+      "properties": {
+        "kind": {"enum": ["routine", "training", "drill"]},
+        "apparatus": {"enum": ["vault", "uneven-bars", "balance-beam", "floor", "general"]},
+        "exercise_name": {"type": ["string", "null"]},
+        "coach_note": {"type": ["string", "null"]},
+        "recorded_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "device": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["device_id", "platform", "camera_facing"],
+      "properties": {
+        "device_id": {"type": "string", "minLength": 1},
+        "platform": {"const": "android"},
+        "camera_facing": {"enum": ["back", "front"]},
+        "app_version": {"type": ["string", "null"]}
+      }
+    },
+    "control": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "state", "remote_controlled"],
+      "properties": {
+        "mode": {"enum": ["manual", "motion-detection"]},
+        "state": {"enum": ["offline", "ready", "armed", "recording", "finalizing"]},
+        "remote_controlled": {"type": "boolean"},
+        "motion_start_seconds": {"type": "number", "minimum": 0},
+        "exercise_end_quiet_seconds": {"type": "number", "exclusiveMinimum": 0},
+        "pre_roll_seconds": {"type": "number", "minimum": 0},
+        "post_roll_seconds": {"type": "number", "minimum": 0},
+        "recording_started_by": {"type": ["string", "null"]},
+        "stop_reason": {"type": ["string", "null"]}
+      }
+    },
+    "recording": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["storage_status"],
+      "properties": {
+        "storage_status": {"enum": ["pending", "uploading", "stored", "failed"]},
+        "video_uri": {"type": ["string", "null"], "format": "uri"},
+        "sha256": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"},
+        "duration_ms": {"type": ["integer", "null"], "minimum": 0}
+      }
+    },
+    "analysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requested", "scope"],
+      "properties": {
+        "requested": {"type": "boolean"},
+        "scope": {"enum": ["full-routine", "training-session", "single-skill", "simple-moment"]},
+        "target_skill": {"type": ["string", "null"]},
+        "status": {"enum": ["not-requested", "queued", "processing", "completed", "needs-review"]}
+      }
+    }
+  }
+}
