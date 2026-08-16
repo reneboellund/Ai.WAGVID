@@ -6,6 +6,25 @@ urlpatterns = [
     path("health/", views.health, name="health"),
     path("ready/", views.readiness, name="readiness"),
     path("api/device/uploads/open/", device_api.upload_open, name="device-upload-open"),
+    path("api/device/pairing/", device_api.pairing_create, name="device-pairing-create"),
+    path(
+        "api/device/pairing/<uuid:pairing_id>/claim/",
+        device_api.pairing_claim,
+        name="device-pairing-claim",
+    ),
+    path("api/device/heartbeat/", device_api.heartbeat, name="device-heartbeat"),
+    path("api/device/commands/", device_api.command_poll, name="device-command-poll"),
+    path("api/device/capture-context/", device_api.capture_context, name="device-capture-context"),
+    path(
+        "api/device/commands/<uuid:command_id>/ack/",
+        device_api.command_acknowledge,
+        name="device-command-ack",
+    ),
+    path(
+        "api/devices/<uuid:device_id>/commands/",
+        device_api.command_create,
+        name="device-command-create",
+    ),
     path("api/analyses/", analysis_api.analyses_create, name="api-analyses-create"),
     path(
         "api/analyses/<uuid:analysis_id>/",

@@ -168,6 +168,12 @@ class Device(TimestampedModel):
         null=True, blank=True, validators=[MinValueValidator(0)]
     )
     queued_uploads = models.PositiveIntegerField(default=0)
+    battery_percent = models.PositiveSmallIntegerField(
+        null=True, blank=True, validators=[MinValueValidator(0), MaxValueValidator(100)]
+    )
+    network_type = models.CharField(max_length=40, blank=True)
+    app_version = models.CharField(max_length=80, blank=True)
+    active_capture_id = models.UUIDField(null=True, blank=True)
     api_token_hash = models.CharField(max_length=256, blank=True)
 
     def set_api_token(self, raw_token: str) -> None:
@@ -175,6 +181,60 @@ class Device(TimestampedModel):
 
     def check_api_token(self, raw_token: str) -> bool:
         return bool(self.api_token_hash) and check_password(raw_token, self.api_token_hash)
+
+
+class DevicePairingSession(TimestampedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="device_pairing_sessions"
+    )
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    code_hash = models.CharField(max_length=256)
+    expires_at = models.DateTimeField(db_index=True)
+    consumed_at = models.DateTimeField(null=True, blank=True)
+    failed_attempts = models.PositiveSmallIntegerField(default=0)
+    device = models.OneToOneField(
+        Device, on_delete=models.SET_NULL, null=True, blank=True, related_name="pairing_session"
+    )
+
+
+class DeviceCommand(TimestampedModel):
+    class Command(models.TextChoices):
+        ARM = "arm", "Armér auto"
+        DISARM = "disarm", "Deaktivér auto"
+        START = "start", "Start optagelse"
+        STOP = "stop", "Stop optagelse"
+
+    class State(models.TextChoices):
+        PENDING = "pending", "Afventer"
+        DELIVERED = "delivered", "Leveret"
+        ACCEPTED = "accepted", "Accepteret"
+        REJECTED = "rejected", "Afvist"
+        EXPIRED = "expired", "Udløbet"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="device_commands"
+    )
+    device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name="commands")
+    command = models.CharField(max_length=16, choices=Command.choices)
+    state = models.CharField(max_length=16, choices=State.choices, default=State.PENDING)
+    expected_device_state = models.CharField(max_length=20, choices=Device.State.choices)
+    payload = models.JSONField(default=dict)
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    idempotency_key = models.CharField(max_length=160)
+    expires_at = models.DateTimeField(db_index=True)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+    acknowledged_at = models.DateTimeField(null=True, blank=True)
+    rejection_code = models.CharField(max_length=100, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["device", "idempotency_key"], name="unique_device_command_request"
+            )
+        ]
+        ordering = ["created_at"]
 
 
 class MediaAsset(TimestampedModel):

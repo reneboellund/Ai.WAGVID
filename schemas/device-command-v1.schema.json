@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai.wagvid.local/schemas/device-command-v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["command_id", "command", "expected_device_state", "payload", "expires_at"],
+  "properties": {
+    "command_id": {"type": "string", "format": "uuid"},
+    "command": {"enum": ["arm", "disarm", "start", "stop"]},
+    "expected_device_state": {"enum": ["ready", "armed", "recording", "finalizing"]},
+    "payload": {
+      "type": "object",
+      "properties": {
+        "capture_id": {"type": "string", "format": "uuid"},
+        "gymnast_id": {"type": "string", "format": "uuid"},
+        "kind": {"enum": ["routine", "training", "drill", "competition"]},
+        "apparatus": {"type": "string"}
+      }
+    },
+    "expires_at": {"type": "string", "format": "date-time"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"command": {"enum": ["arm", "start"]}}},
+      "then": {"properties": {"payload": {"required": ["gymnast_id", "kind"]}}}
+    }
+  ]
+}

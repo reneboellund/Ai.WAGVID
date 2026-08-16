@@ -1,4 +1,5 @@
 import csv
+import uuid
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -7,6 +8,7 @@ from django.db.models import Case, IntegerField, Q, Value, When
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
+from .device_operations import DeviceOperationError, create_pairing_offer, enqueue_device_command
 from .forms import (
     GymnastForm,
     GymnastImportForm,
@@ -18,6 +20,7 @@ from .learning_exports import reviewed_score_labels
 from .models import (
     AnalysisJob,
     DeductionCandidate,
+    Device,
     ExchangeJob,
     MediaAsset,
     Membership,
@@ -103,10 +106,23 @@ def devices(request):
     organization = active_organization(request)
     if not organization:
         return HttpResponseForbidden()
+    pairing_offer = None
+    if request.method == "POST":
+        try:
+            pairing_offer = create_pairing_offer(
+                organization=organization, requested_by=request.user
+            )
+        except PermissionError:
+            return HttpResponseForbidden()
     return render(
         request,
         "wagvid/devices.html",
-        {"organization": organization, "devices": organization.devices.all()},
+        {
+            "organization": organization,
+            "devices": organization.devices.prefetch_related("commands"),
+            "pairing_offer": pairing_offer,
+            "can_manage": can_manage_master_data(request, organization),
+        },
     )
 
 
@@ -115,10 +131,41 @@ def operate(request):
     organization = active_organization(request)
     if not organization:
         return HttpResponseForbidden()
+    if request.method == "POST":
+        try:
+            device = organization.devices.get(pk=request.POST["device_id"])
+            command = request.POST["command"]
+            payload = {}
+            if command in {"start", "arm"}:
+                payload = {
+                    "capture_id": str(uuid.uuid4()),
+                    "gymnast_id": request.POST["gymnast_id"],
+                    "kind": request.POST["kind"],
+                    "apparatus": request.POST.get("apparatus", ""),
+                }
+            item, created = enqueue_device_command(
+                device_id=device.id,
+                requested_by=request.user,
+                command=command,
+                idempotency_key=request.POST.get("idempotency_key") or str(uuid.uuid4()),
+                payload=payload,
+            )
+            messages.success(
+                request,
+                f"Kommando {item.get_command_display()} er {'oprettet' if created else 'allerede registreret'}.",
+            )
+        except PermissionError:
+            return HttpResponseForbidden()
+        except (Device.DoesNotExist, DeviceOperationError, KeyError, ValueError) as error:
+            messages.error(request, str(error))
+        return redirect("operate")
     context = {
         "organization": organization,
-        "devices": organization.devices.all(),
+        "devices": organization.devices.prefetch_related("commands"),
         "gymnasts": organization.gymnasts.filter(archived_at__isnull=True),
+        "kind_choices": MediaAsset.Kind.choices,
+        "apparatus_choices": Routine.Apparatus.choices,
+        "can_control": can_manage_master_data(request, organization),
     }
     return render(request, "wagvid/operate.html", context)
 

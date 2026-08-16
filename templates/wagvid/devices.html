@@ -1,1 +1,13 @@
-{% extends "base.html" %}{% block content %}<h1>Android-enheder</h1><div class="cards">{% for device in devices %}<div class="card"><h2>{{ device.name }}</h2><p>{{ device.get_state_display }}</p><p>{{ device.queued_uploads }} i uploadkø</p></div>{% empty %}<p>Ingen enheder parret.</p>{% endfor %}</div>{% endblock %}
+{% extends "base.html" %}
+{% block content %}
+<h1>Android-enheder</h1>
+{% if can_manage %}<form method="post">{% csrf_token %}<button class="primary">Opret pairingkode</button></form>{% endif %}
+{% if pairing_offer %}<section class="card"><h2>Pairingkode: {{ pairing_offer.code }}</h2><p>Session {{ pairing_offer.session.id }}</p><p>Udløber {{ pairing_offer.session.expires_at }}. Koden vises kun i dette svar.</p></section>{% endif %}
+<div class="cards">{% for device in devices %}<div class="card">
+  <h2>{{ device.name }}</h2><p>{{ device.get_state_display }}</p>
+  <p>Batteri {{ device.battery_percent|default:"–" }}% · lager {{ device.free_storage_bytes|filesizeformat }}</p>
+  <p>{{ device.network_type|default:"Netværk ukendt" }} · app {{ device.app_version|default:"ukendt" }}</p>
+  <p>{{ device.queued_uploads }} i uploadkø · senest set {{ device.last_seen_at|default:"aldrig" }}</p>
+  {% with latest=device.commands.last %}{% if latest %}<p>Kommando: {{ latest.get_command_display }} / {{ latest.get_state_display }}</p>{% endif %}{% endwith %}
+</div>{% empty %}<p>Ingen enheder parret.</p>{% endfor %}</div>
+{% endblock %}

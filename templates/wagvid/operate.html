@@ -1,1 +1,26 @@
-{% extends "base.html" %}{% block content %}<h1>Operatørside</h1><div class="card"><label>Gymnast<select><option>Vælg gymnast</option>{% for g in gymnasts %}<option>{{ g.display_name }} · {{ g.level }} · {{ g.license_number }}</option>{% endfor %}</select></label><label>Enhed<select><option>Vælg enhed</option>{% for d in devices %}<option>{{ d.name }} · {{ d.get_state_display }}</option>{% endfor %}</select></label><p><button class="primary">Start optagelse</button> <button class="primary">Armér auto</button></p><p><button class="primary" style="background:#ff5d6c">STOP</button></p></div>{% endblock %}
+{% extends "base.html" %}
+{% block content %}
+<h1>Fjernoptagelse</h1>
+{% if can_control %}
+<form method="post" class="card">{% csrf_token %}
+  <label>Gymnast<select name="gymnast_id" required><option value="">Vælg gymnast</option>{% for g in gymnasts %}<option value="{{ g.id }}">{{ g.display_name }} · {{ g.level }} · {{ g.license_number }}</option>{% endfor %}</select></label>
+  <label>Enhed<select name="device_id" required><option value="">Vælg enhed</option>{% for d in devices %}<option value="{{ d.id }}">{{ d.name }} · {{ d.get_state_display }}</option>{% endfor %}</select></label>
+  <label>Videoformål<select name="kind">{% for value,label in kind_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></label>
+  <label>Apparat<select name="apparatus"><option value="">Ikke angivet</option>{% for value,label in apparatus_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></label>
+  <div class="cards">
+    <button class="primary" name="command" value="start">Start manuelt</button>
+    <button class="primary" name="command" value="arm">Armér auto</button>
+    <button class="primary" name="command" value="disarm">Deaktivér auto</button>
+    <button class="primary" style="background:#ff5d6c" name="command" value="stop">STOP</button>
+  </div>
+</form>
+{% else %}<p>Du har læseadgang. En organisationsadministrator skal sende optagekommandoer.</p>{% endif %}
+<h2>Enhedsstatus</h2>
+<div class="cards">{% for device in devices %}<section class="card">
+  <h3>{{ device.name }}</h3>
+  <p>{{ device.get_state_display }} · batteri {{ device.battery_percent|default:"–" }}%</p>
+  <p>{{ device.network_type|default:"Netværk ukendt" }} · {{ device.queued_uploads }} uploads</p>
+  <p>Senest set: {{ device.last_seen_at|default:"Aldrig" }}</p>
+  {% with latest=device.commands.last %}{% if latest %}<p>Seneste kommando: {{ latest.get_command_display }} · {{ latest.get_state_display }}</p>{% endif %}{% endwith %}
+</section>{% empty %}<p>Ingen parrede telefoner.</p>{% endfor %}</div>
+{% endblock %}
