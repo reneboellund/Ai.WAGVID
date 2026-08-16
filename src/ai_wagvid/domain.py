@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from collections.abc import Sequence
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Protocol, Sequence
+from typing import Any, Protocol
 
 
 class Apparatus(str, Enum):
