@@ -12,12 +12,17 @@ Date: 2026-08-16
 - bootstrap command for first organization, owner membership and starter levels;
 - health and database-readiness endpoints;
 - existing rule, AI-layer, capture, research, schema and UI tests retained.
+- worker leasing, expired-lease recovery, monotonic append-only progress and bounded retries;
+- overall official-versus-AI score review with append-only conclusions and audit history;
+- controlled human-reviewed learning-label export;
+- leakage-safe dataset manifests and deterministic grouped splits;
+- validated model-component catalogue and offline validation CLI.
 
 ## Must be completed before an internal alpha
 
 - PostgreSQL environment settings and production-safe secret configuration;
 - object-storage client and signed media access;
-- durable job backend with idempotency and progress events;
+- external queue transport and continuously running worker process;
 - Android Kotlin project with CameraX/Room/WorkManager implementation;
 - authenticated device pairing and command acknowledgements;
 - browser upload and resumable backend upload endpoint;
@@ -34,8 +39,8 @@ Date: 2026-08-16
 - split/leakage enforcement by gymnast and competition;
 - FFmpeg normalization and immutable source checksums;
 - RTMPose baseline adapter producing the PerceptionBundle contract;
-- benchmark runner, model-run provenance and evaluation reports;
-- annotation/review export and human correction loop.
+- benchmark runner and evaluation reports;
+- annotation/evidence export beyond the implemented score-label correction loop;
 - canonical pose adapter interface plus MediaPipe-class baseline and RTMPose/YOLO-class challenger;
 - FineGym/Gym288/OSL label and temporal-dataset adapters with athlete/event split enforcement;
 - annotated proxy renderer and versioned JSON/CSV/REST/CLI analysis exports;

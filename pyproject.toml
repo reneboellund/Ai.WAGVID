@@ -26,6 +26,7 @@ dev = [
 
 [project.scripts]
 wagvid-rules = "wagvid_rules.validation:main"
+wagvid = "ai_wagvid.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

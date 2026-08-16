@@ -1,0 +1,39 @@
+schema_version: model-bundles-v1
+components:
+  - id: pose-contract@1
+    capability: perception
+    adapter: ai_wagvid.perception.MotionPerceptionModel
+    artifact_status: contract-only
+    config_digest: "0000000000000000000000000000000000000000000000000000000000000000"
+    checkpoint_digest: null
+    limitations: [No checkpoint installed, No inference until an adapter is configured]
+  - id: action-contract@1
+    capability: action
+    adapter: ai_wagvid.actions.TemporalActionModel
+    artifact_status: contract-only
+    config_digest: "1111111111111111111111111111111111111111111111111111111111111111"
+    checkpoint_digest: null
+    limitations: [No checkpoint installed]
+  - id: interpretation-contract@1
+    capability: interpretation
+    adapter: ai_wagvid.interpretation.GymnasticsInterpreter
+    artifact_status: contract-only
+    config_digest: "2222222222222222222222222222222222222222222222222222222222222222"
+    checkpoint_digest: null
+    limitations: [Produces no candidates until an implementation is configured]
+  - id: aqa-contract@1
+    capability: quality
+    adapter: ai_wagvid.quality.ActionQualityModel
+    artifact_status: contract-only
+    config_digest: "3333333333333333333333333333333333333333333333333333333333333333"
+    checkpoint_digest: null
+    limitations: [Advisory channel only, No checkpoint installed]
+profiles:
+  - id: coaching-contract@1
+    mode: coaching
+    components: [pose-contract@1, action-contract@1, interpretation-contract@1]
+    apparatus: [VT, UB, BB, FX, PH, SR, PB, HB]
+  - id: competition-research-contract@1
+    mode: judge-research
+    components: [pose-contract@1, action-contract@1, interpretation-contract@1, aqa-contract@1]
+    apparatus: [VT, UB, BB, FX]
