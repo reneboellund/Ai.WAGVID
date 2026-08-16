@@ -1,0 +1,141 @@
+schema_version: 1.0.0
+application: ai-wagvid-web
+shell:
+  implementation: django-templates-htmx-pwa
+  home: dashboard
+screens:
+  - id: setup
+    area: system
+    path: /setup/
+    roles: [system-admin]
+    actions: [resume-checklist, test-storage, create-organization, activate-rulepack]
+  - id: dashboard
+    area: overview
+    path: /
+    roles: [system-admin, organization-admin, operator, coach, reviewer, researcher, viewer]
+    actions: [open-alert, open-job, open-device, start-operation]
+  - id: operate
+    area: operations
+    path: /operate/
+    roles: [system-admin, organization-admin, operator]
+    actions: [select-gymnast, select-device, arm, disarm, start, stop, next-attempt]
+  - id: gymnasts
+    area: master-data
+    path: /gymnasts/
+    roles: [system-admin, organization-admin, operator, coach, reviewer]
+    actions: [create, import-preview, edit, archive, merge-preview, open-history]
+  - id: gymnast-detail
+    area: master-data
+    path: /gymnasts/{gymnast_id}/
+    roles: [system-admin, organization-admin, operator, coach, reviewer]
+    actions: [open-video, open-analysis, compare, edit]
+  - id: levels
+    area: administration
+    path: /admin/levels/
+    roles: [system-admin, organization-admin]
+    actions: [create, edit, archive, import-preview]
+  - id: videos
+    area: media
+    path: /videos/
+    roles: [system-admin, organization-admin, operator, coach, reviewer, researcher]
+    actions: [upload, attach-metadata, retry-ingest, mark-unusable, open-duplicate]
+  - id: video-detail
+    area: media
+    path: /videos/{video_id}/
+    roles: [system-admin, organization-admin, operator, coach, reviewer, researcher]
+    actions: [play, inspect-probe, edit-metadata, create-analysis, supersede]
+  - id: training
+    area: training
+    path: /training/
+    roles: [system-admin, organization-admin, operator, coach]
+    actions: [new-session, continue-session, open-attempt, compare-attempts]
+  - id: competitions
+    area: competition
+    path: /competitions/
+    roles: [system-admin, organization-admin, operator, reviewer]
+    actions: [create, import-start-list, map-gymnasts, import-official-scores]
+  - id: competition-detail
+    area: competition
+    path: /competitions/{competition_id}/
+    roles: [system-admin, organization-admin, operator, reviewer]
+    actions: [attach-video, start-analysis, compare-scores, export-kiga]
+  - id: analyses
+    area: analysis
+    path: /analyses/
+    roles: [system-admin, organization-admin, operator, coach, reviewer, researcher]
+    actions: [create, retry, cancel, compare-revisions, open-result]
+  - id: analysis-detail
+    area: analysis
+    path: /analyses/{analysis_id}/
+    roles: [system-admin, organization-admin, operator, coach, reviewer, researcher]
+    actions: [open-evidence, request-review, reanalyse, export]
+  - id: review-inbox
+    area: review
+    path: /reviews/
+    roles: [system-admin, organization-admin, reviewer]
+    actions: [assign, filter, open-review]
+  - id: review-workspace
+    area: review
+    path: /reviews/{review_id}/
+    roles: [system-admin, reviewer]
+    actions: [accept, reject, revise, add-reason, escalate, complete]
+  - id: devices
+    area: devices
+    path: /devices/
+    roles: [system-admin, organization-admin, operator]
+    actions: [pair, open-device, rotate-pairing, diagnose]
+  - id: device-detail
+    area: devices
+    path: /devices/{device_id}/
+    roles: [system-admin, organization-admin, operator]
+    actions: [preview, assign, arm, start, stop, inspect-archive, inspect-upload-queue]
+  - id: imports
+    area: exchange
+    path: /imports/
+    roles: [system-admin, organization-admin, operator]
+    actions: [upload, validate, map, dry-run, commit, download-errors]
+  - id: exports
+    area: exchange
+    path: /exports/
+    roles: [system-admin, organization-admin, operator, coach, reviewer, researcher]
+    actions: [create, redact, download, revoke]
+  - id: research
+    area: research
+    path: /research/
+    roles: [system-admin, researcher]
+    actions: [register-dataset, create-split, export-annotations, open-model-run]
+  - id: system-status
+    area: system
+    path: /system/status/
+    roles: [system-admin, organization-admin, operator]
+    actions: [acknowledge-alert, retry-safe-failure, pause-queue, run-diagnostics]
+  - id: workers
+    area: system
+    path: /system/workers/
+    roles: [system-admin, operator]
+    actions: [drain, pause, resume, inspect-job]
+  - id: backups
+    area: system
+    path: /system/backups/
+    roles: [system-admin]
+    actions: [run-backup, verify, start-restore-rehearsal]
+  - id: users
+    area: administration
+    path: /admin/users/
+    roles: [system-admin, organization-admin]
+    actions: [invite, edit-roles, suspend, reset-sessions]
+  - id: organizations
+    area: administration
+    path: /admin/organizations/
+    roles: [system-admin]
+    actions: [create, edit, archive]
+  - id: configuration
+    area: administration
+    path: /admin/configuration/
+    roles: [system-admin, organization-admin]
+    actions: [edit-retention, activate-rulepack, edit-model-profile, test-integration]
+  - id: audit-log
+    area: administration
+    path: /admin/audit/
+    roles: [system-admin, organization-admin]
+    actions: [filter, export]
