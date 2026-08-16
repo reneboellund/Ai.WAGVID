@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import analysis_api, device_api, views
+from . import analysis_api, device_api, media_access, views
 
 urlpatterns = [
     path("health/", views.health, name="health"),
@@ -26,6 +26,16 @@ urlpatterns = [
         name="device-command-create",
     ),
     path("api/analyses/", analysis_api.analyses_create, name="api-analyses-create"),
+    path(
+        "api/media/<uuid:media_id>/grant/",
+        media_access.create_media_grant,
+        name="media-object-grant",
+    ),
+    path(
+        "media/<uuid:media_id>/object/",
+        media_access.download_media_object,
+        name="media-object-download",
+    ),
     path(
         "api/analyses/<uuid:analysis_id>/",
         analysis_api.analysis_detail,

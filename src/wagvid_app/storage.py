@@ -38,6 +38,11 @@ class LocalObjectStore:
     ) -> StoredObject:
         destination = self._path(key)
         destination.parent.mkdir(parents=True, exist_ok=True)
+        if destination.exists():
+            existing = self.inspect(key)
+            if existing.size == expected_size and existing.sha256 == expected_sha256:
+                return existing
+            raise ObjectIntegrityError("Immutable object key already contains different content")
         temporary = destination.with_suffix(destination.suffix + ".partial")
         digest = hashlib.sha256()
         size = 0
@@ -55,6 +60,23 @@ class LocalObjectStore:
 
     def exists(self, key: str) -> bool:
         return self._path(key).is_file()
+
+    def inspect(self, key: str) -> StoredObject:
+        path = self._path(key)
+        if not path.is_file():
+            raise FileNotFoundError(key)
+        digest, size = hashlib.sha256(), 0
+        with path.open("rb") as source:
+            while chunk := source.read(1024 * 1024):
+                digest.update(chunk)
+                size += len(chunk)
+        return StoredObject(key, size, digest.hexdigest())
+
+    def open_read(self, key: str) -> BinaryIO:
+        path = self._path(key)
+        if not path.is_file():
+            raise FileNotFoundError(key)
+        return path.open("rb")
 
     def append_chunk(self, key: str, source: BinaryIO, *, offset: int, max_bytes: int) -> int:
         destination = self._path(key)
@@ -93,5 +115,11 @@ class LocalObjectStore:
             raise ObjectIntegrityError("Partial upload does not match size/checksum")
         final = self._path(final_key)
         final.parent.mkdir(parents=True, exist_ok=True)
+        if final.exists():
+            existing = self.inspect(final_key)
+            if existing.size != expected_size or existing.sha256 != expected_sha256:
+                raise ObjectIntegrityError("Immutable object key already contains different content")
+            partial.unlink(missing_ok=True)
+            return existing
         os.replace(partial, final)
         return StoredObject(final_key, size, actual_sha256)

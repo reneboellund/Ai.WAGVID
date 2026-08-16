@@ -1,5 +1,6 @@
 import io
 import json
+import mimetypes
 import re
 from datetime import datetime
 from pathlib import PurePosixPath
@@ -376,6 +377,9 @@ def upload_finalize(request: HttpRequest, upload_id: UUID) -> JsonResponse:
         state=MediaAsset.State.STORED,
         object_key=stored.key,
         sha256=stored.sha256,
+        original_filename=session.local_filename,
+        content_type=mimetypes.guess_type(session.local_filename)[0] or "application/octet-stream",
+        size_bytes=stored.size,
         recorded_at=session.recorded_at,
         original_retained=True,
     )

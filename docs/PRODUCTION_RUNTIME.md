@@ -1,5 +1,22 @@
 # Production runtime foundation
 
+## Immutable object access
+
+The local object backend enforces the same immutable-original semantics required
+from an S3-compatible backend. Repeating a write with identical size and SHA-256 is
+idempotent; attempting to reuse an object key for different bytes fails. Inspection
+and download hash the stored object as a stream.
+
+Authenticated organization members request short-lived media grants. Grants bind
+organization ID, object key, stored SHA-256, expiry and content disposition under an
+HMAC-SHA256 signature. Delivery verifies both grant and object checksum before
+streaming, uses `private, no-store`, `nosniff` and a checksum ETag, and records grant
+creation in the audit log. Production must provide a distinct
+`WAGVID_OBJECT_SIGNING_SECRET`; the development fallback is Django's secret key.
+
+`MediaAsset` persists original filename, detected content type and byte length from
+upload finalization. Migration `0011_mediaasset_source_metadata` is additive.
+
 ## Database
 
 Set `WAGVID_DATABASE_URL` to a PostgreSQL URL. SQLite remains a developer/test fallback only.

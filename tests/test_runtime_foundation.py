@@ -6,6 +6,12 @@ from datetime import UTC, datetime
 import pytest
 
 from wagvid_app.models import AnalysisJob, Gymnast, Level, MediaAsset, Organization
+from wagvid_app.object_access import (
+    ObjectAccessDenied,
+    ObjectAccessGrant,
+    sign_object_access,
+    verify_object_access,
+)
 from wagvid_app.operations import (
     InvalidStateTransition,
     UploadRequest,
@@ -28,6 +34,16 @@ def test_verified_object_store_is_atomic_and_rejects_bad_checksum(tmp_path):
     )
     assert stored.sha256 == digest
     assert store.exists(stored.key)
+    repeated = store.put_verified(
+        "org/capture.mp4", io.BytesIO(payload),
+        expected_size=len(payload), expected_sha256=digest,
+    )
+    assert repeated == stored
+    with pytest.raises(ObjectIntegrityError, match="Immutable"):
+        store.put_verified(
+            "org/capture.mp4", io.BytesIO(b"changed"),
+            expected_size=7, expected_sha256=hashlib.sha256(b"changed").hexdigest(),
+        )
     with pytest.raises(ObjectIntegrityError):
         store.put_verified(
             "org/bad.mp4",
@@ -41,6 +57,26 @@ def test_verified_object_store_is_atomic_and_rejects_bad_checksum(tmp_path):
 def test_object_store_rejects_path_escape(tmp_path):
     with pytest.raises(ValueError):
         LocalObjectStore(tmp_path).exists("../secret")
+
+
+def test_object_access_token_is_expiring_and_organization_scoped():
+    grant = ObjectAccessGrant("org-1", "originals/video.mp4", 130, "inline", "a" * 64)
+    secret = "test-secret-that-is-at-least-32-characters"
+    token = sign_object_access(grant, secret=secret, now=100)
+    assert verify_object_access(
+        token, secret=secret, organization_id="org-1",
+        object_key="originals/video.mp4", now=120,
+    ) == grant
+    with pytest.raises(ObjectAccessDenied, match="scope"):
+        verify_object_access(
+            token, secret=secret, organization_id="org-2",
+            object_key="originals/video.mp4", now=120,
+        )
+    with pytest.raises(ObjectAccessDenied, match="expired"):
+        verify_object_access(
+            token, secret=secret, organization_id="org-1",
+            object_key="originals/video.mp4", now=131,
+        )
 
 
 @pytest.mark.django_db

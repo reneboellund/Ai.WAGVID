@@ -360,6 +360,9 @@ class MediaAsset(TimestampedModel):
     state = models.CharField(max_length=20, choices=State.choices, default=State.QUEUED)
     object_key = models.CharField(max_length=500, blank=True)
     sha256 = models.CharField(max_length=64, blank=True, db_index=True)
+    original_filename = models.CharField(max_length=255, blank=True)
+    content_type = models.CharField(max_length=120, blank=True)
+    size_bytes = models.BigIntegerField(null=True, blank=True, validators=[MinValueValidator(0)])
     original_retained = models.BooleanField(default=True)
     recorded_at = models.DateTimeField()
 
