@@ -2,6 +2,7 @@ package com.boellund.wagvid.capture.runtime
 
 import android.content.Context
 import android.provider.Settings
+import com.boellund.wagvid.capture.BuildConfig
 import com.boellund.wagvid.capture.network.ApiFactory
 import com.boellund.wagvid.capture.network.CaptureContextResponse
 import com.boellund.wagvid.capture.network.PairingRepository
@@ -49,6 +50,9 @@ class CaptureRuntimeRepository(context: Context) {
         val trimmed = value.trim()
         require(trimmed.startsWith("https://") || trimmed.startsWith("http://")) {
             "Backend URL must start with http:// or https://"
+        }
+        require(BuildConfig.DEBUG || trimmed.startsWith("https://")) {
+            "Production pairing requires an HTTPS backend URL"
         }
         return if (trimmed.endsWith("/")) trimmed else "$trimmed/"
     }
