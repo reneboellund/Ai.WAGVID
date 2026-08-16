@@ -8,7 +8,7 @@
   <div class="page-actions"><a class="button" href="{% url 'analyses' %}"><svg><use href="#i-arrow"/></svg>Til analysekø</a><span class="status-badge {% if job.state == 'needs-review' %}warning{% elif job.state == 'completed' %}{% else %}info{% endif %}">{{ job.get_state_display }}</span></div>
 </section>
 
-<section class="surface surface-pad" data-evidence-workspace>
+<section class="surface surface-pad" data-evidence-workspace data-timeline-url="{% url 'media-timeline' job.media.id %}">
   <header class="section-head"><div><h2>Source evidence</h2><p>Immutable original · {{ job.media.original_filename|default:"video" }} · SHA-256 {{ job.media.sha256|slice:":12" }}…</p></div><span class="status-badge {% if job.media.state == 'stored' %}{% else %}warning{% endif %}">{{ job.media.get_state_display }}</span></header>
   {% if job.media.state == 'stored' and job.media.object_key and job.media.sha256 %}
     <form hidden data-media-grant-form>{% csrf_token %}</form>
@@ -16,8 +16,18 @@
       <video controls preload="metadata" playsinline hidden data-evidence-video style="display:block;width:100%;max-height:68vh;background:#000"></video>
       <div class="empty-state" data-evidence-placeholder><span class="empty-visual"><svg><use href="#i-play"/></svg></span><h3>Autoriseret source-video</h3><p>Videoen hentes først, når du åbner den. Serveren udsteder et kortlivet, audit-logget grant; seeking bruger HTTP byte ranges.</p><button class="button button-primary" type="button" data-load-media data-grant-url="{% url 'media-object-grant' job.media.id %}"><svg><use href="#i-play"/></svg>Åbn source-video</button></div>
     </div>
-    <div class="toolbar" style="margin-top:12px"><div class="page-actions"><button class="button" type="button" data-nudge-ms="-100">−100 ms</button><button class="button" type="button" data-nudge-ms="100">+100 ms</button></div><span class="status-badge neutral">Timecode <strong data-evidence-time>00:00.000</strong></span><span class="status-badge info" data-evidence-status>Ikke indlæst</span></div>
-    <p><small>Disse kontroller er source-time-baserede. Eksakt frame stepping aktiveres først, når den canonical PTS/DTS-timeline er persisted og knyttet til denne MediaAsset-revision; systemet opfinder ikke frame-numre.</small></p>
+    <div class="toolbar" style="margin-top:12px">
+      <div class="page-actions">
+        <button class="button" type="button" data-frame-prev>← Forrige frame</button>
+        <button class="button" type="button" data-frame-next>Næste frame →</button>
+        <button class="button" type="button" data-nudge-ms="-100">−100 ms</button>
+        <button class="button" type="button" data-nudge-ms="100">+100 ms</button>
+      </div>
+      <span class="status-badge neutral">Frame <strong data-evidence-frame>—</strong></span>
+      <span class="status-badge neutral">Timecode <strong data-evidence-time>00:00.000</strong></span>
+      <span class="status-badge info" data-evidence-status>Ikke indlæst</span>
+    </div>
+    <p><small>Frame-knapperne bruger kun den canonical PTS/DTS-timeline, når et valideret sidecar-manifest findes for præcis denne source SHA-256. Hvis manifestet ikke er klar, forbliver millisekund-navigationen tilgængelig; systemet opfinder ikke frame-numre.</small></p>
   {% else %}
     <div class="empty-state"><span class="empty-visual"><svg><use href="#i-play"/></svg></span><h3>Source-video er ikke tilgængelig som verified stored object</h3><p>Review kan fortsætte på eksisterende evidensmetadata, men originalen kan først afspilles efter færdig ingest og checksum-verifikation.</p></div>
   {% endif %}
