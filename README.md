@@ -249,3 +249,24 @@ Technology choices remain replaceable behind interfaces until benchmarks justify
 ## Legal / sporting disclaimer
 
 Ai.WAGVID is an independent analysis project and is not affiliated with or endorsed by FIG / World Gymnastics. It is intended to assist post-event review, technical analysis, coaching and score verification. Official competition results remain governed by the responsible federation/event processes. FIG rules, element tables and publications remain subject to their respective rights and official publication terms.
+
+
+## Implemented M0 rule-source foundation
+
+The first issue #1 development slice is available on this branch:
+
+- authoritative source metadata in `rules/registry.yaml`;
+- JSON Schema validation through `schemas/rule-registry-v1.schema.json`;
+- cross-record integrity checks and CLI in `src/wagvid_rules/`;
+- governance for revisions, review, hashes and historical reproducibility;
+- automated tests for valid, duplicate, review and retained-copy cases.
+
+The registry stores links and metadata; it does not redistribute the source PDFs.
+
+```powershell
+py -m pip install -e ".[dev]"
+wagvid-rules validate rules/registry.yaml
+pytest
+```
+
+Validation at handoff: **4 tests passed** and registry validation succeeded.
