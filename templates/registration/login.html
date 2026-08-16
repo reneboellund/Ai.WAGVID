@@ -1,1 +1,25 @@
-<!doctype html><html lang="da"><head><meta charset="utf-8"><title>Log ind · Ai.WAGVID</title></head><body><main><h1>Ai.WAGVID</h1><form method="post">{% csrf_token %}{{ form.as_p }}<button type="submit">Log ind</button></form></main></body></html>
+{% load static %}
+<!doctype html>
+<html lang="da">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#06100f"><title>Log ind · Ai.WAGVID</title><link rel="stylesheet" href="{% static 'wagvid/app.css' %}"></head>
+<body class="login-page">
+  <div class="login-ambient" aria-hidden="true"><span></span><span></span></div>
+  <main class="login-shell">
+    <section class="login-story">
+      <a class="brand" href="/"><span class="brand-mark"><span></span><span></span><span></span></span><span class="brand-copy"><strong>Ai.WAGVID</strong><small>Vision intelligence</small></span></a>
+      <div class="login-copy"><p class="eyebrow">Evidence-first performance intelligence</p><h1>Se bevægelsen.<br><span class="text-gradient">Bevar evidensen.</span></h1><p>En sikker platform til AI-assisteret videoanalyse, rulepack-fortolkning og menneskeligt review i kvindelig artistisk gymnastik.</p></div>
+      <div class="login-signal"><i></i><span><strong>Vision engine online</strong><small>Krypteret · Sporbar · Reproducerbar</small></span></div>
+    </section>
+    <section class="surface login-card">
+      <header><span class="workspace-avatar">W</span><div><p class="eyebrow">Sikker adgang</p><h2>Velkommen tilbage</h2><p>Log ind for at fortsætte til dit workspace.</p></div></header>
+      <form method="post">{% csrf_token %}
+        {% if form.non_field_errors %}<div class="login-error">{{ form.non_field_errors }}</div>{% endif %}
+        {% for field in form %}<div class="form-field">{{ field.label_tag }}{{ field }}{{ field.errors }}</div>{% endfor %}
+        {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+        <button class="button button-primary button-lg" type="submit">Log ind <svg viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button>
+      </form>
+      <footer><svg viewBox="0 0 24 24"><path d="M12 3 4 6v5c0 5.2 3.3 8.5 8 10 4.7-1.5 8-4.8 8-10V6Z"/><path d="m8.5 12 2.2 2.2 4.8-5"/></svg> Din session beskyttes af organisationens adgangspolitik</footer>
+    </section>
+  </main>
+</body>
+</html>

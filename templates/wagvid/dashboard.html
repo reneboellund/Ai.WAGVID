@@ -1,1 +1,79 @@
-{% extends "base.html" %}{% block content %}<h1>Status · {{ organization.name }}</h1><p>Samlet status: <strong>{{ status.health }}</strong></p><div class="cards"><div class="card"><h2>Enheder</h2><p>{{ status.device_attention }} kræver opmærksomhed</p></div><div class="card"><h2>Upload</h2><p>{{ status.upload_backlog }} afventer</p></div><div class="card"><h2>Analyse</h2><p>{{ status.analysis_backlog }} aktive/blokerede</p></div><div class="card"><h2>Review</h2><p>{{ status.review_backlog }} afventer</p></div></div>{% endblock %}
+{% extends "base.html" %}
+{% block title %}Overblik · Ai.WAGVID{% endblock %}
+{% block breadcrumb %}Overblik{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="eyebrow">Operationscenter</p>
+    <h1>Godt at se dig, <span class="text-gradient">{{ user.first_name|default:user.username }}</span></h1>
+    <p>Aktuel status for {{ organization.name }} — capture, uploads, analyse og menneskeligt review samlet ét sted.</p>
+  </div>
+  <div class="page-actions">
+    <button class="button" type="button" data-refresh><svg><use href="#i-activity"/></svg>Opdatér</button>
+    <a class="button button-primary" href="{% url 'operate' %}"><svg><use href="#i-play"/></svg>Start optagelse</a>
+  </div>
+</section>
+
+<section class="metric-grid" aria-label="Nøgletal">
+  <article class="surface surface-hover metric-card" style="--i:0;--accent:var(--mint);--glow:rgba(107,245,199,.12)">
+    <div class="metric-top"><span class="metric-icon"><svg><use href="#i-device"/></svg></span><span class="metric-trend good">capture</span></div>
+    <div class="metric-value" data-counter="{{ organization.devices.count }}">0</div>
+    <div class="metric-label"><span>Registrerede enheder</span><span>{{ status.device_attention }} kræver opmærksomhed</span></div>
+    <div class="micro-line"><span style="--value:{% if status.device_attention %}58{% else %}100{% endif %}%"></span></div>
+  </article>
+  <article class="surface surface-hover metric-card" style="--i:1;--accent:var(--cyan);--glow:rgba(91,216,255,.11)">
+    <div class="metric-top"><span class="metric-icon"><svg><use href="#i-upload"/></svg></span><span class="metric-trend">ingest</span></div>
+    <div class="metric-value" data-counter="{{ status.upload_backlog }}">0</div>
+    <div class="metric-label"><span>Upload i kø</span><span>resumable + SHA-256</span></div>
+    <div class="micro-line"><span style="--value:{% if status.upload_backlog %}64{% else %}100{% endif %}%"></span></div>
+  </article>
+  <article class="surface surface-hover metric-card" style="--i:2;--accent:var(--violet);--glow:rgba(169,151,255,.11)">
+    <div class="metric-top"><span class="metric-icon"><svg><use href="#i-analysis"/></svg></span><span class="metric-trend good">pipeline</span></div>
+    <div class="metric-value" data-counter="{{ status.analysis_backlog }}">0</div>
+    <div class="metric-label"><span>Analyse-backlog</span><span>{{ organization.analysis_jobs.count }} total</span></div>
+    <div class="micro-line"><span style="--value:{% if status.analysis_backlog %}74{% else %}100{% endif %}%"></span></div>
+  </article>
+  <article class="surface surface-hover metric-card" style="--i:3;--accent:var(--amber);--glow:rgba(255,189,102,.1)">
+    <div class="metric-top"><span class="metric-icon"><svg><use href="#i-check"/></svg></span><span class="metric-trend">human loop</span></div>
+    <div class="metric-value" data-counter="{{ status.review_backlog }}">0</div>
+    <div class="metric-label"><span>Afventer review</span><span>evidence-first</span></div>
+    <div class="micro-line"><span style="--value:{% if status.review_backlog %}48{% else %}100{% endif %}%"></span></div>
+  </article>
+</section>
+
+<section class="dashboard-grid">
+  <article class="surface pipeline-card">
+    <header class="section-head"><div><h2>Intelligence pipeline</h2><p>Fra capture til valideret evidens</p></div><span class="status-badge info">Operational</span></header>
+    <div class="pipeline-track">
+      <div class="pipeline-node" style="--accent:var(--mint)"><span><svg><use href="#i-device"/></svg></span><strong>Capture</strong><small>{{ organization.devices.count }} enheder</small></div>
+      <div class="pipeline-node" style="--accent:var(--cyan)"><span><svg><use href="#i-upload"/></svg></span><strong>Ingest</strong><small>{{ status.upload_backlog }} i kø</small></div>
+      <div class="pipeline-node" style="--accent:var(--violet)"><span><svg><use href="#i-spark"/></svg></span><strong>AI-analyse</strong><small>{{ status.analysis_backlog }} afventer</small></div>
+      <div class="pipeline-node" style="--accent:var(--amber)"><span><svg><use href="#i-shield"/></svg></span><strong>Review</strong><small>{{ status.review_backlog }} afventer</small></div>
+    </div>
+    <div class="signal-chart" aria-label="Pipelinesignal"><svg viewBox="0 0 700 110" preserveAspectRatio="none"><defs><linearGradient id="signalGradient" x1="0" x2="1"><stop stop-color="#6bf5c7"/><stop offset=".55" stop-color="#5bd8ff"/><stop offset="1" stop-color="#a997ff"/></linearGradient></defs><path d="M0 82 C32 80 42 74 68 76 S105 87 130 70 S166 26 197 52 S233 87 267 63 S313 25 345 56 S392 87 425 65 S467 36 494 58 S535 80 566 61 S617 20 646 48 S677 69 700 47"/></svg></div>
+  </article>
+
+  <article class="surface readiness-card">
+    <header class="section-head"><div><h2>Systemstatus</h2><p>Reel driftstilstand fra backend</p></div><span class="status-badge {% if status.health != 'healthy' %}warning{% endif %}">{{ status.health|default:"unknown" }}</span></header>
+    <div class="status-list">
+      <div class="status-row"><i></i><span>Device attention</span><strong>{{ status.device_attention }}</strong></div>
+      <div class="status-row"><i></i><span>Upload backlog</span><strong>{{ status.upload_backlog }}</strong></div>
+      <div class="status-row"><i></i><span>Analyse backlog</span><strong>{{ status.analysis_backlog }}</strong></div>
+      <div class="status-row"><i></i><span>Review backlog</span><strong>{{ status.review_backlog }}</strong></div>
+    </div>
+    <a class="button" href="{% url 'system-status' %}"><svg><use href="#i-health"/></svg>Åbn systemstatus</a>
+  </article>
+</section>
+
+<section class="lower-grid">
+  <article class="surface surface-pad">
+    <header class="section-head"><div><h2>Arbejdskøer</h2><p>Gå direkte til de aktive workflows</p></div></header>
+    <div class="activity-list">
+      <a class="activity-item" href="{% url 'devices' %}"><span class="activity-icon" style="--accent:var(--mint)"><svg><use href="#i-device"/></svg></span><span class="activity-copy"><strong>Enheder</strong><small>Pairing, health, uploadkø og capture-state</small></span><span class="activity-time">{{ organization.devices.count }}</span></a>
+      <a class="activity-item" href="{% url 'analyses' %}"><span class="activity-icon" style="--accent:var(--violet)"><svg><use href="#i-analysis"/></svg></span><span class="activity-copy"><strong>Analyser & review</strong><small>Filtrér, inspicér og adjudikér evidens</small></span><span class="activity-time">{{ organization.analysis_jobs.count }}</span></a>
+      <a class="activity-item" href="{% url 'exchange' %}"><span class="activity-icon" style="--accent:var(--cyan)"><svg><use href="#i-exchange"/></svg></span><span class="activity-copy"><strong>Dataudveksling</strong><small>Gymnast-CSV og KIGA competition/video</small></span><span class="activity-time">{{ organization.exchange_jobs.count }}</span></a>
+    </div>
+  </article>
+  <aside class="surface quick-panel"><span class="spark-icon"><svg><use href="#i-spark"/></svg></span><h2>Klar til næste øvelse?</h2><p>Vælg gymnast og enhed, og send en auditeret capture-kommando fra operatørstudiet.</p><a class="button button-primary button-lg" href="{% url 'operate' %}"><svg><use href="#i-play"/></svg>Åbn operatørstudie</a></aside>
+</section>
+{% endblock %}

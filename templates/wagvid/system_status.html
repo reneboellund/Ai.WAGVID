@@ -1,1 +1,25 @@
-{% extends "base.html" %}{% block content %}<h1>Systemstatus</h1><div class="cards"><div class="card"><h2>Samlet</h2><p>{{ status.health }}</p></div><div class="card"><h2>Uploadkø</h2><p>{{ status.upload_backlog }}</p></div><div class="card"><h2>Analyse</h2><p>{{ status.analysis_backlog }}</p></div>{% for probe in probes %}<div class="card"><h2>{{ probe.name }}</h2><p>{{ probe.status }}</p><small>{{ probe.detail }}</small></div>{% endfor %}</div>{% endblock %}
+{% extends "base.html" %}
+{% block title %}Systemstatus · Ai.WAGVID{% endblock %}
+{% block breadcrumb %}Systemstatus{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div><p class="eyebrow">Observability</p><h1>System<span class="text-gradient">status</span></h1><p>Operationel sundhed, køer og readiness-signaler for hele Ai.WAGVID-platformen.</p></div>
+  <div class="page-actions"><button class="button" type="button" data-refresh><svg><use href="#i-activity"/></svg>Kør health check</button></div>
+</section>
+<section class="surface health-hero">
+  <span class="health-orb" {% if status.health != 'healthy' %}style="color:var(--amber);border-color:rgba(255,189,102,.3)"{% endif %}><svg><use href="#i-health"/></svg></span>
+  <div class="health-copy"><h2>{% if status.health == 'healthy' %}Alle kernesystemer fungerer normalt{% else %}Platformen kræver opmærksomhed{% endif %}</h2><p>{% if status.health == 'healthy' %}Ingen kritiske hændelser registreret. Readiness probes svarer som forventet.{% else %}En eller flere køer eller enheder afviger fra normal drift. Data er stadig sporbare.{% endif %}</p></div>
+  <div class="health-time"><strong data-live-clock>--:--:--</strong><small>Senest kontrolleret live</small></div>
+</section>
+<section class="service-grid">
+  {% for probe in probes %}
+  <article class="surface surface-hover service-card">
+    <div class="service-head"><span><svg><use href="{% if probe.name == 'database' %}#i-database{% elif probe.name == 'object-storage' %}#i-cloud{% else %}#i-spark{% endif %}"/></svg></span><h3>{% if probe.name == 'database' %}Database{% elif probe.name == 'object-storage' %}Objektlager{% else %}Analyse-worker{% endif %}</h3><span class="status-badge {% if probe.status != 'ok' %}warning{% endif %}">{% if probe.status == 'ok' %}Online{% else %}{{ probe.status|title }}{% endif %}</span></div>
+    <p>{{ probe.detail }}</p><div class="service-metric"><strong>{{ probe.status|upper }}</strong><small>LIVE PROBE</small></div>
+  </article>
+  {% endfor %}
+  <article class="surface surface-hover service-card"><div class="service-head"><span><svg><use href="#i-device"/></svg></span><h3>Capture network</h3><span class="status-badge {% if status.device_attention %}warning{% endif %}">{% if status.device_attention %}Opmærksomhed{% else %}Stabil{% endif %}</span></div><p>Android-enheder overvåges for forbindelse, uploadkø og state.</p><div class="service-metric"><strong>{{ status.device_attention }}</strong><small>KRÆVER TILSYN</small></div></article>
+  <article class="surface surface-hover service-card"><div class="service-head"><span><svg><use href="#i-shield"/></svg></span><h3>Review queue</h3><span class="status-badge {% if status.review_backlog %}warning{% endif %}">{% if status.review_backlog %}Afventer{% else %}Klar{% endif %}</span></div><p>Menneskeligt review fastholder usikkerhed og evidensspor.</p><div class="service-metric"><strong>{{ status.review_backlog }}</strong><small>AFVENTER REVIEW</small></div></article>
+  <article class="surface surface-hover service-card"><div class="service-head"><span><svg><use href="#i-activity"/></svg></span><h3>Readiness probes</h3><span class="status-badge info">Live</span></div><p>Database, objektlager og worker-tilgængelighed overvåges automatisk.</p><div class="service-metric"><strong>{{ probes|length }}/3</strong><small>AKTIVE PROBES</small></div></article>
+</section>
+{% endblock %}
