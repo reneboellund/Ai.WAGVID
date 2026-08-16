@@ -70,25 +70,79 @@ def validate_registry(registry: dict[str, Any], schema: dict[str, Any]) -> list[
     return sorted(errors)
 
 
+def validate_manifest(
+    manifest: dict[str, Any], schema: dict[str, Any], registry: dict[str, Any]
+) -> list[str]:
+    """Validate a rule-pack manifest and references into the source registry."""
+    errors = [
+        f"schema:{'/'.join(map(str, error.absolute_path)) or '<root>'}: {error.message}"
+        for error in Draft202012Validator(
+            schema, format_checker=FormatChecker()
+        ).iter_errors(manifest)
+    ]
+    sources = {
+        source.get("id"): source
+        for source in registry.get("sources", [])
+        if isinstance(source, dict) and source.get("id")
+    }
+    for source_id in manifest.get("source_ids", []):
+        if source_id not in sources:
+            errors.append(f"integrity: unknown registry source id: {source_id}")
+
+    if manifest.get("cycle") != registry.get("cycle"):
+        errors.append("integrity: manifest cycle differs from registry cycle")
+
+    status = manifest.get("status")
+    if status in {"reviewed", "approved"} and not manifest.get("review"):
+        errors.append("integrity: reviewed/approved manifest needs review metadata")
+    if status == "approved":
+        for source_id in manifest.get("source_ids", []):
+            source = sources.get(source_id, {})
+            if source.get("status") != "current":
+                errors.append(
+                    f"integrity: approved manifest requires current source: {source_id}"
+                )
+        for artifact in manifest.get("artifacts", []):
+            if isinstance(artifact, dict) and not artifact.get("sha256"):
+                errors.append(
+                    f"integrity: approved manifest artifact needs sha256: {artifact.get('path')}"
+                )
+        if not manifest.get("manifest_sha256"):
+            errors.append("integrity: approved manifest needs manifest_sha256")
+
+    return sorted(errors)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("registry", type=Path)
-    parser.add_argument(
-        "--schema",
-        type=Path,
-        default=Path(__file__).parents[2] / "schemas" / "rule-registry-v1.schema.json",
-    )
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    registry_parser = subparsers.add_parser("validate", help="validate source registry")
+    registry_parser.add_argument("registry", type=Path)
+    registry_parser.add_argument("--schema", type=Path)
+    manifest_parser = subparsers.add_parser("manifest", help="validate rule-pack manifest")
+    manifest_parser.add_argument("manifest", type=Path)
+    manifest_parser.add_argument("--registry", type=Path, required=True)
+    manifest_parser.add_argument("--schema", type=Path)
     args = parser.parse_args()
-    errors = validate_registry(load_yaml(args.registry), load_schema(args.schema))
+    root = Path(__file__).parents[2]
+    if args.command == "validate":
+        schema_path = args.schema or root / "schemas" / "rule-registry-v1.schema.json"
+        errors = validate_registry(load_yaml(args.registry), load_schema(schema_path))
+        target = args.registry
+    else:
+        schema_path = args.schema or root / "schemas" / "rulepack-manifest-v1.schema.json"
+        errors = validate_manifest(
+            load_yaml(args.manifest), load_schema(schema_path), load_yaml(args.registry)
+        )
+        target = args.manifest
     if errors:
-        print("Registry validation failed:")
+        print("Validation failed:")
         for error in errors:
             print(f"- {error}")
         return 1
-    print(f"Registry is valid: {args.registry}")
+    print(f"Valid: {target}")
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
