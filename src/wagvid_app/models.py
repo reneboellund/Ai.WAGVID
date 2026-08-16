@@ -234,6 +234,7 @@ class AnalysisJob(TimestampedModel):
     )
     revision = models.PositiveIntegerField(default=1)
     error_code = models.CharField(max_length=100, blank=True)
+    client_request_id = models.CharField(max_length=160, blank=True)
     leased_by = models.ForeignKey(
         "WorkerNode",
         on_delete=models.SET_NULL,
@@ -246,7 +247,12 @@ class AnalysisJob(TimestampedModel):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["media", "revision"], name="unique_analysis_revision")
+            models.UniqueConstraint(fields=["media", "revision"], name="unique_analysis_revision"),
+            models.UniqueConstraint(
+                fields=["organization", "client_request_id"],
+                condition=~models.Q(client_request_id=""),
+                name="unique_analysis_request_per_org",
+            ),
         ]
 
 

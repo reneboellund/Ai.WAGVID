@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/reneboellund/Ai.WAGVID/schemas/model-analysis-export-v1.schema.json",
+  "title": "Ai.WAGVID model-neutral analysis export",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "media_id", "apparatus", "perception", "action_segments", "score_ledger", "advisory_quality"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "media_id": {"type": "string", "minLength": 1},
+    "apparatus": {"enum": ["VT", "UB", "BB", "FX", "PH", "SR", "PB", "HB"]},
+    "perception": {"$ref": "#/$defs/perception"},
+    "action_segments": {"type": "array", "items": {"$ref": "#/$defs/actionSegment"}},
+    "score_ledger": {"type": ["object", "null"]},
+    "advisory_quality": {
+      "oneOf": [{"type": "null"}, {"$ref": "#/$defs/advisoryQuality"}]
+    }
+  },
+  "$defs": {
+    "interval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start_s", "end_s"],
+      "properties": {
+        "start_s": {"type": "number", "minimum": 0},
+        "end_s": {"type": "number", "minimum": 0}
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "producer", "producer_version", "config_digest"],
+      "properties": {
+        "source_id": {"type": "string", "minLength": 1},
+        "producer": {"type": "string", "minLength": 1},
+        "producer_version": {"type": "string", "minLength": 1},
+        "config_digest": {"type": ["string", "null"]}
+      }
+    },
+    "keypoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "x", "y", "z", "confidence"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "x": {"type": "number"},
+        "y": {"type": "number"},
+        "z": {"type": ["number", "null"]},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "poseFrame": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["timestamp_s", "keypoints", "visibility", "camera_id"],
+      "properties": {
+        "timestamp_s": {"type": "number", "minimum": 0},
+        "keypoints": {"type": "array", "items": {"$ref": "#/$defs/keypoint"}},
+        "visibility": {"enum": ["VISIBLE", "OCCLUDED", "OUT_OF_FRAME", "UNKNOWN"]},
+        "camera_id": {"type": "string", "minLength": 1}
+      }
+    },
+    "perception": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["media_id", "apparatus", "interval", "pose_frames", "observations", "limitations", "metadata"],
+      "properties": {
+        "media_id": {"type": "string", "minLength": 1},
+        "apparatus": {"enum": ["VT", "UB", "BB", "FX", "PH", "SR", "PB", "HB"]},
+        "interval": {"$ref": "#/$defs/interval"},
+        "pose_frames": {"type": "array", "items": {"$ref": "#/$defs/poseFrame"}},
+        "observations": {"type": "array", "items": {"type": "object"}},
+        "limitations": {"type": "array", "items": {"type": "string"}},
+        "metadata": {"type": "object"}
+      }
+    },
+    "skillAlternative": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label_id", "confidence"],
+      "properties": {
+        "label_id": {"type": "string", "minLength": 1},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "actionSegment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["segment_id", "interval", "apparatus", "alternatives", "unknown_probability", "provenance"],
+      "properties": {
+        "segment_id": {"type": "string", "minLength": 1},
+        "interval": {"$ref": "#/$defs/interval"},
+        "apparatus": {"enum": ["VT", "UB", "BB", "FX", "PH", "SR", "PB", "HB"]},
+        "alternatives": {"type": "array", "items": {"$ref": "#/$defs/skillAlternative"}},
+        "unknown_probability": {"type": "number", "minimum": 0, "maximum": 1},
+        "provenance": {"$ref": "#/$defs/provenance"}
+      }
+    },
+    "advisoryQuality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model_id", "apparatus", "normalized_quality", "calibration_id", "confidence", "provenance", "diagnostics"],
+      "properties": {
+        "model_id": {"type": "string", "minLength": 1},
+        "apparatus": {"enum": ["VT", "UB", "BB", "FX", "PH", "SR", "PB", "HB"]},
+        "normalized_quality": {"type": "number", "minimum": 0, "maximum": 10},
+        "calibration_id": {"type": "string", "minLength": 1},
+        "confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+        "provenance": {"$ref": "#/$defs/provenance"},
+        "diagnostics": {"type": "object"}
+      }
+    }
+  }
+}

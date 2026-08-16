@@ -1,11 +1,17 @@
 from django.urls import path
 
-from . import device_api, views
+from . import analysis_api, device_api, views
 
 urlpatterns = [
     path("health/", views.health, name="health"),
     path("ready/", views.readiness, name="readiness"),
     path("api/device/uploads/open/", device_api.upload_open, name="device-upload-open"),
+    path("api/analyses/", analysis_api.analyses_create, name="api-analyses-create"),
+    path(
+        "api/analyses/<uuid:analysis_id>/",
+        analysis_api.analysis_detail,
+        name="api-analysis-detail",
+    ),
     path(
         "api/device/uploads/<uuid:upload_id>/chunk/",
         device_api.upload_chunk,

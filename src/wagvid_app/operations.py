@@ -3,10 +3,10 @@ from datetime import datetime, timedelta
 from uuid import UUID
 
 from django.db import transaction
-from django.db.models import F, Q
+from django.db.models import F, Max, Q
 from django.utils import timezone
 
-from .models import AnalysisJob, Gymnast, Organization, UploadSession, WorkerNode
+from .models import AnalysisJob, Gymnast, MediaAsset, Organization, UploadSession, WorkerNode
 
 
 class InvalidStateTransition(ValueError):
@@ -144,3 +144,62 @@ def extend_analysis_lease(job_id: UUID, worker: WorkerNode, *, lease_seconds: in
     ).update(lease_expires_at=timezone.now() + timedelta(seconds=lease_seconds))
     if updated != 1:
         raise InvalidStateTransition("Worker does not own this active lease")
+
+
+@transaction.atomic
+def queue_analysis(
+    *,
+    organization: Organization,
+    media: MediaAsset,
+    client_request_id: str,
+    scope: str,
+    rulepack_id: str,
+    model_profile: str,
+) -> tuple[AnalysisJob, bool]:
+    if media.organization_id != organization.id:
+        raise ValueError("analysis requires stored media in the active organization")
+    if not client_request_id or len(client_request_id) > 160:
+        raise ValueError("client_request_id is required and must be at most 160 characters")
+    for label, value, maximum in (
+        ("scope", scope, 32),
+        ("rulepack_id", rulepack_id, 200),
+        ("model_profile", model_profile, 120),
+    ):
+        if not value or len(value) > maximum:
+            raise ValueError(f"{label} is required and must be at most {maximum} characters")
+    locked_media = MediaAsset.objects.select_for_update().get(
+        pk=media.id, organization=organization
+    )
+    if locked_media.state != MediaAsset.State.STORED:
+        raise ValueError("analysis requires stored media in the active organization")
+    existing = AnalysisJob.objects.filter(
+        organization=organization, client_request_id=client_request_id
+    ).first()
+    if existing:
+        matches = (
+            existing.media_id == locked_media.id
+            and existing.scope == scope
+            and existing.rulepack_id == rulepack_id
+            and existing.model_profile == model_profile
+        )
+        if not matches:
+            raise ValueError("client_request_id was reused with a different analysis request")
+        return existing, False
+    latest = locked_media.analysis_jobs.aggregate(latest=Max("revision"))["latest"] or 0
+    job = AnalysisJob.objects.create(
+        organization=organization,
+        media=locked_media,
+        state=AnalysisJob.State.QUEUED,
+        scope=scope,
+        rulepack_id=rulepack_id,
+        model_profile=model_profile,
+        revision=latest + 1,
+        client_request_id=client_request_id,
+    )
+    organization.audit_events.create(
+        action="analysis.queued",
+        object_type="analysis-job",
+        object_id=str(job.id),
+        metadata={"media_id": str(locked_media.id), "revision": job.revision},
+    )
+    return job, True

@@ -36,6 +36,10 @@ AI overlays must be visually distinguishable and traceable to the immutable sour
 Canonical Python contracts now live in `ai_wagvid.perception` (`PoseFrame`, `PerceptionBundle`),
 `ai_wagvid.actions` (`ActionSegment`) and `ai_wagvid.quality` (`QualityAssessment`). The action
 contract preserves ranked alternatives and unknown probability instead of forcing one skill label.
+Deterministic post-processing in `ai_wagvid.pose_processing` provides torso normalization,
+image-plane rotation compensation, confidence-gated joint angles and camera-isolated temporal
+smoothing. `ai_wagvid.exports` produces deterministic JSON and pose CSV; JSON is validated against
+`schemas/model-analysis-export-v1.schema.json`.
 
 Heavy frameworks remain optional services or dependency groups. Runtime profiles choose adapters;
 "all integrated" means they implement common contracts and can be benchmarked, not that every model
@@ -61,6 +65,8 @@ domain-gap report before use. No download is implied by listing a candidate.
 
 The existing durable `AnalysisJob` is the orchestration boundary. Large video/model operations run in
 workers and expose progress; web requests must not hold GPU inference open.
+The create/status endpoints and organisation-scoped idempotency are implemented; see
+`docs/ANALYSIS_API.md`.
 
 ## Apparatus metric backlog
 
