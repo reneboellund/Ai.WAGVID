@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="wagvid_icon_background">#07101E</color>
+    <color name="wagvid_primary">#18D4A3</color>
+    <color name="wagvid_analysis">#32B8FF</color>
+    <color name="wagvid_record">#FF5D6C</color>
+    <color name="wagvid_icon_foreground">#EAF8F5</color>
+</resources>
