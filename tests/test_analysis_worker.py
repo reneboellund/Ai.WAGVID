@@ -6,6 +6,7 @@ from django.utils import timezone
 from wagvid_app.models import AnalysisJob, Gymnast, Level, MediaAsset, Organization, WorkerNode
 from wagvid_app.operations import (
     InvalidStateTransition,
+    cancel_analysis,
     fail_analysis,
     lease_next_analysis,
     report_analysis_progress,
@@ -94,3 +95,21 @@ def test_retryable_failure_requeues_but_attempt_limit_fails_terminally():
     assert terminal.state == AnalysisJob.State.FAILED_TERMINAL
     with pytest.raises(InvalidStateTransition, match="retryable"):
         retry_analysis(job.id)
+
+
+@pytest.mark.django_db
+def test_operator_cancellation_releases_worker_lease_and_is_audited(django_user_model):
+    job = make_job()
+    worker = WorkerNode.objects.create(name="cancel-worker", state=WorkerNode.State.ONLINE)
+    leased = lease_next_analysis(worker)
+    operator = django_user_model.objects.create_user("cancel-operator")
+    job.organization.memberships.create(user=operator, role="operator")
+    cancelled = cancel_analysis(leased.id, actor=operator, reason="Wrong gymnast selected")
+    assert cancelled.state == AnalysisJob.State.CANCELLED
+    assert cancelled.leased_by is None
+    assert cancelled.lease_expires_at is None
+    event = job.organization.audit_events.get(action="analysis.cancelled")
+    assert event.actor == operator
+    assert event.reason == "Wrong gymnast selected"
+    with pytest.raises(InvalidStateTransition, match="cannot be cancelled"):
+        cancel_analysis(job.id, actor=operator, reason="Again")

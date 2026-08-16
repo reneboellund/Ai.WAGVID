@@ -17,7 +17,7 @@
     <td>{% if job.media.routine %}{{ job.media.routine.get_apparatus_display }}{% else %}–{% endif %}</td>
     <td>{{ job.get_state_display }}{% if job.error_code %}<br><span class="danger">{{ job.error_code }}</span>{% endif %}</td>
     <td>{{ job.progress_percent }}% · {{ job.attempts }} forsøg</td>
-    <td><a href="{% url 'analysis-review' job.id %}">Åbn</a></td>
+    <td><a href="{% url 'analysis-review' job.id %}">Åbn</a>{% if job.state == "draft" or job.state == "queued" or job.state == "blocked" or job.state == "running" or job.state == "failed-retryable" %}<form method="post" action="{% url 'analysis-cancel' job.id %}" style="display:inline">{% csrf_token %}<input type="hidden" name="reason" value="Annulleret fra analysekøen"><button>Stop</button></form>{% endif %}</td>
   </tr>
   {% empty %}<tr><td colspan="6">Ingen analysejob matcher filtrene.</td></tr>{% endfor %}
 </table>

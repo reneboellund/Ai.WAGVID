@@ -31,7 +31,7 @@ from .models import (
     ReviewDecision,
     Routine,
 )
-from .operations import record_score_comparison_review
+from .operations import InvalidStateTransition, cancel_analysis, record_score_comparison_review
 from .runtime import runtime_probes
 from .services import dashboard_status
 
@@ -219,6 +219,25 @@ def analyses(request):
             "kind_choices": MediaAsset.Kind.choices,
         },
     )
+
+
+@login_required
+def analysis_cancel(request, job_id):
+    organization = active_organization(request)
+    if not organization:
+        return HttpResponseForbidden()
+    if request.method != "POST":
+        return redirect("analyses")
+    job = get_object_or_404(AnalysisJob, pk=job_id, organization=organization)
+    try:
+        cancel_analysis(job.id, actor=request.user, reason=request.POST.get("reason", ""))
+    except PermissionError:
+        return HttpResponseForbidden()
+    except (InvalidStateTransition, ValueError) as error:
+        messages.error(request, str(error))
+    else:
+        messages.success(request, "Analysejobbet er annulleret og worker-leasen frigivet.")
+    return redirect("analyses")
 
 
 @login_required

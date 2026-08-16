@@ -57,6 +57,7 @@ urlpatterns = [
     path("gymnasts/new/", views.gymnast_create, name="gymnast-create"),
     path("devices/", views.devices, name="devices"),
     path("analyses/", views.analyses, name="analyses"),
+    path("analyses/<uuid:job_id>/cancel/", views.analysis_cancel, name="analysis-cancel"),
     path("competitions/", views.competitions, name="competitions"),
     path(
         "competitions/routines/<uuid:routine_id>/kiga.json",

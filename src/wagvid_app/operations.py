@@ -227,6 +227,40 @@ def retry_analysis(job_id: UUID) -> AnalysisJob:
 
 
 @transaction.atomic
+def cancel_analysis(job_id: UUID, *, actor, reason: str) -> AnalysisJob:
+    job = AnalysisJob.objects.select_for_update().select_related("organization").get(pk=job_id)
+    if job.state not in {
+        AnalysisJob.State.DRAFT,
+        AnalysisJob.State.QUEUED,
+        AnalysisJob.State.BLOCKED,
+        AnalysisJob.State.RUNNING,
+        AnalysisJob.State.FAILED_RETRYABLE,
+    }:
+        raise InvalidStateTransition(f"Analysis in state {job.state} cannot be cancelled")
+    if not reason.strip():
+        raise ValueError("cancellation reason is required")
+    if not actor.wagvid_memberships.filter(
+        organization=job.organization,
+        active=True,
+        role__in=["operator", "organization-admin", "system-admin"],
+    ).exists():
+        raise PermissionError("Operator role is required")
+    previous = job.state
+    job.state = AnalysisJob.State.CANCELLED
+    job.leased_by = None
+    job.lease_expires_at = None
+    job.error_code = "CANCELLED_BY_OPERATOR"
+    job.save(
+        update_fields=["state", "leased_by", "lease_expires_at", "error_code", "updated_at"]
+    )
+    job.organization.audit_events.create(
+        actor=actor, action="analysis.cancelled", object_type="analysis-job",
+        object_id=str(job.id), reason=reason.strip(), metadata={"previous_state": previous},
+    )
+    return job
+
+
+@transaction.atomic
 def record_score_comparison_review(
     *,
     result_id: UUID,
