@@ -21,6 +21,30 @@ adjudication and immutable competition provenance are not mixed with coaching da
 7. Upload resumes safely after network loss; only a stored video URI and SHA-256 enter the record.
 8. Queue analysis as full routine, training session, single skill or simple moment.
 
+## Connection discovery
+
+The thin client attempts connection without keyboard input:
+
+1. discover `_wagvid._tcp.local` through mDNS/DNS-SD;
+2. listen briefly for an authenticated backend discovery datagram on the local network;
+3. use a previously paired backend;
+4. offer manual HTTPS URL or IP/port entry when discovery fails.
+
+Discovery only locates a candidate backend. Pairing still requires a short code or QR confirmation,
+and the client stores the approved server certificate fingerprint. Plain unauthenticated UDP packets
+must never be accepted as control commands.
+
+## Local archive and upload queue
+
+After finalization, Android writes the video and metadata to its local archive and immediately adds a
+persistent upload job. A foreground/background worker uploads the oldest eligible item, resumes from
+the recorded byte offset after interruption, and retries with backoff when the backend or network is
+unavailable. Additional recordings remain queued while upload capacity is busy.
+
+A successful upload records the remote URI and checksum but does not delete or move the local video.
+There is no automatic deletion path. Storage status and archive capacity must be visible in both the
+Android app and admin WebUI; any future deletion feature must be a separate explicit user action.
+
 ## Control contract
 
 The first implementation uses a deterministic state machine:
