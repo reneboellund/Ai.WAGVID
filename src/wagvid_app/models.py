@@ -190,3 +190,82 @@ class AuditEvent(models.Model):
 
     def delete(self, *args, **kwargs):
         raise ValueError("Audit events are append-only")
+
+
+class UploadSession(TimestampedModel):
+    class State(models.TextChoices):
+        OPEN = "open", "Åben"
+        UPLOADING = "uploading", "Uploader"
+        VERIFYING = "verifying", "Verificerer"
+        COMPLETED = "completed", "Færdig"
+        FAILED = "failed", "Fejlet"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="upload_sessions"
+    )
+    device = models.ForeignKey(
+        Device, on_delete=models.SET_NULL, null=True, blank=True, related_name="upload_sessions"
+    )
+    capture_id = models.UUIDField()
+    idempotency_key = models.CharField(max_length=160)
+    local_filename = models.CharField(max_length=255)
+    expected_bytes = models.BigIntegerField(validators=[MinValueValidator(1)])
+    received_bytes = models.BigIntegerField(default=0, validators=[MinValueValidator(0)])
+    expected_sha256 = models.CharField(max_length=64)
+    object_key = models.CharField(max_length=500, blank=True)
+    state = models.CharField(max_length=20, choices=State.choices, default=State.OPEN)
+    last_error = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "idempotency_key"],
+                name="unique_upload_idempotency_per_org",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(received_bytes__lte=models.F("expected_bytes")),
+                name="upload_received_not_above_expected",
+            ),
+        ]
+
+
+class WorkerNode(TimestampedModel):
+    class State(models.TextChoices):
+        ONLINE = "online", "Online"
+        DRAINING = "draining", "Dræner"
+        OFFLINE = "offline", "Offline"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=120, unique=True)
+    state = models.CharField(max_length=20, choices=State.choices, default=State.OFFLINE)
+    capabilities = models.JSONField(default=list)
+    active_jobs = models.PositiveIntegerField(default=0)
+    last_heartbeat_at = models.DateTimeField(null=True, blank=True, db_index=True)
+
+
+class SystemAlert(TimestampedModel):
+    class Severity(models.TextChoices):
+        INFO = "info", "Information"
+        WARNING = "warning", "Advarsel"
+        CRITICAL = "critical", "Kritisk"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="system_alerts",
+    )
+    code = models.CharField(max_length=120)
+    severity = models.CharField(max_length=12, choices=Severity.choices)
+    object_type = models.CharField(max_length=80, blank=True)
+    object_id = models.CharField(max_length=200, blank=True)
+    message = models.CharField(max_length=500)
+    active = models.BooleanField(default=True, db_index=True)
+    acknowledged_at = models.DateTimeField(null=True, blank=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["active", "severity"])]

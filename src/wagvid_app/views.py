@@ -4,7 +4,8 @@ from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import redirect, render
 
 from .forms import GymnastForm
-from .models import Membership, Organization
+from .models import Membership
+from .runtime import runtime_probes
 from .services import dashboard_status
 
 
@@ -85,7 +86,15 @@ def system_status(request):
     organization = active_organization(request)
     if not organization:
         return HttpResponseForbidden()
-    return render(request, "wagvid/system_status.html", {"organization": organization, "status": dashboard_status(organization)})
+    return render(
+        request,
+        "wagvid/system_status.html",
+        {
+            "organization": organization,
+            "status": dashboard_status(organization),
+            "probes": runtime_probes(),
+        },
+    )
 
 
 def health(request):
@@ -94,7 +103,12 @@ def health(request):
 
 def readiness(request):
     try:
-        Organization.objects.only("id").first()
+        probes = runtime_probes()
     except DatabaseError:
         return JsonResponse({"status": "unavailable", "database": "failed"}, status=503)
-    return JsonResponse({"status": "ready", "database": "ok"})
+    payload = {probe.name: probe.status for probe in probes}
+    blocking = any(probe.status in {"degraded", "unavailable"} for probe in probes)
+    return JsonResponse(
+        {"status": "degraded" if blocking else "ready", **payload},
+        status=503 if blocking else 200,
+    )
