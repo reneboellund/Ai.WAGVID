@@ -10,6 +10,69 @@ usage_profile:
   storage_class: controlled-research-storage
   policy_document: docs/RESEARCH_DATA_POLICY.md
 candidates:
+  - id: gym288-skeleton
+    category: skeleton-action-dataset
+    priority: 1
+    status: catalogued-rights-unresolved
+    paper_url: null
+    code_url: null
+    license_status: verify-before-acquisition
+    artifact_status: user-supplied-candidate-description
+    intended_use: pose-based-skill-recognition-benchmark
+    blockers:
+      - Locate and verify the canonical paper, repository, label set and artifact terms.
+      - Preserve gymnast and competition split boundaries inherited from any source dataset.
+      - Map labels to canonical WAG/MAG candidates without treating them as FIG identities.
+  - id: osl-gymnastics-localization
+    category: temporal-localization-dataset
+    priority: 1
+    status: catalogued-rights-unresolved
+    paper_url: null
+    code_url: null
+    license_status: verify-before-acquisition
+    artifact_status: user-supplied-candidate-description
+    intended_use: routine-segmentation-and-skill-spotting
+    blockers:
+      - Resolve the exact OSL dataset identity and authoritative distribution source.
+      - Verify temporal annotations, terms and athlete/event leakage boundaries.
+  - id: gympose
+    category: gymnastics-pose-deduction-reference
+    priority: 1
+    status: catalogued-rights-unresolved
+    paper_url: null
+    code_url: null
+    license_status: verify-before-code-port
+    artifact_status: user-supplied-reference-description
+    intended_use: angle-feature-and-deduction-baseline
+    blockers:
+      - Locate the exact project/revision and record code, model and training-data terms.
+      - Diff simplified deduction logic against the pinned WAG/MAG rule pack.
+      - Port observations and measurements only; do not import opaque final-score logic.
+  - id: caflow-aqa-family
+    category: action-quality-assessment
+    priority: 2
+    status: catalogued-rights-unresolved
+    paper_url: null
+    code_url: null
+    license_status: verify-before-use
+    artifact_status: user-supplied-family-description
+    intended_use: separately-calibrated-advisory-quality-challenger
+    blockers:
+      - Resolve exact CaFlow/LOGO/Fis-V/Rhythmic papers, code and checkpoints.
+      - Demonstrate held-out WAG/MAG calibration and bias slices.
+      - Keep advisory quality physically and logically separate from FIG score fields.
+  - id: general-pose-action-pretraining-catalogue
+    category: supporting-datasets
+    priority: 3
+    status: catalogued-rights-unresolved
+    paper_url: null
+    code_url: null
+    license_status: verify-each-artifact
+    artifact_status: named-candidates-pose-track-coco-penn-action-sports1m-aistpp
+    intended_use: general-representation-and-domain-gap-experiments
+    blockers:
+      - Create one manifest record per selected dataset and version before acquisition.
+      - Do not use general action labels as gymnastics scoring ground truth.
   - id: finegrade
     category: temporal-aqa
     priority: 1

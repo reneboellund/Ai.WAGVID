@@ -33,9 +33,34 @@ AI overlays must be visually distinguishable and traceable to the immutable sour
 | AQA | CaFlow-style challenger | separate advisory score, calibration and correlation report; never direct FIG total |
 | Rendering/export | overlay, timeline, JSON, CSV, REST, CLI | schema version, provenance, source/derived distinction |
 
+Canonical Python contracts now live in `ai_wagvid.perception` (`PoseFrame`, `PerceptionBundle`),
+`ai_wagvid.actions` (`ActionSegment`) and `ai_wagvid.quality` (`QualityAssessment`). The action
+contract preserves ranked alternatives and unknown probability instead of forcing one skill label.
+
 Heavy frameworks remain optional services or dependency groups. Runtime profiles choose adapters;
 "all integrated" means they implement common contracts and can be benchmarked, not that every model
 runs for every video.
+
+The supplied proposal to aggregate `aqa_score` directly into `RoutineScore.final_score` is rejected.
+AQA may be displayed, correlated and used for research prioritisation, but D/E/neutral/final values
+remain outputs of accepted facts plus a pinned deterministic rule pack.
+
+## Supporting pretraining candidates
+
+PoseTrack, COCO-Keypoints, PennAction, Sports-1M and AIST++ are catalogue candidates for general
+pose/action representation and robustness experiments. They are not gymnastics truth datasets.
+Every artifact requires an individual manifest entry, terms/provenance record and a held-out WAG/MAG
+domain-gap report before use. No download is implied by listing a candidate.
+
+## API and CLI target surface
+
+- asynchronous `POST /api/analyses/` rather than a long-running synchronous request;
+- `GET /api/analyses/{id}/` for job state and versioned result links;
+- versioned pose, segment, score-ledger, AQA and provenance exports;
+- CLI target `wagvid-analyze <input> --discipline WAG|MAG --apparatus <code> --output <dir>`.
+
+The existing durable `AnalysisJob` is the orchestration boundary. Large video/model operations run in
+workers and expose progress; web requests must not hold GPU inference open.
 
 ## Apparatus metric backlog
 
