@@ -23,8 +23,8 @@ Date: 2026-08-16
 - PostgreSQL environment settings and production-safe secret configuration;
 - object-storage client and signed media access;
 - external queue transport and continuously running worker process;
-- Android Kotlin project with CameraX/Room/WorkManager implementation;
-- authenticated device pairing and command acknowledgements;
+- Android build/emulator/device validation of the implemented CameraX/Room/WorkManager skeleton;
+- foreground-service hardening and real-device validation of authenticated remote recording;
 - browser upload and resumable backend upload endpoint;
 - full gymnast edit/archive/merge and CSV import dry-run;
 - real system probes for object storage, worker queue and backups;
