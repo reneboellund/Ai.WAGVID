@@ -3,6 +3,7 @@ import csv
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import DatabaseError
+from django.db.models import Case, IntegerField, Q, Value, When
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
@@ -14,7 +15,15 @@ from .forms import (
 )
 from .imports import commit_gymnast_import, preview_gymnast_csv
 from .learning_exports import reviewed_score_labels
-from .models import AnalysisJob, DeductionCandidate, ExchangeJob, Membership, ReviewDecision
+from .models import (
+    AnalysisJob,
+    DeductionCandidate,
+    ExchangeJob,
+    MediaAsset,
+    Membership,
+    ReviewDecision,
+    Routine,
+)
 from .operations import record_score_comparison_review
 from .runtime import runtime_probes
 from .services import dashboard_status
@@ -119,12 +128,44 @@ def analyses(request):
     organization = active_organization(request)
     if not organization:
         return HttpResponseForbidden()
+    jobs = organization.analysis_jobs.select_related(
+        "media", "media__gymnast", "media__routine"
+    )
+    state = request.GET.get("state", "")
+    apparatus = request.GET.get("apparatus", "")
+    media_kind = request.GET.get("kind", "")
+    query = request.GET.get("q", "").strip()
+    if state in AnalysisJob.State.values:
+        jobs = jobs.filter(state=state)
+    if apparatus:
+        jobs = jobs.filter(media__routine__apparatus=apparatus)
+    if media_kind in MediaAsset.Kind.values:
+        jobs = jobs.filter(media__kind=media_kind)
+    if query:
+        jobs = jobs.filter(
+            Q(media__gymnast__display_name__icontains=query)
+            | Q(media__gymnast__license_number__icontains=query)
+            | Q(media__routine__event__name__icontains=query)
+        )
+    jobs = jobs.order_by(
+        Case(
+            When(state=AnalysisJob.State.NEEDS_REVIEW, then=Value(0)),
+            When(state=AnalysisJob.State.FAILED_TERMINAL, then=Value(1)),
+            default=Value(2),
+            output_field=IntegerField(),
+        ),
+        "created_at",
+    )
     return render(
         request,
         "wagvid/analyses.html",
         {
             "organization": organization,
-            "jobs": organization.analysis_jobs.select_related("media", "media__gymnast"),
+            "jobs": jobs,
+            "filters": {"state": state, "apparatus": apparatus, "kind": media_kind, "q": query},
+            "state_choices": AnalysisJob.State.choices,
+            "apparatus_choices": Routine.Apparatus.choices,
+            "kind_choices": MediaAsset.Kind.choices,
         },
     )
 
