@@ -10,12 +10,14 @@
     "usage_profile": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["deployment_class", "commercial_use", "external_service", "public_dataset_redistribution", "storage_class", "policy_document"],
+      "required": ["deployment_class", "commercial_use", "external_service", "public_dataset_redistribution", "online_dataset_discovery", "unresolved_data_handling", "storage_class", "policy_document"],
       "properties": {
         "deployment_class": {"const": "internal-non-commercial-research"},
         "commercial_use": {"const": false},
         "external_service": {"const": false},
         "public_dataset_redistribution": {"const": false},
+        "online_dataset_discovery": {"const": "catalog-all-relevant"},
+        "unresolved_data_handling": {"const": "controlled-acquisition-quarantine"},
         "storage_class": {"const": "controlled-research-storage"},
         "policy_document": {"const": "docs/RESEARCH_DATA_POLICY.md"}
       }
@@ -31,7 +33,8 @@
           "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
           "category": {"type": "string", "minLength": 1},
           "priority": {"type": "integer", "minimum": 1, "maximum": 3},
-          "status": {"enum": ["approved-for-spike", "internal-research-allowed", "evaluate", "research-hold", "architecture-reference", "rejected"]},
+          "status": {"enum": ["approved-for-spike", "internal-research-allowed", "catalogued-rights-unresolved", "evaluate", "architecture-reference", "rejected"]},
+          "approval_basis": {"type": "string", "minLength": 1},
           "paper_url": {"type": "string", "format": "uri"},
           "code_url": {"type": ["string", "null"], "format": "uri"},
           "license_status": {"type": "string", "minLength": 1},

@@ -5,33 +5,37 @@ usage_profile:
   commercial_use: false
   external_service: false
   public_dataset_redistribution: false
+  online_dataset_discovery: catalog-all-relevant
+  unresolved_data_handling: controlled-acquisition-quarantine
   storage_class: controlled-research-storage
   policy_document: docs/RESEARCH_DATA_POLICY.md
 candidates:
   - id: finegrade
     category: temporal-aqa
     priority: 1
-    status: research-hold
+    status: internal-research-allowed
+    approval_basis: project-owner-confirmed-research-permission-2026-08-16
     paper_url: https://openaccess.thecvf.com/content/CVPR2026F/html/Li_FineGrade_A_Rule-Consistent_Scoring_Framework_for_Fine-Grained_Action_Quality_Assessment_CVPRF_2026_paper.html
     code_url: https://github.com/yicong1/FineGym-AQA
-    license_status: unresolved
+    license_status: project-owner-confirmed-research-permission
     artifact_status: annotations-visible-code-not-confirmed
     intended_use: baseline
     blockers:
-      - Verify dataset and source-video terms for internal non-commercial research.
+      - Preserve the permission record and restrict use to internal non-commercial research.
       - Confirm whether training/evaluation code is released under an explicit license.
-      - Audit identity and official-score leakage before use.
+      - Audit identity and official-score leakage before training.
   - id: finegym
     category: gymnastics-taxonomy
     priority: 1
-    status: research-hold
+    status: internal-research-allowed
+    approval_basis: project-owner-confirmed-research-permission-2026-08-16
     paper_url: https://openaccess.thecvf.com/content_CVPR_2020/html/Shao_FineGym_A_Hierarchical_Video_Dataset_for_Fine-Grained_Action_Understanding_CVPR_2020_paper.html
     code_url: https://github.com/open-mmlab/mmaction2/tree/main/tools/data/gym
-    license_status: dataset-rights-review-required
+    license_status: project-owner-confirmed-research-permission
     artifact_status: preprocessing-available
     intended_use: taxonomy-and-benchmark
     blockers:
-      - Verify annotation and source-video terms for internal non-commercial research.
+      - Preserve the permission record and restrict use to internal non-commercial research.
       - Preserve athlete and competition split boundaries.
   - id: mmpose-rtmpose
     category: pose-2d-3d
