@@ -4,7 +4,7 @@ Date: 2026-08-16
 
 ## Ready in the local release branch
 
-- runnable Django 6 application shell and initial migration;
+- runnable Django 5.2-compatible application shell and initial migration;
 - authentication and organization membership roles;
 - organization-scoped gymnast, level, device, media, analysis and exchange records;
 - immutable audit-event model;

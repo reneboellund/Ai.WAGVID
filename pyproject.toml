@@ -11,7 +11,7 @@ requires-python = ">=3.11"
 license = {text = "Proprietary/Research - license to be defined"}
 authors = [{name = "Ai.WAGVID project"}]
 dependencies = [
-  "Django>=6.0,<6.1",
+  "Django>=5.2,<6.0",
   "jsonschema>=4.23,<5",
   "PyYAML>=6.0,<7",
 ]
