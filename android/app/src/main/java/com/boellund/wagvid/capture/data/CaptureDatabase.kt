@@ -62,6 +62,9 @@ interface CaptureDao {
 
     @Query("SELECT COUNT(*) FROM upload_queue WHERE state != 'uploaded'")
     fun queuedCount(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM upload_queue WHERE state != 'uploaded'")
+    suspend fun queuedCountSnapshot(): Int
 }
 
 @Database(entities = [CaptureEntity::class, UploadQueueEntity::class], version = 1, exportSchema = true)

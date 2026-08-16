@@ -5,7 +5,12 @@ import com.boellund.wagvid.capture.network.CommandAck
 import com.boellund.wagvid.capture.network.RemoteCommand
 import com.boellund.wagvid.capture.security.BackendCredential
 
-enum class LocalCaptureState(val wire: String) { READY("ready"), ARMED("armed"), RECORDING("recording"), FINALIZING("finalizing") }
+enum class LocalCaptureState(val wire: String) {
+    READY("ready"),
+    ARMED("armed"),
+    RECORDING("recording"),
+    FINALIZING("finalizing"),
+}
 
 interface LocalCaptureControl {
     val state: LocalCaptureState
@@ -37,9 +42,11 @@ class CommandCoordinator(
                 "disarm" -> control.disarm()
                 "start" -> control.start(command.payload)
                 "stop" -> control.stop()
-                else -> error("Unsupported command")
+                else -> throw UnsupportedOperationException("Unsupported command")
             }
             acknowledge(command, true, "")
+        } catch (error: UnsupportedOperationException) {
+            acknowledge(command, false, "UNSUPPORTED_COMMAND")
         } catch (error: SecurityException) {
             acknowledge(command, false, "CAMERA_PERMISSION_DENIED")
         } catch (error: Exception) {

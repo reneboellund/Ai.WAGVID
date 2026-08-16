@@ -33,6 +33,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,10 +45,13 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.boellund.wagvid.capture.camera.CameraRecordingController
+import com.boellund.wagvid.capture.control.LocalCaptureControl
+import com.boellund.wagvid.capture.control.LocalCaptureState
 import com.boellund.wagvid.capture.data.CaptureEntity
 import com.boellund.wagvid.capture.data.UploadQueueEntity
 import com.boellund.wagvid.capture.network.CaptureContextResponse
 import com.boellund.wagvid.capture.network.GymnastContext
+import com.boellund.wagvid.capture.runtime.ActiveDeviceRuntime
 import com.boellund.wagvid.capture.runtime.CaptureRuntimeRepository
 import com.boellund.wagvid.capture.security.BackendCredential
 import com.boellund.wagvid.capture.upload.UploadWorker
@@ -70,6 +74,7 @@ class MainActivity : ComponentActivity() {
         startedAt: Long,
         gymnast: GymnastContext,
         kind: String,
+        apparatus: String?,
     ) {
         lifecycleScope.launch {
             val digest = withContext(Dispatchers.IO) {
@@ -95,7 +100,7 @@ class MainActivity : ComponentActivity() {
                     licenseNumber = gymnast.license_number,
                     level = gymnast.level,
                     kind = kind,
-                    apparatus = null,
+                    apparatus = apparatus,
                     recordedAtEpochMs = startedAt,
                     durationMs = System.currentTimeMillis() - startedAt,
                     sizeBytes = file.length(),
@@ -118,14 +123,90 @@ class MainActivity : ComponentActivity() {
         var serverContext by remember { mutableStateOf<CaptureContextResponse?>(null) }
         var selectedGymnast by remember { mutableStateOf<GymnastContext?>(null) }
         var selectedKind by remember { mutableStateOf<String?>(null) }
-        var recording by remember { mutableStateOf(false) }
+        var captureState by remember { mutableStateOf(LocalCaptureState.READY) }
+        var activeCaptureId by remember { mutableStateOf<String?>(null) }
         var status by remember { mutableStateOf("KLAR") }
         var backendStatus by remember {
             mutableStateOf(if (credential == null) "IKKE PARRET" else "FORBINDER")
         }
+        val currentActiveCaptureId by rememberUpdatedState(activeCaptureId)
         val permissionLauncher = rememberLauncherForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions(),
         ) { }
+
+        val captureControl = remember(controller) {
+            object : LocalCaptureControl {
+                override val state: LocalCaptureState
+                    get() = captureState
+
+                override suspend fun arm(context: Map<String, Any?>) {
+                    throw UnsupportedOperationException("Motion-triggered capture is not enabled")
+                }
+
+                override suspend fun disarm() {
+                    throw UnsupportedOperationException("Motion-triggered capture is not enabled")
+                }
+
+                override suspend fun start(context: Map<String, Any?>) {
+                    check(captureState == LocalCaptureState.READY) {
+                        "Capture is ${captureState.wire}"
+                    }
+                    val permissions = arrayOf(
+                        Manifest.permission.CAMERA,
+                        Manifest.permission.RECORD_AUDIO,
+                    )
+                    if (permissions.any {
+                            ContextCompat.checkSelfPermission(this@MainActivity, it) !=
+                                PackageManager.PERMISSION_GRANTED
+                        }
+                    ) {
+                        throw SecurityException("Camera/audio permission is required")
+                    }
+                    val captureId = context["capture_id"]?.toString()?.takeIf { it.isNotBlank() }
+                        ?: error("Remote/manual capture context has no capture_id")
+                    val gymnastId = context["gymnast_id"]?.toString()?.takeIf { it.isNotBlank() }
+                        ?: error("Capture context has no gymnast_id")
+                    val kind = context["kind"]?.toString()?.takeIf { it.isNotBlank() }
+                        ?: error("Capture context has no media kind")
+                    val gymnast = serverContext?.gymnasts?.firstOrNull {
+                        it.gymnast_id == gymnastId
+                    } ?: error("Gymnast is not present in current capture context")
+                    if (kind !in (serverContext?.media_kinds ?: emptyList())) {
+                        error("Media kind is not present in current capture context")
+                    }
+                    val apparatus = context["apparatus"]?.toString()?.takeIf { it.isNotBlank() }
+                    val startedAt = System.currentTimeMillis()
+                    val directory = File(filesDir, "archive").apply { mkdirs() }
+                    val file = File(directory, "$captureId.mp4")
+                    controller.start(file, true) { event ->
+                        if (!event.hasError()) {
+                            persist(file, captureId, startedAt, gymnast, kind, apparatus)
+                        }
+                        activeCaptureId = null
+                        captureState = LocalCaptureState.READY
+                        status = if (event.hasError()) {
+                            "OPTAGELSE FEJLEDE"
+                        } else {
+                            "GEMT LOKALT · UPLOAD KØET"
+                        }
+                    }
+                    selectedGymnast = gymnast
+                    selectedKind = kind
+                    activeCaptureId = captureId
+                    captureState = LocalCaptureState.RECORDING
+                    status = "OPTAGER · ${gymnast.display_name}"
+                }
+
+                override suspend fun stop() {
+                    check(captureState == LocalCaptureState.RECORDING) {
+                        "Capture is ${captureState.wire}"
+                    }
+                    captureState = LocalCaptureState.FINALIZING
+                    status = "GEMMER"
+                    controller.stop()
+                }
+            }
+        }
 
         DisposableEffect(lifecycleOwner) {
             controller.bind(lifecycleOwner)
@@ -139,7 +220,9 @@ class MainActivity : ComponentActivity() {
                 val loaded = runtime.captureContext(paired)
                 serverContext = loaded
                 selectedGymnast = selectedGymnast
-                    ?.let { current -> loaded.gymnasts.firstOrNull { it.gymnast_id == current.gymnast_id } }
+                    ?.let { current ->
+                        loaded.gymnasts.firstOrNull { it.gymnast_id == current.gymnast_id }
+                    }
                     ?: loaded.gymnasts.firstOrNull()
                 selectedKind = selectedKind?.takeIf { it in loaded.media_kinds }
                     ?: loaded.media_kinds.firstOrNull()
@@ -147,6 +230,20 @@ class MainActivity : ComponentActivity() {
             } catch (_: Exception) {
                 backendStatus = "BACKEND UTILGÆNGELIG"
             }
+        }
+
+        LaunchedEffect(credential?.deviceKey, serverContext?.organization_id) {
+            val paired = credential ?: return@LaunchedEffect
+            if (serverContext == null) return@LaunchedEffect
+            ActiveDeviceRuntime(
+                context = context,
+                credential = paired,
+                control = captureControl,
+                activeCaptureId = { currentActiveCaptureId },
+            ).runWhileActive(
+                onConnected = { backendStatus = "ONLINE · ${captureControl.state.wire.uppercase()}" },
+                onConnectionError = { backendStatus = "BACKEND UTILGÆNGELIG" },
+            )
         }
 
         if (credential == null) {
@@ -168,7 +265,8 @@ class MainActivity : ComponentActivity() {
                             selectedKind = loaded.media_kinds.firstOrNull()
                             backendStatus = "PARRET"
                         } catch (error: Exception) {
-                            backendStatus = "PAIRING FEJLEDE: ${error.message ?: error.javaClass.simpleName}"
+                            backendStatus =
+                                "PAIRING FEJLEDE: ${error.message ?: error.javaClass.simpleName}"
                         }
                     }
                 },
@@ -220,19 +318,27 @@ class MainActivity : ComponentActivity() {
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text(status, color = if (recording) Color.Red else Color.White)
+                    Text(
+                        status,
+                        color = if (captureState == LocalCaptureState.RECORDING) Color.Red else Color.White,
+                    )
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         Button(
-                            enabled = recording || (selectedGymnast != null && selectedKind != null),
+                            enabled = captureState == LocalCaptureState.RECORDING ||
+                                (captureState == LocalCaptureState.READY &&
+                                    selectedGymnast != null && selectedKind != null),
                             modifier = Modifier.size(88.dp),
                             shape = CircleShape,
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = if (recording) Color.Red else Color(0xFF18D4A3),
+                                containerColor = if (captureState == LocalCaptureState.RECORDING) {
+                                    Color.Red
+                                } else {
+                                    Color(0xFF18D4A3)
+                                },
                             ),
                             onClick = {
-                                if (recording) {
-                                    controller.stop()
-                                    status = "GEMMER"
+                                if (captureState == LocalCaptureState.RECORDING) {
+                                    coroutineScope.launch { captureControl.stop() }
                                 } else {
                                     val gymnast = selectedGymnast ?: return@Button
                                     val kind = selectedKind ?: return@Button
@@ -247,33 +353,32 @@ class MainActivity : ComponentActivity() {
                                     ) {
                                         permissionLauncher.launch(permissions)
                                     } else {
-                                        val id = UUID.randomUUID().toString()
-                                        val started = System.currentTimeMillis()
-                                        val directory = File(filesDir, "archive").apply { mkdirs() }
-                                        val file = File(directory, "$id.mp4")
-                                        controller.start(file, true) { event ->
-                                            if (!event.hasError()) {
-                                                persist(file, id, started, gymnast, kind)
-                                            }
-                                            recording = false
-                                            status = if (event.hasError()) {
-                                                "OPTAGELSE FEJLEDE"
-                                            } else {
-                                                "GEMT LOKALT · UPLOAD KØET"
-                                            }
+                                        coroutineScope.launch {
+                                            captureControl.start(
+                                                mapOf(
+                                                    "capture_id" to UUID.randomUUID().toString(),
+                                                    "gymnast_id" to gymnast.gymnast_id,
+                                                    "kind" to kind,
+                                                ),
+                                            )
                                         }
-                                        recording = true
-                                        status = "OPTAGER · ${gymnast.display_name}"
                                     }
                                 }
                             },
-                        ) { Text(if (recording) "STOP" else "OPTAG") }
+                        ) {
+                            Text(
+                                if (captureState == LocalCaptureState.RECORDING) "STOP" else "OPTAG",
+                            )
+                        }
                     }
                     Text(
-                        if (selectedGymnast == null) {
-                            "Vælg gymnast før optagelse"
-                        } else {
-                            "${selectedGymnast?.display_name} · ${selectedKind ?: "—"}"
+                        when (captureState) {
+                            LocalCaptureState.FINALIZING -> "Gemmer optagelse…"
+                            else -> if (selectedGymnast == null) {
+                                "Vælg gymnast før optagelse"
+                            } else {
+                                "${selectedGymnast?.display_name} · ${selectedKind ?: "—"}"
+                            }
                         },
                         color = Color.White,
                     )
@@ -296,7 +401,11 @@ class MainActivity : ComponentActivity() {
                 Modifier.fillMaxSize().padding(28.dp),
                 verticalArrangement = Arrangement.Center,
             ) {
-                Text("Par enhed", color = Color.White, style = MaterialTheme.typography.headlineMedium)
+                Text(
+                    "Par enhed",
+                    color = Color.White,
+                    style = MaterialTheme.typography.headlineMedium,
+                )
                 Text(
                     "Brug backend-adressen, pairing-ID og 6-cifret kode fra Ai.WAGVID web-UI.",
                     color = Color.White,
@@ -367,9 +476,7 @@ class MainActivity : ComponentActivity() {
                         ) {
                             serverContext.gymnasts.forEach { gymnast ->
                                 DropdownMenuItem(
-                                    text = {
-                                        Text("${gymnast.display_name} · ${gymnast.level}")
-                                    },
+                                    text = { Text("${gymnast.display_name} · ${gymnast.level}") },
                                     onClick = {
                                         onGymnast(gymnast)
                                         gymnastMenu = false
