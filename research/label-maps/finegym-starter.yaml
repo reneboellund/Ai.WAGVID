@@ -1,0 +1,15 @@
+schema_version: label-map-v1
+dataset_id: finegym
+dataset_revision: unresolved-until-acquisition
+mapping_revision: 1
+notes: >-
+  Deliberately small integration fixture. Replace/extend only from the acquired,
+  revision-pinned source annotation file; source labels are not FIG element IDs.
+labels:
+  - source_index: 0
+    source_label: background
+    status: excluded
+  - source_index: 1
+    source_label: unknown_finegym_action
+    status: ambiguous
+

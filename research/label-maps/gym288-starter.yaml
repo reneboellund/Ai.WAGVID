@@ -1,0 +1,10 @@
+schema_version: label-map-v1
+dataset_id: gym288-skeleton
+dataset_revision: unresolved-until-acquisition
+mapping_revision: 1
+notes: Populate from the authoritative label file without guessing FIG equivalence.
+labels:
+  - source_index: 0
+    source_label: unknown_gym288_action
+    status: ambiguous
+

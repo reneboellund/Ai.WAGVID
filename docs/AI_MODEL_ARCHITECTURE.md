@@ -1,5 +1,29 @@
 # Layered AI architecture and technology evaluation
 
+## Implemented adapter milestone
+
+The repository contains framework-neutral conversion adapters in
+`ai_wagvid.model_adapters` for MediaPipe Pose Landmarker, COCO-keypoint outputs
+from RTMPose/MMPose or YOLO-Pose, MMAction2-style class probabilities, and a
+separately calibrated AQA score. Heavy frameworks are lazy optional dependencies;
+the Django/API process does not import GPU frameworks merely to start.
+
+Worker execution is fail-closed: resolve `config/model-bundles.yaml`, verify local
+artifacts from `research/artifacts.yaml`, run the isolated framework worker, convert
+raw output to WAGVID contracts, and persist model/config provenance. Ambiguous or
+unmapped source labels increase explicit unknown probability; they are never
+silently treated as FIG elements.
+
+Use `wagvid validate-label-map research/label-maps/<file>.yaml` to validate source
+labels and `wagvid verify-artifacts --root <controlled-store>` for a streaming
+SHA-256 audit. Neither command downloads nor loads a model.
+
+The starter FineGym, Gym288 and OSL maps deliberately contain no guessed FIG
+mappings. They prove the ingestion contract until a pinned authoritative annotation
+revision is acquired and reviewed. No trained WAGVID checkpoint is claimed yet.
+Profiles remain `contract-only` until their runtime, source revision, checksum,
+leakage-safe benchmark and acceptance gates are recorded.
+
 ## Decision
 
 Ai.WAGVID uses three strict boundaries:

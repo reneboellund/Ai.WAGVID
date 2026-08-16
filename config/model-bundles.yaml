@@ -28,6 +28,41 @@ components:
     config_digest: "3333333333333333333333333333333333333333333333333333333333333333"
     checkpoint_digest: null
     limitations: [Advisory channel only, No checkpoint installed]
+  - id: mediapipe-pose@0.10
+    capability: perception
+    adapter: ai_wagvid.model_adapters.MediaPipePoseAdapter
+    artifact_status: contract-only
+    config_digest: "4444444444444444444444444444444444444444444444444444444444444444"
+    checkpoint_digest: null
+    limitations: [Checkpoint selection pending, Best suited to coaching baseline]
+  - id: rtmpose-coco@1
+    capability: perception
+    adapter: ai_wagvid.model_adapters.CocoPoseAdapter
+    artifact_status: contract-only
+    config_digest: "5555555555555555555555555555555555555555555555555555555555555555"
+    checkpoint_digest: null
+    limitations: [OpenMMLab environment and checkpoint pending]
+  - id: yolo-pose-coco@8
+    capability: perception
+    adapter: ai_wagvid.model_adapters.CocoPoseAdapter
+    artifact_status: contract-only
+    config_digest: "6666666666666666666666666666666666666666666666666666666666666666"
+    checkpoint_digest: null
+    limitations: [Checkpoint and deployment terms require pinning]
+  - id: mmaction2-temporal@2
+    capability: action
+    adapter: ai_wagvid.model_adapters.MMActionAdapter
+    artifact_status: contract-only
+    config_digest: "7777777777777777777777777777777777777777777777777777777777777777"
+    checkpoint_digest: null
+    limitations: [Dataset label map and trained checkpoint pending]
+  - id: calibrated-aqa@1
+    capability: quality
+    adapter: ai_wagvid.model_adapters.LinearAQAAdapter
+    artifact_status: contract-only
+    config_digest: "8888888888888888888888888888888888888888888888888888888888888888"
+    checkpoint_digest: null
+    limitations: [Held-out WAG or MAG calibration required, Advisory channel only]
 profiles:
   - id: coaching-contract@1
     mode: coaching
@@ -37,3 +72,11 @@ profiles:
     mode: judge-research
     components: [pose-contract@1, action-contract@1, interpretation-contract@1, aqa-contract@1]
     apparatus: [VT, UB, BB, FX]
+  - id: coaching-mediapipe-planned@1
+    mode: coaching
+    components: [mediapipe-pose@0.10, action-contract@1, interpretation-contract@1]
+    apparatus: [VT, UB, BB, FX, PH, SR, PB, HB]
+  - id: competition-rtmpose-planned@1
+    mode: judge-research
+    components: [rtmpose-coco@1, mmaction2-temporal@2, interpretation-contract@1, calibrated-aqa@1]
+    apparatus: [VT, UB, BB, FX, PH, SR, PB, HB]

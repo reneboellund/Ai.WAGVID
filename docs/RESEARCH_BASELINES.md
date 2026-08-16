@@ -1,5 +1,14 @@
 # Verified research baselines
 
+## Reference-data integration
+
+`research/baselines.yaml` is the discovery catalogue, `research/artifacts.yaml` is
+the acquisition/checksum manifest, and `research/label-maps/` is the only permitted
+bridge from source indices to WAGVID candidates. Media, annotations, weights and
+identity-bearing derivatives remain outside Git in controlled research storage.
+An artifact without a matching recorded SHA-256 is always unverified, even when a
+file exists at the expected path.
+
 Verified on 2026-08-16 against primary paper/project sources. The machine-readable decision
 record is `research/baselines.yaml`. Ai.WAGVID is currently an internal, non-commercial research
 and test tool; `docs/RESEARCH_DATA_POLICY.md` defines the data boundary.

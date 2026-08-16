@@ -12,6 +12,7 @@ from typing import Any
 from .dataset_manifest import load_dataset_manifest
 from .media_inspection import analysis_proxy_command, parse_ffprobe
 from .model_bundles import load_model_catalog, resolve_profile
+from .reference_data import load_label_map, verify_artifacts
 
 
 def _json_safe(value: Any) -> Any:
@@ -43,6 +44,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--schema", type=Path, default=Path("schemas/model-bundles-v1.schema.json")
     )
 
+    labels = commands.add_parser("validate-label-map")
+    labels.add_argument("label_map", type=Path)
+
+    artifacts = commands.add_parser("verify-artifacts")
+    artifacts.add_argument("--manifest", type=Path, default=Path("research/artifacts.yaml"))
+    artifacts.add_argument("--root", type=Path, required=True)
+
     probe = commands.add_parser("parse-ffprobe")
     probe.add_argument("input", type=Path, help="Previously captured ffprobe JSON")
 
@@ -67,6 +75,20 @@ def run(argv: list[str] | None = None) -> int:
             load_model_catalog(args.catalog, schema_path=args.schema), args.profile
         )
         output = asdict(profile) | {"runnable": profile.runnable}
+    elif args.command == "validate-label-map":
+        labels = load_label_map(args.label_map)
+        output = {
+            "valid": True,
+            "label_count": len(labels),
+            "mapped_count": sum(item.status == "mapped" for item in labels.values()),
+            "review_count": sum(item.status == "ambiguous" for item in labels.values()),
+        }
+    elif args.command == "verify-artifacts":
+        checks = verify_artifacts(args.manifest, artifact_root=args.root)
+        output = {
+            "ready": all(item.status == "verified" for item in checks),
+            "artifacts": [asdict(item) for item in checks],
+        }
     elif args.command == "parse-ffprobe":
         output = asdict(parse_ffprobe(args.input.read_text(encoding="utf-8")))
     else:
