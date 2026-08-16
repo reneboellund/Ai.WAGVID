@@ -1,5 +1,12 @@
 schema_version: 1.0.0
 last_verified_at: "2026-08-16"
+usage_profile:
+  deployment_class: internal-non-commercial-research
+  commercial_use: false
+  external_service: false
+  public_dataset_redistribution: false
+  storage_class: controlled-research-storage
+  policy_document: docs/RESEARCH_DATA_POLICY.md
 candidates:
   - id: finegrade
     category: temporal-aqa
@@ -11,7 +18,7 @@ candidates:
     artifact_status: annotations-visible-code-not-confirmed
     intended_use: baseline
     blockers:
-      - Verify dataset and video reuse rights.
+      - Verify dataset and source-video terms for internal non-commercial research.
       - Confirm whether training/evaluation code is released under an explicit license.
       - Audit identity and official-score leakage before use.
   - id: finegym
@@ -24,7 +31,7 @@ candidates:
     artifact_status: preprocessing-available
     intended_use: taxonomy-and-benchmark
     blockers:
-      - Verify annotation and source-video rights for Ai.WAGVID use.
+      - Verify annotation and source-video terms for internal non-commercial research.
       - Preserve athlete and competition split boundaries.
   - id: mmpose-rtmpose
     category: pose-2d-3d
@@ -39,15 +46,16 @@ candidates:
       - Audit licenses and provenance of each selected checkpoint and training dataset.
   - id: athletepose3d
     category: sports-pose-dataset
-    priority: 2
-    status: research-only
+    priority: 1
+    status: internal-research-allowed
     paper_url: https://openaccess.thecvf.com/content/CVPR2025W/CVSPORTS/papers/Yeung_AthletePose3D_A_Benchmark_Dataset_for_3D_Human_Pose_Estimation_and_CVPRW_2025_paper.pdf
     code_url: https://github.com/calvinyeungck/AthletePose3D
     license_status: non-commercial-research-only
     artifact_status: dataset-code-checkpoints-available
-    intended_use: domain-gap-benchmark
+    intended_use: domain-gap-benchmark-and-research-training
     blockers:
-      - Do not use for commercial/product training without separate permission.
+      - Keep all use inside the declared internal non-commercial research scope.
+      - Do not redistribute dataset artifacts or expose them through an external service.
       - Use corrected post-erratum artifacts only.
   - id: kasportsformer
     category: sports-pose-3d
