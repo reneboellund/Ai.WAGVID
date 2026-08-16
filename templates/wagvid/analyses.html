@@ -1,1 +1,35 @@
-{% extends "base.html" %}{% block content %}<h1>Analysejob</h1><table><tr><th>Gymnast</th><th>Scope</th><th>Status</th><th>Fremdrift</th></tr>{% for job in jobs %}<tr><td>{{ job.media.gymnast.display_name }}</td><td>{{ job.scope }}</td><td>{{ job.get_state_display }}</td><td>{{ job.progress_percent }}%</td></tr>{% empty %}<tr><td colspan="4">Ingen analysejob.</td></tr>{% endfor %}</table>{% endblock %}
+{% extends "base.html" %}
+{% block title %}Analyser · Ai.WAGVID{% endblock %}
+{% block breadcrumb %}Analyser{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div><p class="eyebrow">Evidence intelligence</p><h1>Analyse<span class="text-gradient">pipeline</span></h1><p>Følg modelkørsler, fremdrift, rulepack-version og review-status uden at blande maskinobservation og regelkonklusion.</p></div>
+  <div class="page-actions"><a class="button button-primary" href="{% url 'operate' %}"><svg><use href="#i-play"/></svg>Ny optagelse</a></div>
+</section>
+<div class="toolbar">
+  <label class="field-search"><svg><use href="#i-search"/></svg><input type="search" placeholder="Søg gymnast, scope eller status…" data-table-search="analysis-table" aria-label="Søg analyser"></label>
+  <span class="status-badge neutral" data-result-count>{{ job_count }} job</span>
+  <button class="button filter-button" type="button" data-demo-action="Avancerede pipelinefiltre er klar til tilkobling."><svg><use href="#i-filter"/></svg>Filtre</button>
+</div>
+<section class="surface table-surface">
+  {% if jobs %}
+  <table class="data-table" id="analysis-table">
+    <thead><tr><th>Gymnast</th><th>Scope</th><th>Status</th><th>Fremdrift</th><th>Rulepack</th><th></th></tr></thead>
+    <tbody>
+      {% for job in jobs %}
+      <tr data-searchable>
+        <td><div class="entity-cell"><span class="entity-avatar">{{ job.media.gymnast.display_name|slice:":2"|upper }}</span><span><strong>{{ job.media.gymnast.display_name }}</strong><small>Revision {{ job.revision }}</small></span></div></td>
+        <td>{{ job.scope }}</td>
+        <td><span class="status-badge {% if job.state == 'blocked' or job.state == 'failed-terminal' or job.state == 'failed-retryable' %}danger{% elif job.state == 'needs-review' %}warning{% elif job.state == 'running' or job.state == 'queued' %}info{% elif job.state == 'draft' or job.state == 'cancelled' %}neutral{% endif %}">{{ job.get_state_display }}</span></td>
+        <td><div class="progress-cell"><div class="progress-track"><span data-progress="{{ job.progress_percent }}"></span></div><strong>{{ job.progress_percent }}%</strong></div></td>
+        <td>{{ job.rulepack_id|truncatechars:25 }}</td>
+        <td><button class="text-button" type="button" data-demo-action="Analyseinspektion bliver koblet til evidens-vieweren.">Inspicér <svg><use href="#i-arrow"/></svg></button></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state"><span class="empty-visual"><svg><use href="#i-analysis"/></svg></span><h3>Ingen analysejob</h3><p>Analysejob oprettes, når en valideret optagelse er gemt og klar til pipelinebehandling.</p><a class="button button-primary" href="{% url 'operate' %}"><svg><use href="#i-play"/></svg>Start en optagelse</a></div>
+  {% endif %}
+</section>
+{% endblock %}

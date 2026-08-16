@@ -1,1 +1,65 @@
-{% extends "base.html" %}{% block content %}<h1>Operatørside</h1><div class="card"><label>Gymnast<select><option>Vælg gymnast</option>{% for g in gymnasts %}<option>{{ g.display_name }} · {{ g.level }} · {{ g.license_number }}</option>{% endfor %}</select></label><label>Enhed<select><option>Vælg enhed</option>{% for d in devices %}<option>{{ d.name }} · {{ d.get_state_display }}</option>{% endfor %}</select></label><p><button class="primary">Start optagelse</button> <button class="primary">Armér auto</button></p><p><button class="primary" style="background:#ff5d6c">STOP</button></p></div>{% endblock %}
+{% extends "base.html" %}
+{% block title %}Operér · Ai.WAGVID{% endblock %}
+{% block breadcrumb %}Operér{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="eyebrow">Live capture</p>
+    <h1>Operatør<span class="text-gradient">studie</span></h1>
+    <p>Forbind gymnast og enhed, armér optagelsen, og overvåg tracking-signalet i realtid.</p>
+  </div>
+  <div class="page-actions"><span class="status-badge">Vision engine online</span></div>
+</section>
+
+<section class="studio-grid" data-studio>
+  <article class="surface studio-stage">
+    <div class="stage-view">
+      <div class="motion-path" aria-hidden="true"></div>
+      <div class="athlete-silhouette" aria-hidden="true"><span class="head"></span><span class="body"></span><span class="arm-l"></span><span class="arm-r"></span><span class="leg-l"></span><span class="leg-r"></span></div>
+      <div class="scan-beam" aria-hidden="true"></div>
+      <div class="stage-hud">
+        <div class="hud-top"><span class="live-pill" data-live-mode><i></i> LIVE PREVIEW</span><div class="stage-meta"><span>1080P · 60 FPS</span><span>AI TRACKING</span></div></div>
+        <div class="focus-frame"></div>
+        <div class="stage-bottom">
+          <span class="record-time"><strong data-record-time>00:00</strong><small>session time</small></span>
+          <div class="tracking-stats"><span><strong>98.7%</strong><small>signal</small></span><span><strong>12 ms</strong><small>latency</small></span><span><strong>33</strong><small>keypoints</small></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="waveform" data-waveform aria-label="Live signalvisualisering"></div>
+  </article>
+
+  <aside class="studio-controls">
+    <section class="surface control-card">
+      <h2>Session setup</h2>
+      <p>Begge valg kræves, før optagelsen kan startes.</p>
+      <div class="field-group">
+        <label for="gymnast-select">Gymnast</label>
+        <div class="select-wrap"><select id="gymnast-select" data-gymnast-select><option value="">Vælg gymnast</option>{% for g in gymnasts %}<option value="{{ g.id }}">{{ g.display_name }} · {{ g.level }} · {{ g.license_number }}</option>{% endfor %}</select><svg><use href="#i-chevron"/></svg></div>
+      </div>
+      <div class="field-group">
+        <label for="device-select">Capture-enhed</label>
+        <div class="select-wrap"><select id="device-select" data-device-select><option value="">Vælg enhed</option>{% for d in devices %}<option value="{{ d.id }}">{{ d.name }} · {{ d.get_state_display }}</option>{% endfor %}</select><svg><use href="#i-chevron"/></svg></div>
+      </div>
+      <div class="record-controls">
+        <button class="button button-primary" type="button" data-record><svg><use href="#i-play"/></svg>Start optagelse</button>
+        <button class="button" type="button" data-arm><svg><use href="#i-spark"/></svg>Armér auto</button>
+        <button class="button button-danger" type="button" data-stop disabled><svg><use href="#i-stop"/></svg>Stop og gem</button>
+      </div>
+      <div class="control-telemetry">
+        <div><span><svg><use href="#i-wifi"/></svg>Signal</span><strong>Stabil</strong></div>
+        <div><span><svg><use href="#i-battery"/></svg>Batteri</span><strong>87%</strong></div>
+        <div><span><svg><use href="#i-cloud"/></svg>Lager</span><strong>42 GB</strong></div>
+      </div>
+    </section>
+    <section class="surface control-card">
+      <header class="section-head"><div><h2>Live hændelser</h2><p>Seneste telemetry</p></div><span class="status-badge">Live</span></header>
+      <div class="event-log">
+        <div><i></i><span>Vision engine synkroniseret</span><time>nu</time></div>
+        <div><i></i><span>Kamerasignal valideret</span><time>12 sek.</time></div>
+        <div><i></i><span>Objektlager tilgængeligt</span><time>28 sek.</time></div>
+      </div>
+    </section>
+  </aside>
+</section>
+{% endblock %}

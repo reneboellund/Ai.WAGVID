@@ -1,1 +1,33 @@
-{% extends "base.html" %}{% block content %}<h1>Gymnaster</h1><p><a href="{% url 'gymnast-create' %}">Opret gymnast</a></p><table><tr><th>Navn</th><th>Level</th><th>Licens</th><th>KIGA</th></tr>{% for gymnast in gymnasts %}<tr><td>{{ gymnast.display_name }}</td><td>{{ gymnast.level.name }}</td><td>{{ gymnast.license_number }}</td><td>{{ gymnast.kiga_id|default:"—" }}</td></tr>{% empty %}<tr><td colspan="4">Ingen gymnaster endnu. Opret eller importér den første.</td></tr>{% endfor %}</table>{% endblock %}
+{% extends "base.html" %}
+{% block title %}Gymnaster · Ai.WAGVID{% endblock %}
+{% block breadcrumb %}Gymnaster{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div><p class="eyebrow">Atletkartotek</p><h1>Gymnast<span class="text-gradient">profiler</span></h1><p>Administrér profiler, sportsligt niveau og eksterne identiteter med tydeligt dataejerskab.</p></div>
+  <div class="page-actions"><a class="button button-primary" href="{% url 'gymnast-create' %}"><svg><use href="#i-plus"/></svg>Opret gymnast</a></div>
+</section>
+<div class="toolbar">
+  <label class="field-search"><svg><use href="#i-search"/></svg><input type="search" placeholder="Søg efter navn, level eller licens…" data-table-search="gymnast-table" aria-label="Søg gymnaster"></label>
+  <span class="status-badge neutral" data-result-count>{{ gymnast_count }} profiler</span>
+  <button class="button filter-button" type="button" data-demo-action="Filtrering bliver koblet til de næste profilfelter."><svg><use href="#i-filter"/></svg>Filtre</button>
+</div>
+<section class="surface table-surface">
+  {% if gymnasts %}
+  <table class="data-table" id="gymnast-table">
+    <thead><tr><th>Gymnast</th><th>Niveau</th><th>Licens</th><th>KIGA</th><th>Datastatus</th><th></th></tr></thead>
+    <tbody>
+      {% for gymnast in gymnasts %}
+      <tr data-searchable>
+        <td><div class="entity-cell"><span class="entity-avatar">{{ gymnast.display_name|slice:":2"|upper }}</span><span><strong>{{ gymnast.display_name }}</strong><small>Aktiv profil</small></span></div></td>
+        <td>{{ gymnast.level.name }}</td><td>{{ gymnast.license_number }}</td><td>{{ gymnast.kiga_id|default:"—" }}</td>
+        <td><span class="status-badge">Valideret</span></td>
+        <td><button class="text-button" type="button" data-demo-action="Profilvisning er klar til at blive koblet til en detaljeside.">Åbn <svg><use href="#i-arrow"/></svg></button></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state"><span class="empty-visual"><svg><use href="#i-users"/></svg></span><h3>Ingen gymnaster endnu</h3><p>Opret eller importér den første gymnast for at starte et sporbar capture- og analyseflow.</p><a class="button button-primary" href="{% url 'gymnast-create' %}"><svg><use href="#i-plus"/></svg>Opret gymnast</a></div>
+  {% endif %}
+</section>
+{% endblock %}

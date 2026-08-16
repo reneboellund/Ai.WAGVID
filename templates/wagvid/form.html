@@ -1,1 +1,33 @@
-{% extends "base.html" %}{% block content %}<h1>{{ title }}</h1><form method="post">{% csrf_token %}{{ form.as_p }}<button class="primary" type="submit">Gem</button></form>{% endblock %}
+{% extends "base.html" %}
+{% block title %}{{ title }} · Ai.WAGVID{% endblock %}
+{% block breadcrumb %}Gymnaster / {{ title }}{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div><p class="eyebrow">Profiladministration</p><h1>{{ title }}</h1><p>Opret en sporbar gymnastprofil. Licensnummeret er unikt inden for {{ organization.name }}.</p></div>
+</section>
+<section class="form-layout">
+  <form method="post" class="surface form-card" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="toast danger">{{ form.non_field_errors }}</div>{% endif %}
+    <div class="form-grid">
+      {% for field in form %}
+      <div class="form-field">
+        {{ field.label_tag }}{{ field }}
+        {% if field.help_text %}<span class="helptext">{{ field.help_text }}</span>{% endif %}
+        {{ field.errors }}
+      </div>
+      {% endfor %}
+    </div>
+    <div class="form-actions"><a class="button" href="{% url 'gymnasts' %}">Annullér</a><button class="button button-primary" type="submit"><svg><use href="#i-check"/></svg>Gem profil</button></div>
+  </form>
+  <aside class="surface info-panel">
+    <h3>Datakvalitet fra start</h3>
+    <p>Profilen bliver knyttet til organisationens niveauer og indgår i det revisionssikre evidensspor.</p>
+    <div class="info-list">
+      <div><svg><use href="#i-shield"/></svg><span>Organisationstilpasset adgang og unikt licensnummer.</span></div>
+      <div><svg><use href="#i-check"/></svg><span>Oprettelsen registreres som en append-only audit event.</span></div>
+      <div><svg><use href="#i-exchange"/></svg><span>KIGA-ID kan bruges til kontrolleret dataudveksling.</span></div>
+    </div>
+  </aside>
+</section>
+{% endblock %}
