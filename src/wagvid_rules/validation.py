@@ -16,7 +16,7 @@ def load_yaml(path: Path) -> dict[str, Any]:
     with path.open(encoding="utf-8") as stream:
         value = yaml.safe_load(stream)
     if not isinstance(value, dict):
-        raise ValueError("registry root must be a mapping")
+        raise TypeError("YAML document root must be a mapping")
     return value
 
 

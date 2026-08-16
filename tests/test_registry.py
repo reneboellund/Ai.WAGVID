@@ -8,7 +8,6 @@ from wagvid_rules.validation import (
     validate_registry,
 )
 
-
 ROOT = Path(__file__).parents[1]
 SCHEMA = load_schema(ROOT / "schemas" / "rule-registry-v1.schema.json")
 REGISTRY = load_yaml(ROOT / "rules" / "registry.yaml")
