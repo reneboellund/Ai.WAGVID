@@ -1,10 +1,18 @@
 # Ai.WAGVID
 
-**AI-assisted WAG/MAG post-event video analysis, score verification and performance development platform**
+**Evidence-based WAG/MAG video analysis for score review, judging research and athlete development**
 
-> Status: architecture/specification phase. Independent project designed for later optional integration with KIGA.
+> Status: active internal research and development. The repository contains a runnable Django
+> application foundation, versioned rule-source governance, resumable video ingest, analysis-job
+> orchestration, competition records and a human evidence-review workflow. AI model adapters and
+> full apparatus rule packs remain under development.
 
-Ai.WAGVID analyses recorded WAG and MAG competition and training routines against versioned international FIG / World Gymnastics rules. The historical product name is retained; discipline and apparatus are explicit data, rule-pack and benchmark dimensions. The project begins with **after-the-routine analysis** before any separately validated live-assist mode.
+Ai.WAGVID is an independent research platform for analysing recorded Women's Artistic Gymnastics
+(WAG) and Men's Artistic Gymnastics (MAG) competition, routine, drill and training footage. It links
+machine observations to exact video evidence, ranked element candidates and versioned rule-pack
+interpretations. Official results and AI proposals are stored separately so qualified reviewers can
+approve, correct or challenge individual findings. The historical product name is retained;
+discipline and apparatus are explicit data, rule-pack and benchmark dimensions.
 
 Its two primary product goals are:
 
@@ -32,7 +40,8 @@ The system must never output a naked score or unexplained coaching conclusion. E
 
 ## Official rule baseline
 
-Initial ruleset target: **World Gymnastics / FIG WAG 2025–2028 cycle, current 2026 publications**.
+Initial ruleset target: **World Gymnastics/FIG WAG and MAG 2025–2028 cycles, using the applicable
+current publications and revisions**.
 
 FIG / World Gymnastics publications remain the source of truth. Ai.WAGVID stores machine-readable interpretations, references, effective dates and tests; it is not an independent rule authority.
 
@@ -47,21 +56,29 @@ FIG / World Gymnastics publications remain the source of truth. Ai.WAGVID stores
 7. **Longitudinal Athlete Analysis** — compare repeated routines over time and expose persistent or improving patterns; especially valuable through later KIGA integration.
 8. **KIGA Integration** — export validated structured observations without making KIGA depend on the Ai.WAGVID runtime.
 
-## Explicitly out of scope
+## Scope and deployment progression
 
-- real-time live judging;
-- replacing a competition judging panel;
-- real-time score publication;
-- competition control/failover infrastructure intended only for live judging.
+The first supported product class is offline analysis of uploaded competition and training video.
+Later milestones add event shadow mode, judge-assist review and low-latency evidence retrieval only
+after accuracy, security, reliability and sporting-governance gates have been met.
 
-The architecture should remain technically capable of processing video efficiently, but low-latency operation is not a product requirement.
+The project does not currently replace a judging panel, publish official scores or autonomously
+control a competition. AI output remains advisory unless a future authorised workflow explicitly
+defines otherwise.
 
 ## Apparatus scope
 
 - **VT** — Vault
 - **UB** — Uneven Bars
 - **BB** — Balance Beam
-- **FX** — Floor Exercise
+- **FX** — Floor Exercise (WAG/MAG)
+- **PH** — Pommel Horse
+- **SR** — Still Rings
+- **PB** — Parallel Bars
+- **HB** — Horizontal Bar
+
+WAG and MAG use separate element catalogues and rule-pack interpretations even where they share an
+apparatus code. Athlete identity or appearance must never be used to infer discipline or score.
 
 ## High-level pipeline
 
@@ -197,26 +214,18 @@ The system must not invent diagnoses, injuries, motivation, fatigue, fear, physi
 - API-first integration;
 - independent from KIGA with a stable integration contract.
 
-## Repository layout
+## Repository guide
 
 ```text
-docs/
-  ARCHITECTURE.md
-  JUDGING_MODEL.md
-  RULE_ENGINE.md
-  APPARATUS.md
-  DATA_MODEL.md
-  PERFORMANCE_ANALYSIS.md
-  SCORE_VERIFICATION.md
-  VALIDATION.md
-  KIGA_INTEGRATION.md
-  ROADMAP.md
-rules/
-schemas/
-src/
-models/
-examples/
-tests/
+docs/                 architecture, judging, operations, research and integration decisions
+research/             machine-readable research/model candidate registry
+rules/                versioned rule-source registry and future rule packs
+schemas/              public and internal JSON Schema contracts
+src/ai_wagvid/        model-neutral capture, perception, action and interpretation contracts
+src/wagvid_app/       Django domain, operational UI, upload and review workflows
+src/wagvid_rules/     rule-registry validation library and CLI
+templates/            responsive operational web interface
+tests/                contract, schema, service, permission and workflow tests
 ```
 
 ## Proposed technology direction
@@ -228,12 +237,17 @@ tests/
 - S3-compatible object storage for original/proxy/evidence media;
 - durable background workers for FFmpeg, analysis, export and maintenance;
 - ASGI WebSockets for authenticated device control; SSE/polling for dashboard progress;
-- OpenCV / FFmpeg and PyTorch-compatible vision/temporal models;
+- OpenCV/FFmpeg media processing and replaceable PyTorch-compatible vision/temporal adapters;
 - containerised on-prem CPU/GPU deployment.
 
 See `docs/ADR-0001-APPLICATION-SHELL.md`. Keep analysis/model implementations replaceable behind
 interfaces; begin as a modular monolith and split services only when measured operational needs
 justify the extra complexity.
+
+Named technologies and datasets in the architecture documents are candidates behind common
+contracts. Listing MediaPipe, YOLO-Pose, MMPose, MMAction2, FineGym, Gym288, OSL, GymPose or
+CaFlow-style AQA does not mean every adapter or artifact is installed or validated. Promotion
+requires provenance, rights, benchmark and operational review recorded in the research registry.
 
 ## Project phases
 
@@ -253,22 +267,31 @@ justify the extra complexity.
 Ai.WAGVID is an independent analysis project and is not affiliated with or endorsed by FIG / World Gymnastics. It is intended to assist post-event review, technical analysis, coaching and score verification. Official competition results remain governed by the responsible federation/event processes. FIG rules, element tables and publications remain subject to their respective rights and official publication terms.
 
 
-## Implemented M0 rule-source foundation
+## Current implementation
 
-The first issue #1 development slice is available on this branch:
+Implemented foundations include:
 
 - authoritative source metadata in `rules/registry.yaml`;
 - JSON Schema validation through `schemas/rule-registry-v1.schema.json`;
 - cross-record integrity checks and CLI in `src/wagvid_rules/`;
 - governance for revisions, review, hashes and historical reproducibility;
-- automated tests for valid, duplicate, review and retained-copy cases.
+- Django authentication, organisations, roles, gymnasts, WAG/MAG routines and competition events;
+- device-authenticated resumable uploads with size and SHA-256 verification;
+- durable analysis-job leasing and runtime readiness checks;
+- official-versus-AI score records, evidence-linked deductions and reviewer decisions;
+- CSV gymnast import/export and append-only audit history;
+- model-neutral pose, temporal-action, interpretation and advisory AQA contracts.
 
 The registry stores links and metadata; it does not redistribute the source PDFs.
+
+## Local validation
 
 ```powershell
 py -m pip install -e ".[dev]"
 wagvid-rules validate rules/registry.yaml
-pytest
+py -m pytest -q
 ```
 
-Validation at handoff: **4 tests passed** and registry validation succeeded.
+The continuous test suite currently covers rule governance, schemas, capture/upload behaviour,
+runtime services, WAG/MAG data, web permissions and human review. See the latest pull request or CI
+run for the authoritative test count rather than relying on a hard-coded number in this README.
