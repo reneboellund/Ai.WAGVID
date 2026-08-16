@@ -1,0 +1,22 @@
+schema_version: 1.0.0
+rulepack_id: FIG-WAG-2025-2028@2026-05-04+draft.1
+discipline: WAG
+cycle: 2025-2028
+release_date: "2026-08-16"
+effective_from: "2026-05-04"
+effective_until: null
+status: draft
+interpretation_revision: 1
+supersedes: null
+superseded_by: null
+source_ids:
+  - wag-cop-2025-2028-2026-03
+  - wag-cop-appendix-2025-2028-2026-03
+  - wag-specific-judges-rules-2025-2028-2026-03
+  - wag-help-desk-cycle-16-edition-2-2026-04
+artifacts: []
+review: null
+manifest_sha256: null
+compatibility_notes: >-
+  Draft manifest only. It cannot be promoted until every source and artifact has been reviewed,
+  artifact hashes are frozen, and qualified WAG rule review is recorded.

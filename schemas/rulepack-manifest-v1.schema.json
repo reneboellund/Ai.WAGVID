@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/reneboellund/Ai.WAGVID/schemas/rulepack-manifest-v1.schema.json",
+  "title": "Ai.WAGVID immutable rule-pack manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "rulepack_id", "discipline", "cycle", "release_date",
+    "effective_from", "status", "interpretation_revision", "source_ids", "artifacts"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "rulepack_id": {
+      "type": "string",
+      "pattern": "^FIG-WAG-[0-9]{4}-[0-9]{4}@[0-9]{4}-[0-9]{2}-[0-9]{2}(?:\\+[a-z0-9.-]+)?$"
+    },
+    "discipline": {"const": "WAG"},
+    "cycle": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{4}$"},
+    "release_date": {"type": "string", "format": "date"},
+    "effective_from": {"type": "string", "format": "date"},
+    "effective_until": {"type": ["string", "null"], "format": "date"},
+    "status": {"enum": ["draft", "reviewed", "approved", "superseded", "withdrawn"]},
+    "interpretation_revision": {"type": "integer", "minimum": 1},
+    "supersedes": {"type": ["string", "null"]},
+    "superseded_by": {"type": ["string", "null"]},
+    "source_ids": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"}
+    },
+    "artifacts": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "path"],
+        "properties": {
+          "kind": {"enum": ["apparatus", "elements", "deductions", "tests"]},
+          "apparatus": {"enum": ["VT", "UB", "BB", "FX", "ALL"]},
+          "path": {"type": "string", "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9_./-]+\\.ya?ml$"},
+          "sha256": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"}
+        }
+      }
+    },
+    "review": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["reviewer", "reviewed_at", "decision_ref"],
+      "properties": {
+        "reviewer": {"type": "string", "minLength": 1},
+        "reviewed_at": {"type": "string", "format": "date"},
+        "decision_ref": {"type": "string", "minLength": 1}
+      }
+    },
+    "manifest_sha256": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"},
+    "compatibility_notes": {"type": "string"}
+  }
+}
