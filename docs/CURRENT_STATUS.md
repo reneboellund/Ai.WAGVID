@@ -6,7 +6,7 @@ This file is the compact implementation-status source of truth for the active de
 
 ## Current baseline
 
-The consolidated baseline includes the work merged through PRs #46, #49, #50, #51 and #52.
+The consolidated baseline includes the work merged through PRs #46, #49, #50, #51, #52, #53 and #54. Current `main` after PR #54 is `fa2a44a`.
 
 ### Operational web product
 
@@ -33,46 +33,53 @@ Implemented:
 - immutable retained source-media records and SHA-256 integrity semantics;
 - resumable Android upload API with strict offsets, checksum verification and idempotent finalize;
 - FFprobe inspection and canonical PTS/DTS/best-effort timeline utilities with VFR/gap diagnostics;
+- immutable canonical frame-timeline sidecars bound to the exact source SHA-256;
+- organization-scoped timeline API and management-command import path for already-produced FFprobe frame payloads;
 - short-lived organization-scoped signed media grants;
 - authenticated source-video playback in evidence review;
 - single HTTP byte-range delivery for efficient browser seeking;
 - exact millisecond jumps from deduction candidates plus ±100 ms source-time nudging;
+- canonical previous/next frame stepping and frame-number display when a validated timeline sidecar exists, without assuming constant FPS;
 - append-only evidence, annotation-revision and adjudication contracts.
 
 Still required:
 
+- automated worker-side FFprobe timeline generation during ingest/analysis;
 - durable FFmpeg normalization/proxy execution and persistence;
-- persisted canonical frame index/timeline linked to each MediaAsset revision;
-- exact frame stepping and frame-number display derived from that persisted timeline;
 - camera registry, persisted calibration lifecycle and multi-camera synchronization/drift handling;
 - full annotation-authoring workstation and dataset-export UX.
 
-Important boundary: the current evidence player is source-time accurate. It must not be described as frame-accurate until canonical frame indexing is persisted and wired into review.
+Important boundary: review is frame-accurate only when the canonical sidecar for the exact source SHA-256 exists. Otherwise the player deliberately remains source-time accurate and does not invent frame numbers.
 
 ### Android capture
 
-Implemented foundation:
+Implemented and repository-build validated:
 
-- native Kotlin/Compose project;
-- CameraX capture controller;
-- Room-backed local archive records;
-- WorkManager upload queue;
-- SHA-256 upload verification;
-- encrypted credential storage and HTTPS policy;
-- mDNS/manual discovery components;
-- backend pairing, heartbeat, capture context, command queue and acknowledgements;
-- idempotent ARM/DISARM/START/STOP server controls;
-- server-side Concept 3 pairing/device/operate UI.
+- native Kotlin/Compose project with CameraX preview/video capture;
+- Room-backed local archive records with retained local files;
+- WorkManager resumable authenticated upload queue with SHA-256 verification;
+- encrypted credential storage;
+- in-app device pairing using the backend pairing session/code contract;
+- authenticated capture-context loading after pairing and on later starts;
+- real gymnast selection by stable UUID plus display name/license/level and server-advertised media-kind selection;
+- manual capture is blocked until valid server context exists and no longer writes `unassigned` placeholder metadata;
+- release networking is HTTPS-only while debug builds may use local HTTP/user-installed development certificates for on-prem testing;
+- server-side pairing, heartbeat, capture context, idempotent ARM/DISARM/START/STOP commands and acknowledgements;
+- Concept 3 pairing/device/operate WebUI;
+- path-filtered Android CI using Java 17 + Gradle 8.10.2; `assembleDebug` and `testDebugUnitTest` passed on PR #54;
+- Java/Kotlin/KSP are explicitly aligned on JDK 17 and the CameraX controller uses the correct `androidx.camera.view.video.AudioConfig` API.
 
-Still required before treating Android as a usable release client:
+Still required before treating Android as a release client:
 
-- production UI wiring for pairing/session/context rather than prototype `unassigned` capture state;
-- device health/archive/upload queue screens;
-- command polling/reconciliation integrated into app lifecycle;
+- heartbeat scheduling and command polling integrated into the Android lifecycle;
+- actual Android execution/reconciliation of remote ARM/DISARM/START/STOP commands;
+- foreground/background capture-service hardening while preserving local Stop authority;
 - motion-triggered/pre-roll/post-roll end-to-end behavior;
-- physical-device, network-loss, Android SDK/Gradle and emulator/device validation.
+- device health, storage, upload queue and local archive screens;
+- certificate fingerprint/pinning UX and reconnect/re-pair lifecycle;
+- physical-device and emulator validation including network loss/recovery.
 
-No Android APK/device validation result should be inferred from the repository scaffolding alone.
+A green repository Android build must not be confused with physical-device acceptance testing.
 
 ### KIGA and competition exchange
 
@@ -123,7 +130,8 @@ Implemented:
 - reviewer accept/correct/reject/official-error/inconclusive decisions;
 - append-only score-comparison adjudication and review history;
 - controlled reviewed-label export;
-- source-video evidence playback for stored originals.
+- signed source-video evidence playback;
+- VFR-safe canonical frame stepping when a source-bound timeline sidecar exists.
 
 Still required:
 
@@ -135,12 +143,16 @@ Still required:
 
 ## Validation policy
 
-GitHub remains the source of truth. Development currently follows a cost-conscious integration policy:
+GitHub remains the source of truth. Development follows a cost-conscious integration policy:
 
 - batch related changes into meaningful commits/PRs;
-- use the existing PR validation once at the integration boundary rather than repeatedly during intermediate edits;
-- inspect a failed run before rerunning anything;
-- after a concrete fix, let one new automatic run validate the fix;
-- do not run model downloads, dataset downloads, FFmpeg transcodes, Android SDK builds/emulators, GPU benchmarks or load tests without a milestone-specific reason.
+- use PR validation at integration boundaries rather than repeatedly during intermediate edits;
+- inspect one representative failed run before changing code or rerunning anything;
+- after a concrete fix, let one new automatic run validate the fix instead of rerunning stale jobs;
+- keep Android validation path-filtered to Android changes;
+- do not run model downloads, dataset downloads, FFmpeg transcodes, GPU benchmarks or load tests without a milestone-specific reason.
 
-The most recent code integrations through PR #52 passed the repository validation matrix on Python 3.11 and 3.13, including Ruff, full pytest, source-registry validation and draft rule-pack-manifest validation.
+Recent validation baseline:
+
+- PR #53: Python 3.11 and 3.13 passed Ruff, 174 tests, source-registry validation and draft rule-pack validation;
+- PR #54: Android `assembleDebug` and `testDebugUnitTest` passed after the repository's pre-existing JVM-target and CameraX import problems were fixed.
