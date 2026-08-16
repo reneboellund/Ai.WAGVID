@@ -46,12 +46,22 @@ def test_object_store_rejects_path_escape(tmp_path):
 @pytest.mark.django_db
 def test_upload_idempotency_and_forward_only_checkpoint():
     organization = Organization.objects.create(name="Club", slug="club")
+    level = Level.objects.create(organization=organization, name="Trin 1")
+    gymnast = Gymnast.objects.create(
+        organization=organization,
+        level=level,
+        display_name="Gymnast",
+        license_number="UPLOAD-1",
+    )
     request = UploadRequest(
         capture_id=uuid.uuid4(),
         idempotency_key="android-1:capture-1",
         local_filename="capture.mp4",
         expected_bytes=100,
         expected_sha256="a" * 64,
+        gymnast=gymnast,
+        kind=MediaAsset.Kind.DRILL,
+        recorded_at=datetime.now(UTC),
     )
     first, created = open_upload(organization, request)
     repeated, repeated_created = open_upload(organization, request)

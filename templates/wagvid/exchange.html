@@ -1,1 +1,23 @@
-{% extends "base.html" %}{% block content %}<h1>Import og eksport</h1><p>Alle imports følger preview → validering → mapping → dry-run → commit.</p><table><tr><th>Retning</th><th>Type</th><th>Status</th><th>Schema</th></tr>{% for job in jobs %}<tr><td>{{ job.get_direction_display }}</td><td>{{ job.kind }}</td><td>{{ job.get_state_display }}</td><td>{{ job.schema_version }}</td></tr>{% empty %}<tr><td colspan="4">Ingen udvekslingsjob.</td></tr>{% endfor %}</table>{% endblock %}
+{% extends "base.html" %}
+{% block content %}
+<h1>Import og eksport</h1>
+<p>Importer gennem preview og validering, før data skrives atomisk.</p>
+<div class="cards">
+  <section class="card">
+    <h2>Gymnaster</h2>
+    <p><a class="primary" href="{% url 'gymnast-export' %}">Download CSV</a></p>
+    {% if can_manage %}
+      <form method="post" enctype="multipart/form-data">{% csrf_token %}{{ form.as_p }}<button class="primary">Kontrollér import</button></form>
+    {% else %}<p>Kun administratorer kan importere.</p>{% endif %}
+  </section>
+  {% if preview %}
+  <section class="card">
+    <h2>Preview: {{ preview.valid_rows|length }} gyldige rækker</h2>
+    {% if preview.errors %}<ul class="danger">{% for error in preview.errors %}<li>{{ error }}</li>{% endfor %}</ul>{% endif %}
+    {% if preview.can_commit %}<form method="post" action="{% url 'gymnast-import-commit' %}">{% csrf_token %}<button class="primary">Gennemfør import</button></form>{% endif %}
+  </section>
+  {% endif %}
+</div>
+<h2>Historik</h2>
+<table><tr><th>Retning</th><th>Type</th><th>Status</th><th>Schema</th><th>Resultat</th></tr>{% for job in jobs %}<tr><td>{{ job.get_direction_display }}</td><td>{{ job.kind }}</td><td>{{ job.get_state_display }}</td><td>{{ job.schema_version }}</td><td>{{ job.result_summary }}</td></tr>{% empty %}<tr><td colspan="5">Ingen udvekslingsjob.</td></tr>{% endfor %}</table>
+{% endblock %}

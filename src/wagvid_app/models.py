@@ -1,6 +1,7 @@
 import uuid
 
 from django.conf import settings
+from django.contrib.auth.hashers import check_password, make_password
 from django.core.validators import MinValueValidator
 from django.db import models
 
@@ -33,13 +34,19 @@ class Membership(TimestampedModel):
         RESEARCHER = "researcher", "Forsker"
         VIEWER = "viewer", "Læser"
 
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="memberships")
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="wagvid_memberships")
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="memberships"
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="wagvid_memberships"
+    )
     role = models.CharField(max_length=32, choices=Role.choices)
     active = models.BooleanField(default=True)
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=["organization", "user"], name="one_membership_per_org")]
+        constraints = [
+            models.UniqueConstraint(fields=["organization", "user"], name="one_membership_per_org")
+        ]
 
 
 class Level(TimestampedModel):
@@ -49,7 +56,9 @@ class Level(TimestampedModel):
     active = models.BooleanField(default=True)
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=["organization", "name"], name="unique_level_per_org")]
+        constraints = [
+            models.UniqueConstraint(fields=["organization", "name"], name="unique_level_per_org")
+        ]
         ordering = ["name"]
 
     def __str__(self):
@@ -58,7 +67,9 @@ class Level(TimestampedModel):
 
 class Gymnast(TimestampedModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="gymnasts")
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="gymnasts"
+    )
     display_name = models.CharField(max_length=200)
     license_number = models.CharField(max_length=100)
     level = models.ForeignKey(Level, on_delete=models.PROTECT, related_name="gymnasts")
@@ -66,7 +77,11 @@ class Gymnast(TimestampedModel):
     archived_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=["organization", "license_number"], name="unique_license_per_org")]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "license_number"], name="unique_license_per_org"
+            )
+        ]
         ordering = ["display_name"]
 
     def __str__(self):
@@ -88,8 +103,17 @@ class Device(TimestampedModel):
     device_key = models.CharField(max_length=160, unique=True)
     state = models.CharField(max_length=20, choices=State.choices, default=State.UNPAIRED)
     last_seen_at = models.DateTimeField(null=True, blank=True)
-    free_storage_bytes = models.BigIntegerField(null=True, blank=True, validators=[MinValueValidator(0)])
+    free_storage_bytes = models.BigIntegerField(
+        null=True, blank=True, validators=[MinValueValidator(0)]
+    )
     queued_uploads = models.PositiveIntegerField(default=0)
+    api_token_hash = models.CharField(max_length=256, blank=True)
+
+    def set_api_token(self, raw_token: str) -> None:
+        self.api_token_hash = make_password(raw_token)
+
+    def check_api_token(self, raw_token: str) -> bool:
+        return bool(self.api_token_hash) and check_password(raw_token, self.api_token_hash)
 
 
 class MediaAsset(TimestampedModel):
@@ -109,7 +133,9 @@ class MediaAsset(TimestampedModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="media")
     gymnast = models.ForeignKey(Gymnast, on_delete=models.PROTECT, related_name="media")
-    device = models.ForeignKey(Device, on_delete=models.SET_NULL, null=True, blank=True, related_name="media")
+    device = models.ForeignKey(
+        Device, on_delete=models.SET_NULL, null=True, blank=True, related_name="media"
+    )
     kind = models.CharField(max_length=20, choices=Kind.choices)
     state = models.CharField(max_length=20, choices=State.choices, default=State.QUEUED)
     object_key = models.CharField(max_length=500, blank=True)
@@ -131,18 +157,33 @@ class AnalysisJob(TimestampedModel):
         CANCELLED = "cancelled", "Annulleret"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="analysis_jobs")
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="analysis_jobs"
+    )
     media = models.ForeignKey(MediaAsset, on_delete=models.PROTECT, related_name="analysis_jobs")
     state = models.CharField(max_length=24, choices=State.choices, default=State.DRAFT)
     scope = models.CharField(max_length=32)
     rulepack_id = models.CharField(max_length=200)
     model_profile = models.CharField(max_length=120)
-    progress_percent = models.PositiveSmallIntegerField(default=0, validators=[MinValueValidator(0)])
+    progress_percent = models.PositiveSmallIntegerField(
+        default=0, validators=[MinValueValidator(0)]
+    )
     revision = models.PositiveIntegerField(default=1)
     error_code = models.CharField(max_length=100, blank=True)
+    leased_by = models.ForeignKey(
+        "WorkerNode",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="leased_jobs",
+    )
+    lease_expires_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    attempts = models.PositiveIntegerField(default=0)
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=["media", "revision"], name="unique_analysis_revision")]
+        constraints = [
+            models.UniqueConstraint(fields=["media", "revision"], name="unique_analysis_revision")
+        ]
 
 
 class ExchangeJob(TimestampedModel):
@@ -159,7 +200,9 @@ class ExchangeJob(TimestampedModel):
         COMPLETED = "completed", "Færdig"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="exchange_jobs")
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="exchange_jobs"
+    )
     direction = models.CharField(max_length=10, choices=Direction.choices)
     kind = models.CharField(max_length=80)
     state = models.CharField(max_length=20, choices=State.choices, default=State.DRAFT)
@@ -170,8 +213,12 @@ class ExchangeJob(TimestampedModel):
 
 class AuditEvent(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    organization = models.ForeignKey(Organization, on_delete=models.PROTECT, related_name="audit_events")
-    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.PROTECT, related_name="audit_events"
+    )
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True
+    )
     action = models.CharField(max_length=120)
     object_type = models.CharField(max_length=120)
     object_id = models.CharField(max_length=200)
@@ -208,6 +255,18 @@ class UploadSession(TimestampedModel):
         Device, on_delete=models.SET_NULL, null=True, blank=True, related_name="upload_sessions"
     )
     capture_id = models.UUIDField()
+    # Legacy/incomplete sessions may predate capture metadata. The device API
+    # requires these fields for every new upload, while nullable storage keeps
+    # upgrades safe and lets operators inspect or retire abandoned sessions.
+    gymnast = models.ForeignKey(
+        Gymnast,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="upload_sessions",
+    )
+    kind = models.CharField(max_length=20, choices=MediaAsset.Kind.choices, blank=True)
+    recorded_at = models.DateTimeField(null=True, blank=True)
     idempotency_key = models.CharField(max_length=160)
     local_filename = models.CharField(max_length=255)
     expected_bytes = models.BigIntegerField(validators=[MinValueValidator(1)])
