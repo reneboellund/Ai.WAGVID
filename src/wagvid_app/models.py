@@ -1,0 +1,192 @@
+import uuid
+
+from django.conf import settings
+from django.core.validators import MinValueValidator
+from django.db import models
+
+
+class TimestampedModel(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
+
+
+class Organization(TimestampedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=200)
+    slug = models.SlugField(unique=True)
+    active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return self.name
+
+
+class Membership(TimestampedModel):
+    class Role(models.TextChoices):
+        SYSTEM_ADMIN = "system-admin", "Systemadministrator"
+        ORGANIZATION_ADMIN = "organization-admin", "Organisationsadministrator"
+        OPERATOR = "operator", "Operatør"
+        COACH = "coach", "Træner"
+        REVIEWER = "reviewer", "Reviewer"
+        RESEARCHER = "researcher", "Forsker"
+        VIEWER = "viewer", "Læser"
+
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="memberships")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="wagvid_memberships")
+    role = models.CharField(max_length=32, choices=Role.choices)
+    active = models.BooleanField(default=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["organization", "user"], name="one_membership_per_org")]
+
+
+class Level(TimestampedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="levels")
+    name = models.CharField(max_length=100)
+    active = models.BooleanField(default=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["organization", "name"], name="unique_level_per_org")]
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
+class Gymnast(TimestampedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="gymnasts")
+    display_name = models.CharField(max_length=200)
+    license_number = models.CharField(max_length=100)
+    level = models.ForeignKey(Level, on_delete=models.PROTECT, related_name="gymnasts")
+    kiga_id = models.CharField(max_length=120, blank=True)
+    archived_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["organization", "license_number"], name="unique_license_per_org")]
+        ordering = ["display_name"]
+
+    def __str__(self):
+        return f"{self.display_name} ({self.license_number})"
+
+
+class Device(TimestampedModel):
+    class State(models.TextChoices):
+        UNPAIRED = "unpaired", "Ikke parret"
+        OFFLINE = "offline", "Offline"
+        READY = "ready", "Klar"
+        ARMED = "armed", "Auto klar"
+        RECORDING = "recording", "Optager"
+        FINALIZING = "finalizing", "Gemmer"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="devices")
+    name = models.CharField(max_length=120)
+    device_key = models.CharField(max_length=160, unique=True)
+    state = models.CharField(max_length=20, choices=State.choices, default=State.UNPAIRED)
+    last_seen_at = models.DateTimeField(null=True, blank=True)
+    free_storage_bytes = models.BigIntegerField(null=True, blank=True, validators=[MinValueValidator(0)])
+    queued_uploads = models.PositiveIntegerField(default=0)
+
+
+class MediaAsset(TimestampedModel):
+    class Kind(models.TextChoices):
+        ROUTINE = "routine", "Hel øvelse"
+        TRAINING = "training", "Træning"
+        DRILL = "drill", "Moment"
+        COMPETITION = "competition", "Konkurrence"
+
+    class State(models.TextChoices):
+        QUEUED = "queued", "Venter"
+        UPLOADING = "uploading", "Uploader"
+        STORED = "stored", "Gemt"
+        QUARANTINED = "quarantined", "Karantæne"
+        UNUSABLE = "unusable", "Ubrugelig"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="media")
+    gymnast = models.ForeignKey(Gymnast, on_delete=models.PROTECT, related_name="media")
+    device = models.ForeignKey(Device, on_delete=models.SET_NULL, null=True, blank=True, related_name="media")
+    kind = models.CharField(max_length=20, choices=Kind.choices)
+    state = models.CharField(max_length=20, choices=State.choices, default=State.QUEUED)
+    object_key = models.CharField(max_length=500, blank=True)
+    sha256 = models.CharField(max_length=64, blank=True, db_index=True)
+    original_retained = models.BooleanField(default=True)
+    recorded_at = models.DateTimeField()
+
+
+class AnalysisJob(TimestampedModel):
+    class State(models.TextChoices):
+        DRAFT = "draft", "Kladde"
+        QUEUED = "queued", "Venter"
+        BLOCKED = "blocked", "Blokeret"
+        RUNNING = "running", "Kører"
+        NEEDS_REVIEW = "needs-review", "Kræver review"
+        FAILED_RETRYABLE = "failed-retryable", "Kan prøves igen"
+        FAILED_TERMINAL = "failed-terminal", "Stoppet"
+        COMPLETED = "completed", "Færdig"
+        CANCELLED = "cancelled", "Annulleret"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="analysis_jobs")
+    media = models.ForeignKey(MediaAsset, on_delete=models.PROTECT, related_name="analysis_jobs")
+    state = models.CharField(max_length=24, choices=State.choices, default=State.DRAFT)
+    scope = models.CharField(max_length=32)
+    rulepack_id = models.CharField(max_length=200)
+    model_profile = models.CharField(max_length=120)
+    progress_percent = models.PositiveSmallIntegerField(default=0, validators=[MinValueValidator(0)])
+    revision = models.PositiveIntegerField(default=1)
+    error_code = models.CharField(max_length=100, blank=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["media", "revision"], name="unique_analysis_revision")]
+
+
+class ExchangeJob(TimestampedModel):
+    class Direction(models.TextChoices):
+        IMPORT = "import", "Import"
+        EXPORT = "export", "Eksport"
+
+    class State(models.TextChoices):
+        DRAFT = "draft", "Kladde"
+        VALIDATING = "validating", "Validerer"
+        READY = "ready", "Klar"
+        RUNNING = "running", "Kører"
+        FAILED = "failed", "Fejlet"
+        COMPLETED = "completed", "Færdig"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="exchange_jobs")
+    direction = models.CharField(max_length=10, choices=Direction.choices)
+    kind = models.CharField(max_length=80)
+    state = models.CharField(max_length=20, choices=State.choices, default=State.DRAFT)
+    schema_version = models.CharField(max_length=40)
+    result_summary = models.JSONField(default=dict)
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+
+
+class AuditEvent(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.PROTECT, related_name="audit_events")
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True)
+    action = models.CharField(max_length=120)
+    object_type = models.CharField(max_length=120)
+    object_id = models.CharField(max_length=200)
+    reason = models.TextField(blank=True)
+    correlation_id = models.UUIDField(default=uuid.uuid4, editable=False, db_index=True)
+    metadata = models.JSONField(default=dict)
+    occurred_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ["-occurred_at"]
+
+    def save(self, *args, **kwargs):
+        if self.pk and AuditEvent.objects.filter(pk=self.pk).exists():
+            raise ValueError("Audit events are append-only")
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("Audit events are append-only")
