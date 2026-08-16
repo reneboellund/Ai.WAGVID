@@ -39,11 +39,13 @@ def test_all_relevant_online_datasets_are_catalogued() -> None:
     assert usage["unresolved_data_handling"] == "controlled-acquisition-quarantine"
 
 
-def test_unresolved_finegrade_and_finegym_are_included_in_quarantine() -> None:
+def test_finegrade_and_finegym_have_recorded_research_approval() -> None:
     entries = {item["id"]: item for item in load_registry()["candidates"]}
-    assert entries["finegrade"]["status"] == "catalogued-rights-unresolved"
-    assert entries["finegym"]["status"] == "catalogued-rights-unresolved"
-    assert entries["finegrade"]["license_status"] == "unresolved"
+    for dataset_id in ("finegrade", "finegym"):
+        assert entries[dataset_id]["status"] == "internal-research-allowed"
+        assert entries[dataset_id]["approval_basis"] == (
+            "project-owner-confirmed-research-permission-2026-08-16"
+        )
 
 
 def test_athletepose3d_is_allowed_only_for_internal_research() -> None:
