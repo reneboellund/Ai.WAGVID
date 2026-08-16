@@ -13,3 +13,11 @@ slices may be evaluated under controlled access without becoming model features.
 
 Reports conform to `schemas/benchmark-report-v1.schema.json`. Benchmark output is evidence for
 model selection, not a FIG score, and no challenger can be promoted solely from a global average.
+
+Pose baselines use `ai_wagvid.pose_benchmark` separately from element metrics. The report includes
+normalized keypoint error, PCK, expected-keypoint detection, confidence/visibility calibration,
+inference latency, RAM and VRAM, repeated by apparatus, camera condition and challenge slice. The
+planned two-configuration RTMPose/RTMW comparison is recorded in
+`research/benchmarks/rtmpose-spike.yaml`; its blocked status is intentional until artifacts and a
+rights-cleared, leakage-safe validation manifest have verified digests. Every promoted component
+must also complete `docs/MODEL_CARD_TEMPLATE.md` and link its failure gallery.
