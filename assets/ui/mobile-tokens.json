@@ -1,0 +1,35 @@
+{
+  "schema_version": "1.0.0",
+  "brand": "Ai.WAGVID",
+  "colors": {
+    "background": "#07101E",
+    "surface": "#111C31",
+    "surfaceRaised": "#18263F",
+    "textPrimary": "#EAF8F5",
+    "textSecondary": "#9DB0C8",
+    "primary": "#18D4A3",
+    "analysis": "#32B8FF",
+    "warning": "#FFB84D",
+    "danger": "#FF5D6C",
+    "focus": "#7DDFFF"
+  },
+  "spacing_dp": [4, 8, 12, 16, 24, 32, 48],
+  "radius_dp": {
+    "control": 12,
+    "card": 18,
+    "record": 40
+  },
+  "minimum_touch_target_dp": 48,
+  "record_control_dp": 80,
+  "status_labels": {
+    "offline": "Offline",
+    "ready": "Klar",
+    "armed": "Auto klar",
+    "recording": "Optager",
+    "finalizing": "Gemmer",
+    "queued": "Venter på upload",
+    "uploading": "Uploader",
+    "uploaded": "Uploadet · gemt lokalt",
+    "retry-wait": "Offline · prøver igen"
+  }
+}
