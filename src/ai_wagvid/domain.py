@@ -11,6 +11,10 @@ class Apparatus(str, Enum):
     UB = "UB"
     BB = "BB"
     FX = "FX"
+    PH = "PH"
+    SR = "SR"
+    PB = "PB"
+    HB = "HB"
 
 
 class AnalysisState(str, Enum):

@@ -1,4 +1,4 @@
-# Ai.WAGVID Roadmap
+# Ai.WAGVID WAG/MAG Roadmap
 
 This roadmap intentionally builds evidence infrastructure and rule correctness before attempting autonomous live scoring.
 
@@ -192,6 +192,19 @@ This milestone is organisational/sporting as well as technical. Software complet
 - judge-consensus modelling without learning identity bias;
 - active learning from human review;
 - optional on-device/edge inference.
+- FineGym, Gym288-Skeleton and OSL temporal-localization adapters with canonical label mapping;
+- CaFlow-style AQA challenger retained as a separate, calibrated advisory channel;
+- WAG/MAG apparatus-specific metric packs: BB wobble/turn/landing, UB handstand/swing/cast,
+  FX pass/jump/landing/body-line, VT board/block/flight/landing, and MAG PH/SR/PB/HB equivalents;
+- annotated-video renderer, canonical JSON/CSV exporters, REST endpoints and offline CLI;
+- explicit coaching versus judge/research runtime profiles and multi-model fusion benchmarks.
+
+# MAG expansion gate
+
+MAG reuses the media, pose, evidence, review and rule-pack infrastructure but has its own apparatus,
+element taxonomies and deduction semantics. PH, SR, PB and HB must receive independent rule sources,
+fixtures and qualified review. Shared apparatus codes FX and VT remain discipline-qualified; a model
+or rule pack may never infer the discipline from athlete identity or appearance.
 
 # Suggested first vertical slice
 

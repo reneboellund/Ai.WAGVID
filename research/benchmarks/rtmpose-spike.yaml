@@ -1,0 +1,45 @@
+schema_version: pose-benchmark-run-v1
+run_status: blocked-until-artifacts-and-validation-data-verified
+issue: 27
+dataset_manifest: null
+split: validation
+models:
+  - component_id: rtmpose-coco@1
+    size: l
+    config_path: null
+    checkpoint_artifact_id: rtmpose-checkpoint
+  - component_id: rtmpose-coco@1
+    size: m
+    config_path: null
+    checkpoint_artifact_id: rtmpose-checkpoint
+slices:
+  apparatus: [VT, UB, BB, FX]
+  camera_condition: [fixed-side, oblique, handheld, unknown]
+  challenge:
+    - inverted
+    - tucked
+    - piked
+    - straight
+    - shoulder-extreme
+    - split-extreme
+    - motion-blur
+    - partial-occlusion
+    - bar-contact
+    - beam-alignment
+    - landing-compression
+metrics:
+  - detected_expected_rate
+  - mean_normalized_error
+  - pck@0.2
+  - mean_visibility_calibration_error
+  - mean_inference_ms
+  - peak_ram_mb
+  - peak_vram_mb
+promotion_gate:
+  compare_model_count_minimum: 2
+  require_all_apparatus_slices: true
+  require_artifact_sha256: true
+  require_failure_gallery: true
+  require_license_record: true
+prohibited_inputs: [athlete_identity, club, nationality, ranking, official_score]
+

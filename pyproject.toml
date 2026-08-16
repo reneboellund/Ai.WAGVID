@@ -23,9 +23,15 @@ dev = [
   "pytest-django>=4.9,<5",
   "ruff>=0.9,<1"
 ]
+model-mediapipe = ["mediapipe>=0.10,<0.11"]
+model-yolo = ["ultralytics>=8.3,<9"]
+wasabi = ["boto3>=1.35,<2"]
+# MMPose/MMAction2 belong in a separately pinned worker environment because
+# their Torch/CUDA matrix must match the worker image and accelerator.
 
 [project.scripts]
 wagvid-rules = "wagvid_rules.validation:main"
+wagvid = "ai_wagvid.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

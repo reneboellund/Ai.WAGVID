@@ -1,0 +1,24 @@
+schema_version: wagvid-wasabi-layout-v1
+mode: dry-run
+project_slug: wagvid
+environment: development
+region: eu-central-1
+endpoint: https://s3.eu-central-1.wasabisys.com
+account_fingerprint: replace-with-non-secret-hash
+bucket_pools:
+  originals: 2
+  derivatives: 2
+  metadata: 1
+  results: 1
+  audit: 1
+cost_policy:
+  pricing_model: pay-go
+  minimum_storage_days: 90
+controls:
+  private_only: true
+  explicit_apply_approval: true
+  versioning: true
+  object_lock_roles: [originals, audit]
+  transient_cache_allowed: false
+  physical_delete_requires_cost_preview: true
+

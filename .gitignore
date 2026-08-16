@@ -7,3 +7,8 @@ db.sqlite3
 .env
 staticfiles/
 media/
+android/.gradle/
+android/local.properties
+android/**/build/
+*.apk
+*.aab
