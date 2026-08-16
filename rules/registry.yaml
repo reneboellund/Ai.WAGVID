@@ -1,0 +1,93 @@
+schema_version: 1.0.0
+registry_version: 0.1.0
+discipline: WAG
+cycle: 2025-2028
+last_checked_at: "2026-08-16"
+sources:
+  - id: wag-cop-2025-2028-2026-03
+    title: WAG Code of Points 2025-2028
+    publisher: World Gymnastics
+    discipline: WAG
+    cycle: 2025-2028
+    language: en
+    source_url: https://www.gymnastics.sport/publicdir/rules/files/en_1.1%20-%20WAG%20COP%202025-2028.pdf
+    publication_date: "2026-03-13"
+    effective_from: "2025-01-01"
+    effective_until: null
+    status: current
+    interpretation_status: unreviewed
+    supersedes: []
+    superseded_by: null
+    retention: metadata-only
+    content_sha256: null
+    notes: Registry metadata must be rechecked when World Gymnastics republishes the file.
+    review: null
+    locators:
+      convention: mixed
+      example: "section:8.3/page:44/table:CR"
+
+  - id: wag-cop-appendix-2025-2028-2026-03
+    title: Appendix to the Code of Points 2025-2028
+    publisher: World Gymnastics
+    discipline: WAG
+    cycle: 2025-2028
+    language: en
+    source_url: https://www.gymnastics.sport/site/rules/
+    publication_date: "2026-03-23"
+    effective_from: "2026-03-23"
+    effective_until: null
+    status: discovered
+    interpretation_status: unreviewed
+    supersedes: []
+    superseded_by: null
+    retention: metadata-only
+    content_sha256: null
+    notes: Replace landing-page URL with the verified direct WAG appendix URL during source review.
+    review: null
+    locators:
+      convention: mixed
+      example: "page:3/table:1"
+
+  - id: wag-specific-judges-rules-2025-2028-2026-03
+    title: WAG Specific Judges' Rules 2025-2028
+    publisher: World Gymnastics
+    discipline: WAG
+    cycle: 2025-2028
+    language: en
+    source_url: https://www.gymnastics.sport/publicdir/rules/files/en_1.3%20-%20WAG%20Specific%20Judges%27%20Rules%202025-2028.pdf
+    publication_date: "2026-03-27"
+    effective_from: "2025-01-01"
+    effective_until: null
+    status: current
+    interpretation_status: unreviewed
+    supersedes: []
+    superseded_by: null
+    retention: metadata-only
+    content_sha256: null
+    notes: Clean edition; mark-up edition may be registered separately for change review.
+    review: null
+    locators:
+      convention: article
+      example: "article:4"
+
+  - id: wag-help-desk-cycle-16-edition-2-2026-04
+    title: WAG Help Desk, 2nd Edition, 16th cycle, April 2026
+    publisher: World Gymnastics
+    discipline: WAG
+    cycle: 2025-2028
+    language: en
+    source_url: https://www.gymnastics.sport/site/rules/
+    publication_date: "2026-05-04"
+    effective_from: "2026-05-04"
+    effective_until: null
+    status: discovered
+    interpretation_status: unreviewed
+    supersedes: []
+    superseded_by: null
+    retention: metadata-only
+    content_sha256: null
+    notes: Publication is listed by World Gymnastics; direct file URL awaits independent verification.
+    review: null
+    locators:
+      convention: mixed
+      example: "apparatus:UB/page:18/topic:handstand"
