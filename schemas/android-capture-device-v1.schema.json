@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/reneboellund/Ai.WAGVID/schemas/android-capture-device-v1.schema.json",
+  "title": "Ai.WAGVID Android capture device",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "device_id", "connection", "archive", "upload_queue"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "device_id": {"type": "string", "minLength": 1},
+    "connection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["discovery_order", "backend_url", "pairing_state"],
+      "properties": {
+        "discovery_order": {
+          "const": ["mdns", "authenticated-udp", "manual-url"]
+        },
+        "mdns_service": {"const": "_wagvid._tcp.local"},
+        "backend_url": {"type": ["string", "null"], "format": "uri"},
+        "pairing_state": {"enum": ["unpaired", "discovered", "pairing", "paired", "offline"]},
+        "certificate_fingerprint": {
+          "type": ["string", "null"],
+          "pattern": "^[A-Fa-f0-9:]+$"
+        },
+        "last_connected_at": {"type": ["string", "null"], "format": "date-time"}
+      }
+    },
+    "archive": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["local_retention", "automatic_deletion"],
+      "properties": {
+        "local_retention": {"const": "retain-after-upload"},
+        "automatic_deletion": {"const": false},
+        "archive_directory": {"type": "string", "minLength": 1}
+      }
+    },
+    "upload_queue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["persistent", "start_after_finalize", "concurrency", "items"],
+      "properties": {
+        "persistent": {"const": true},
+        "start_after_finalize": {"const": true},
+        "concurrency": {"type": "integer", "minimum": 1, "maximum": 4},
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["capture_id", "local_uri", "sha256", "state", "attempts", "uploaded_bytes", "local_retained"],
+            "properties": {
+              "capture_id": {"type": "string", "format": "uuid"},
+              "local_uri": {"type": "string", "format": "uri"},
+              "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+              "state": {"enum": ["queued", "uploading", "uploaded", "retry-wait"]},
+              "attempts": {"type": "integer", "minimum": 0},
+              "uploaded_bytes": {"type": "integer", "minimum": 0},
+              "remote_uri": {"type": ["string", "null"], "format": "uri"},
+              "last_error": {"type": ["string", "null"]},
+              "local_retained": {"const": true}
+            }
+          }
+        }
+      }
+    }
+  }
+}
