@@ -6,7 +6,7 @@ from .models import Gymnast, ReviewDecision
 class GymnastForm(forms.ModelForm):
     class Meta:
         model = Gymnast
-        fields = ["display_name", "license_number", "level", "kiga_id"]
+        fields = ["display_name", "license_number", "discipline", "level", "kiga_id"]
 
     def __init__(self, *args, organization=None, **kwargs):
         super().__init__(*args, **kwargs)

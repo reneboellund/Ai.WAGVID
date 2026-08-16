@@ -261,10 +261,16 @@ def gymnast_export(request):
     response["Content-Disposition"] = 'attachment; filename="wagvid-gymnasts.csv"'
     response.write("\ufeff")
     writer = csv.writer(response)
-    writer.writerow(["name", "license_number", "level", "kiga_id"])
+    writer.writerow(["name", "license_number", "discipline", "level", "kiga_id"])
     for gymnast in organization.gymnasts.select_related("level").order_by("display_name"):
         writer.writerow(
-            [gymnast.display_name, gymnast.license_number, gymnast.level.name, gymnast.kiga_id]
+            [
+                gymnast.display_name,
+                gymnast.license_number,
+                gymnast.discipline,
+                gymnast.level.name,
+                gymnast.kiga_id,
+            ]
         )
     return response
 

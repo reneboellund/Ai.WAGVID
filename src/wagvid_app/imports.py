@@ -54,6 +54,12 @@ def preview_gymnast_csv(organization: Organization, content: str) -> GymnastImpo
             )
         if row["level"] not in levels:
             preview.errors.append(ImportErrorRow(row_number, "level", "Unknown active level"))
+        discipline = row.get("discipline", Gymnast.Discipline.WAG).upper()
+        if discipline not in Gymnast.Discipline.values:
+            preview.errors.append(
+                ImportErrorRow(row_number, "discipline", "Discipline must be WAG or MAG")
+            )
+        row["discipline"] = discipline
         seen.add(license_number)
         if not any(error.row == row_number for error in preview.errors):
             preview.valid_rows.append(row)
@@ -72,6 +78,7 @@ def commit_gymnast_import(
             organization=organization,
             display_name=row["name"],
             license_number=row["license_number"],
+            discipline=row["discipline"],
             level=levels[row["level"]],
             kiga_id=row.get("kiga_id", ""),
         )

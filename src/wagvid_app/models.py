@@ -66,12 +66,17 @@ class Level(TimestampedModel):
 
 
 class Gymnast(TimestampedModel):
+    class Discipline(models.TextChoices):
+        WAG = "WAG", "Kvindeidrætsgymnastik"
+        MAG = "MAG", "Mandlig idrætsgymnastik"
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="gymnasts"
     )
     display_name = models.CharField(max_length=200)
     license_number = models.CharField(max_length=100)
+    discipline = models.CharField(max_length=3, choices=Discipline.choices, default=Discipline.WAG)
     level = models.ForeignKey(Level, on_delete=models.PROTECT, related_name="gymnasts")
     kiga_id = models.CharField(max_length=120, blank=True)
     archived_at = models.DateTimeField(null=True, blank=True)
@@ -114,6 +119,10 @@ class Routine(TimestampedModel):
         BARS = "UB", "Forskudt barre"
         BEAM = "BB", "Bom"
         FLOOR = "FX", "Gulv"
+        POMMEL_HORSE = "PH", "Hest med bøjler"
+        STILL_RINGS = "SR", "Ringe"
+        PARALLEL_BARS = "PB", "Parallelle barrer"
+        HIGH_BAR = "HB", "Reck"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="routines")

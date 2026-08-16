@@ -24,7 +24,7 @@ Date: 2026-08-16
 - full gymnast edit/archive/merge and CSV import dry-run;
 - real system probes for object storage, worker queue and backups;
 - organization selector for users belonging to multiple organizations;
-- review inbox and evidence workspace skeleton;
+- reviewer inbox filtering, synchronized replay and frame/clip evidence delivery;
 - structured error pages, CSRF/security deployment checks and rate limiting;
 - Docker/on-prem deployment and restore rehearsal.
 
@@ -36,6 +36,11 @@ Date: 2026-08-16
 - RTMPose baseline adapter producing the PerceptionBundle contract;
 - benchmark runner, model-run provenance and evaluation reports;
 - annotation/review export and human correction loop.
+- canonical pose adapter interface plus MediaPipe-class baseline and RTMPose/YOLO-class challenger;
+- FineGym/Gym288/OSL label and temporal-dataset adapters with athlete/event split enforcement;
+- annotated proxy renderer and versioned JSON/CSV/REST/CLI analysis exports;
+- separately calibrated AQA challenger channel;
+- MAG rule sources, element catalogues, fixtures and apparatus-specific metric packs.
 
 ## Must be completed before any external or competition use
 

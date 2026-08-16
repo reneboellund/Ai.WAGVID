@@ -117,3 +117,31 @@ def test_non_reviewer_cannot_submit_decision(client):
     )
     assert response.status_code == 403
     assert candidate.decisions.count() == 0
+
+
+@pytest.mark.django_db
+def test_mag_gymnast_and_apparatus_are_explicit_dimensions():
+    organization = Organization.objects.create(name="MAG Club", slug="mag-club")
+    level = Level.objects.create(organization=organization, name="Senior")
+    gymnast = Gymnast.objects.create(
+        organization=organization,
+        display_name="Magnus",
+        license_number="MAG-1",
+        discipline=Gymnast.Discipline.MAG,
+        level=level,
+    )
+    event = Event.objects.create(
+        organization=organization,
+        name="MAG Test",
+        kind=Event.Kind.TEST,
+        starts_at=datetime.now(UTC),
+    )
+    routine = Routine.objects.create(
+        organization=organization,
+        event=event,
+        gymnast=gymnast,
+        apparatus=Routine.Apparatus.STILL_RINGS,
+        rulepack_id="mag-test@1",
+    )
+    assert routine.apparatus == "SR"
+    assert routine.gymnast.discipline == "MAG"

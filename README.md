@@ -1,10 +1,10 @@
 # Ai.WAGVID
 
-**AI-assisted Women's Artistic Gymnastics post-event video analysis, score verification and performance development platform**
+**AI-assisted WAG/MAG post-event video analysis, score verification and performance development platform**
 
 > Status: architecture/specification phase. Independent project designed for later optional integration with KIGA.
 
-Ai.WAGVID analyses recorded WAG competition and training routines against versioned international FIG / World Gymnastics rules. The project is deliberately focused on **after-the-routine analysis**, not live judging.
+Ai.WAGVID analyses recorded WAG and MAG competition and training routines against versioned international FIG / World Gymnastics rules. The historical product name is retained; discipline and apparatus are explicit data, rule-pack and benchmark dimensions. The project begins with **after-the-routine analysis** before any separately validated live-assist mode.
 
 Its two primary product goals are:
 

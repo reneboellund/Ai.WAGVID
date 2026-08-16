@@ -119,10 +119,17 @@ def test_csv_preview_is_atomic_and_rejects_duplicates():
 
     valid = preview_gymnast_csv(
         organization,
-        "name,license_number,level,kiga_id\nOne,DK-1,Trin 4,KIGA-1\n",
+        "name,license_number,discipline,level,kiga_id\nOne,DK-1,MAG,Trin 4,KIGA-1\n",
     )
     created = commit_gymnast_import(organization, valid)
     assert [gymnast.license_number for gymnast in created] == ["DK-1"]
+    assert created[0].discipline == Gymnast.Discipline.MAG
+
+    invalid_discipline = preview_gymnast_csv(
+        organization,
+        "name,license_number,discipline,level\nTwo,DK-2,UNKNOWN,Trin 4\n",
+    )
+    assert invalid_discipline.can_commit is False
 
 
 @pytest.mark.django_db
