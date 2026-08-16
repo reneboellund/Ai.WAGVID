@@ -30,6 +30,11 @@ urlpatterns = [
     path("analyses/", views.analyses, name="analyses"),
     path("analyses/<uuid:job_id>/review/", views.analysis_review, name="analysis-review"),
     path(
+        "analyses/<uuid:job_id>/score-review/",
+        views.score_comparison_review,
+        name="score-comparison-review",
+    ),
+    path(
         "analyses/deductions/<uuid:candidate_id>/decision/",
         views.review_decision,
         name="review-decision",
@@ -41,5 +46,10 @@ urlpatterns = [
         name="gymnast-import-commit",
     ),
     path("imports-exports/gymnasts.csv", views.gymnast_export, name="gymnast-export"),
+    path(
+        "imports-exports/reviewed-labels.json",
+        views.reviewed_labels_export,
+        name="reviewed-labels-export",
+    ),
     path("system/status/", views.system_status, name="system-status"),
 ]

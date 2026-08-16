@@ -120,6 +120,42 @@ def test_non_reviewer_cannot_submit_decision(client):
 
 
 @pytest.mark.django_db
+def test_reviewer_can_complete_overall_score_comparison(client):
+    user, organization, job, _ = make_review_case()
+    client.force_login(user)
+    response = client.post(
+        reverse("score-comparison-review", args=[job.id]),
+        {
+            "decision": "corrected-labels",
+            "accepted_d_score": "4.200",
+            "accepted_e_score": "7.800",
+            "accepted_neutral": "0.000",
+            "accepted_final_score": "12.000",
+            "notes": "Synkroniseret replay gennemgået.",
+        },
+    )
+    assert response.status_code == 302
+    job.refresh_from_db()
+    assert job.state == AnalysisJob.State.COMPLETED
+    assert job.result.score_reviews.get().accepted_final_score == Decimal("12.000")
+    assert organization.audit_events.filter(
+        action="analysis.score-comparison-reviewed"
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_coach_cannot_complete_overall_score_comparison(client):
+    user, _, job, _ = make_review_case(role=Membership.Role.COACH)
+    client.force_login(user)
+    response = client.post(
+        reverse("score-comparison-review", args=[job.id]),
+        {"decision": "official-confirmed", "notes": "Not authorised"},
+    )
+    assert response.status_code == 403
+    assert job.result.score_reviews.count() == 0
+
+
+@pytest.mark.django_db
 def test_mag_gymnast_and_apparatus_are_explicit_dimensions():
     organization = Organization.objects.create(name="MAG Club", slug="mag-club")
     level = Level.objects.create(organization=organization, name="Senior")

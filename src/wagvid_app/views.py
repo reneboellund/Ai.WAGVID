@@ -6,9 +6,16 @@ from django.db import DatabaseError
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
-from .forms import GymnastForm, GymnastImportForm, ReviewDecisionForm
+from .forms import (
+    GymnastForm,
+    GymnastImportForm,
+    ReviewDecisionForm,
+    ScoreComparisonReviewForm,
+)
 from .imports import commit_gymnast_import, preview_gymnast_csv
+from .learning_exports import reviewed_score_labels
 from .models import AnalysisJob, DeductionCandidate, ExchangeJob, Membership, ReviewDecision
+from .operations import record_score_comparison_review
 from .runtime import runtime_probes
 from .services import dashboard_status
 
@@ -137,8 +144,51 @@ def analysis_review(request, job_id):
     return render(
         request,
         "wagvid/analysis_review.html",
-        {"organization": organization, "job": job, "result": result, "deductions": deductions},
+        {
+            "organization": organization,
+            "job": job,
+            "result": result,
+            "deductions": deductions,
+            "score_review_form": ScoreComparisonReviewForm(),
+        },
     )
+
+
+@login_required
+def score_comparison_review(request, job_id):
+    organization = active_organization(request)
+    if not organization:
+        return HttpResponseForbidden()
+    job = get_object_or_404(
+        AnalysisJob.objects.select_related("result"), pk=job_id, organization=organization
+    )
+    if request.method != "POST":
+        return redirect("analysis-review", job_id=job.id)
+    form = ScoreComparisonReviewForm(request.POST)
+    if not form.is_valid():
+        messages.error(request, "Den samlede scoreafgørelse er ikke komplet.")
+        return redirect("analysis-review", job_id=job.id)
+    data = form.cleaned_data
+    try:
+        record_score_comparison_review(
+            result_id=job.result.id,
+            reviewer=request.user,
+            decision=data["decision"],
+            accepted_scores={
+                "d_score": data["accepted_d_score"],
+                "e_score": data["accepted_e_score"],
+                "neutral": data["accepted_neutral"],
+                "final_score": data["accepted_final_score"],
+            },
+            notes=data["notes"],
+        )
+    except PermissionError:
+        return HttpResponseForbidden()
+    except (ValueError, AttributeError) as error:
+        messages.error(request, str(error))
+        return redirect("analysis-review", job_id=job.id)
+    messages.success(request, "Scoreafgørelsen er gemt, og analysen er afsluttet.")
+    return redirect("analysis-review", job_id=job.id)
 
 
 @login_required
@@ -272,6 +322,37 @@ def gymnast_export(request):
                 gymnast.kiga_id,
             ]
         )
+    return response
+
+
+@login_required
+def reviewed_labels_export(request):
+    organization = active_organization(request)
+    if not organization:
+        return HttpResponseForbidden()
+    allowed = request.user.wagvid_memberships.filter(
+        organization=organization,
+        active=True,
+        role__in=[
+            Membership.Role.SYSTEM_ADMIN,
+            Membership.Role.ORGANIZATION_ADMIN,
+            Membership.Role.RESEARCHER,
+        ],
+    ).exists()
+    if not allowed:
+        return HttpResponseForbidden()
+    labels = reviewed_score_labels(organization)
+    organization.audit_events.create(
+        actor=request.user,
+        action="research.reviewed-labels-exported",
+        object_type="organization",
+        object_id=str(organization.id),
+        metadata={"label_count": len(labels), "schema": "reviewed-score-label.v1"},
+    )
+    response = JsonResponse(
+        {"schema": "ai.wagvid.reviewed-score-label-set.v1", "labels": labels}
+    )
+    response["Content-Disposition"] = 'attachment; filename="wagvid-reviewed-labels.json"'
     return response
 
 

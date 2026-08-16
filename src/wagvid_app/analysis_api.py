@@ -33,6 +33,18 @@ def _job_payload(job) -> dict:
         "scope": job.scope,
         "rulepack_id": job.rulepack_id,
         "model_profile": job.model_profile,
+        "error_code": job.error_code or None,
+        "attempts": job.attempts,
+        "progress_events": [
+            {
+                "sequence": event.sequence,
+                "stage": event.stage,
+                "progress_percent": event.progress_percent,
+                "message": event.message,
+                "occurred_at": event.occurred_at.isoformat(),
+            }
+            for event in job.progress_events.all()
+        ],
         "result": (
             {
                 "state": result.state,
@@ -77,7 +89,12 @@ def analysis_detail(request: HttpRequest, analysis_id: UUID) -> JsonResponse:
     organization = _active_organization(request)
     if not organization:
         return JsonResponse({"error": "active-organization-required"}, status=403)
-    job = organization.analysis_jobs.select_related("result").filter(pk=analysis_id).first()
+    job = (
+        organization.analysis_jobs.select_related("result")
+        .prefetch_related("progress_events")
+        .filter(pk=analysis_id)
+        .first()
+    )
     if not job:
         return JsonResponse({"error": "analysis-not-found"}, status=404)
     return JsonResponse(_job_payload(job))

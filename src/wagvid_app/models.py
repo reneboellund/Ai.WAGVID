@@ -278,6 +278,41 @@ class AnalysisResult(TimestampedModel):
     frozen_at = models.DateTimeField(null=True, blank=True)
 
 
+class AnalysisProgressEvent(models.Model):
+    """Append-only worker progress used by the UI and operational audit trail."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    analysis_job = models.ForeignKey(
+        AnalysisJob, on_delete=models.CASCADE, related_name="progress_events"
+    )
+    sequence = models.PositiveIntegerField()
+    stage = models.CharField(max_length=80)
+    progress_percent = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(0), MaxValueValidator(100)]
+    )
+    message = models.CharField(max_length=500, blank=True)
+    worker = models.ForeignKey(
+        "WorkerNode", on_delete=models.SET_NULL, null=True, related_name="progress_events"
+    )
+    occurred_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["analysis_job", "sequence"], name="unique_analysis_progress_sequence"
+            )
+        ]
+        ordering = ["sequence"]
+
+    def save(self, *args, **kwargs):
+        if self.pk and AnalysisProgressEvent.objects.filter(pk=self.pk).exists():
+            raise ValueError("Analysis progress events are append-only")
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("Analysis progress events are append-only")
+
+
 class DeductionCandidate(TimestampedModel):
     class ReviewState(models.TextChoices):
         PENDING = "pending", "Afventer"
@@ -331,6 +366,40 @@ class ReviewDecision(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+
+
+class ScoreComparisonReview(models.Model):
+    class Decision(models.TextChoices):
+        OFFICIAL_CONFIRMED = "official-confirmed", "Officielt resultat bekræftet"
+        AI_DISCREPANCY_SUPPORTED = "ai-discrepancy", "AI-afvigelse bør undersøges"
+        CORRECTED_LABELS = "corrected-labels", "Korrigerede læringsetiketter"
+        INCONCLUSIVE = "inconclusive", "Utilstrækkelig evidens"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    result = models.ForeignKey(
+        AnalysisResult, on_delete=models.PROTECT, related_name="score_reviews"
+    )
+    reviewer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    decision = models.CharField(max_length=24, choices=Decision.choices)
+    accepted_d_score = models.DecimalField(max_digits=5, decimal_places=3, null=True, blank=True)
+    accepted_e_score = models.DecimalField(max_digits=5, decimal_places=3, null=True, blank=True)
+    accepted_neutral = models.DecimalField(max_digits=5, decimal_places=3, null=True, blank=True)
+    accepted_final_score = models.DecimalField(
+        max_digits=6, decimal_places=3, null=True, blank=True
+    )
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def save(self, *args, **kwargs):
+        if self.pk and ScoreComparisonReview.objects.filter(pk=self.pk).exists():
+            raise ValueError("Score comparison reviews are append-only")
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("Score comparison reviews are append-only")
 
 
 class ExchangeJob(TimestampedModel):

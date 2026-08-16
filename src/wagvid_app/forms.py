@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import Gymnast, ReviewDecision
+from .models import Gymnast, ReviewDecision, ScoreComparisonReview
 
 
 class GymnastForm(forms.ModelForm):
@@ -40,4 +40,30 @@ class ReviewDecisionForm(forms.ModelForm):
             "accepted_amount"
         ) is None:
             self.add_error("accepted_amount", "Angiv det korrigerede fradrag.")
+        return cleaned
+
+
+class ScoreComparisonReviewForm(forms.ModelForm):
+    class Meta:
+        model = ScoreComparisonReview
+        fields = [
+            "decision",
+            "accepted_d_score",
+            "accepted_e_score",
+            "accepted_neutral",
+            "accepted_final_score",
+            "notes",
+        ]
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("decision") == ScoreComparisonReview.Decision.CORRECTED_LABELS:
+            for field in (
+                "accepted_d_score",
+                "accepted_e_score",
+                "accepted_neutral",
+                "accepted_final_score",
+            ):
+                if cleaned.get(field) is None:
+                    self.add_error(field, "Alle korrigerede scorefelter skal udfyldes.")
         return cleaned
