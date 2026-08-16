@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai.wagvid.local/schemas/benchmark-report-v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "run", "parameters", "overall", "slices"],
+  "properties": {
+    "schema": {"const": "ai.wagvid.benchmark-report.v1"},
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run_id", "dataset_id", "dataset_version", "split", "model_profile", "model_bundle_digest", "software_revision", "rulepack_id", "started_at"],
+      "properties": {
+        "run_id": {"type": "string", "minLength": 1},
+        "dataset_id": {"type": "string", "minLength": 1},
+        "dataset_version": {"type": "string", "minLength": 1},
+        "split": {"enum": ["validation", "test"]},
+        "model_profile": {"type": "string", "minLength": 1},
+        "model_bundle_digest": {"type": "string", "minLength": 1},
+        "software_revision": {"type": "string", "minLength": 1},
+        "rulepack_id": {"type": ["string", "null"]},
+        "started_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "parameters": {
+      "type": "object",
+      "required": ["top_k", "unknown_threshold"],
+      "properties": {
+        "top_k": {"type": "integer", "minimum": 1},
+        "unknown_threshold": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "overall": {"$ref": "#/$defs/metrics"},
+    "slices": {"type": "object", "additionalProperties": {"$ref": "#/$defs/metrics"}}
+  },
+  "$defs": {
+    "rate": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+    "metrics": {
+      "type": "object",
+      "required": ["case_count", "known_count", "unknown_count", "top1_accuracy", "unknown_recall", "false_unknown_rate", "mean_absolute_timing_error_ms", "mean_confidence_error"],
+      "properties": {
+        "case_count": {"type": "integer", "minimum": 1},
+        "known_count": {"type": "integer", "minimum": 0},
+        "unknown_count": {"type": "integer", "minimum": 0},
+        "top1_accuracy": {"$ref": "#/$defs/rate"},
+        "top2_accuracy": {"$ref": "#/$defs/rate"},
+        "top3_accuracy": {"$ref": "#/$defs/rate"},
+        "unknown_recall": {"$ref": "#/$defs/rate"},
+        "false_unknown_rate": {"$ref": "#/$defs/rate"},
+        "mean_absolute_timing_error_ms": {"type": ["number", "null"], "minimum": 0},
+        "mean_confidence_error": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    }
+  }
+}
