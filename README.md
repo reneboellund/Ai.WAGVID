@@ -221,17 +221,19 @@ tests/
 
 ## Proposed technology direction
 
-- Python analysis/inference services;
-- OpenCV / FFmpeg media pipeline;
-- PyTorch-compatible vision/temporal models;
-- 2D + optional multi-view 3D pose abstraction;
-- FastAPI-compatible service boundary;
-- PostgreSQL for structured records/provenance;
-- object storage for original/proxy/evidence clips;
-- browser-based analysis/review UI;
-- containerised CPU/GPU deployment.
+- modular Django application for auth, permissions, models, admin, process views and APIs;
+- Django templates + HTMX PWA for the operational browser UI;
+- native Kotlin Android thin client using CameraX, Room and WorkManager;
+- PostgreSQL for structured records/provenance and organization-scoped access;
+- S3-compatible object storage for original/proxy/evidence media;
+- durable background workers for FFmpeg, analysis, export and maintenance;
+- ASGI WebSockets for authenticated device control; SSE/polling for dashboard progress;
+- OpenCV / FFmpeg and PyTorch-compatible vision/temporal models;
+- containerised on-prem CPU/GPU deployment.
 
-Technology choices remain replaceable behind interfaces until benchmarks justify them.
+See `docs/ADR-0001-APPLICATION-SHELL.md`. Keep analysis/model implementations replaceable behind
+interfaces; begin as a modular monolith and split services only when measured operational needs
+justify the extra complexity.
 
 ## Project phases
 
