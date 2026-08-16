@@ -1,5 +1,7 @@
 import csv
+import hashlib
 import io
+import json
 from dataclasses import dataclass, field
 
 from django.db import transaction
@@ -22,6 +24,23 @@ class GymnastImportPreview:
     @property
     def can_commit(self) -> bool:
         return bool(self.valid_rows) and not self.errors
+
+    @property
+    def digest(self) -> str:
+        value = {
+            "valid_rows": self.valid_rows,
+            "errors": [error.__dict__ for error in self.errors],
+        }
+        encoded = json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
+        return hashlib.sha256(encoded).hexdigest()
+
+    def error_report_csv(self) -> str:
+        output = io.StringIO(newline="")
+        writer = csv.writer(output)
+        writer.writerow(["row", "field", "message"])
+        for error in self.errors:
+            writer.writerow([error.row, error.field, error.message])
+        return output.getvalue()
 
 
 REQUIRED_GYMNAST_COLUMNS = {"name", "license_number", "level"}
@@ -72,7 +91,27 @@ def commit_gymnast_import(
 ) -> list[Gymnast]:
     if not preview.can_commit:
         raise ValueError("Import preview is not commit-ready")
+    # Serialize imports for one organization and repeat validation inside the
+    # transaction. A preview is advisory; database state is authoritative.
+    Organization.objects.select_for_update().get(pk=organization.pk)
+    licenses = [row["license_number"] for row in preview.valid_rows]
+    conflicts = set(
+        Gymnast.objects.filter(
+            organization=organization, license_number__in=licenses
+        ).values_list("license_number", flat=True)
+    )
+    if conflicts:
+        raise ValueError(
+            "Import preview is stale; license numbers now exist: "
+            + ", ".join(sorted(conflicts))
+        )
     levels = {level.name: level for level in organization.levels.filter(active=True)}
+    missing_levels = {row["level"] for row in preview.valid_rows} - set(levels)
+    if missing_levels:
+        raise ValueError(
+            "Import preview is stale; levels are no longer active: "
+            + ", ".join(sorted(missing_levels))
+        )
     created = [
         Gymnast(
             organization=organization,

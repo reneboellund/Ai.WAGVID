@@ -503,6 +503,21 @@ def gymnast_import_commit(request):
 
 
 @login_required
+def gymnast_import_errors(request):
+    organization = active_organization(request)
+    if not organization or not can_manage_master_data(request, organization):
+        return HttpResponseForbidden()
+    csv_text = request.session.get("wagvid_gymnast_import", "")
+    if not csv_text:
+        return JsonResponse({"error": "no-import-preview"}, status=404)
+    preview = preview_gymnast_csv(organization, csv_text)
+    response = HttpResponse(preview.error_report_csv(), content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = 'attachment; filename="wagvid-gymnast-import-errors.csv"'
+    response["X-WAGVID-Preview-Digest"] = preview.digest
+    return response
+
+
+@login_required
 def gymnast_export(request):
     organization = active_organization(request)
     if not organization:

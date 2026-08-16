@@ -92,6 +92,24 @@ def test_admin_can_preview_commit_and_export_gymnasts(client):
 
 
 @pytest.mark.django_db
+def test_admin_can_download_scoped_import_error_report(client):
+    user = User.objects.create_user("error-admin", password="secret")
+    org = Organization.objects.create(name="Error Club", slug="error-club")
+    Membership.objects.create(user=user, organization=org, role=Membership.Role.ORGANIZATION_ADMIN)
+    Level.objects.create(organization=org, name="Trin 3")
+    client.force_login(user)
+    upload = SimpleUploadedFile(
+        "gymnasts.csv", b"name,license_number,level\n,DK-7,Trin 3\n", content_type="text/csv"
+    )
+    preview = client.post(reverse("exchange"), {"csv_file": upload})
+    assert "Download fejlrapport" in preview.content.decode()
+    report = client.get(reverse("gymnast-import-errors"))
+    assert report.status_code == 200
+    assert "Name is required" in report.content.decode()
+    assert len(report["X-WAGVID-Preview-Digest"]) == 64
+
+
+@pytest.mark.django_db
 def test_operator_cannot_import_gymnasts(client):
     user = User.objects.create_user("limited", password="secret")
     org = Organization.objects.create(name="Club", slug="club")

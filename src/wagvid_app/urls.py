@@ -78,5 +78,10 @@ urlpatterns = [
         views.reviewed_labels_export,
         name="reviewed-labels-export",
     ),
+    path(
+        "imports-exports/gymnasts/errors.csv",
+        views.gymnast_import_errors,
+        name="gymnast-import-errors",
+    ),
     path("system/status/", views.system_status, name="system-status"),
 ]

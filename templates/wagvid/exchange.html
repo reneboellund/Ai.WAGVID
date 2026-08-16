@@ -18,7 +18,7 @@
   {% if preview %}
   <section class="card">
     <h2>Preview: {{ preview.valid_rows|length }} gyldige rækker</h2>
-    {% if preview.errors %}<ul class="danger">{% for error in preview.errors %}<li>{{ error }}</li>{% endfor %}</ul>{% endif %}
+    {% if preview.errors %}<ul class="danger">{% for error in preview.errors %}<li>{{ error }}</li>{% endfor %}</ul><p><a href="{% url 'gymnast-import-errors' %}">Download fejlrapport (CSV)</a></p>{% endif %}
     {% if preview.can_commit %}<form method="post" action="{% url 'gymnast-import-commit' %}">{% csrf_token %}<button class="primary">Gennemfør import</button></form>{% endif %}
   </section>
   {% endif %}

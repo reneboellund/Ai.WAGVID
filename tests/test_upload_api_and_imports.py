@@ -113,6 +113,9 @@ def test_csv_preview_is_atomic_and_rejects_duplicates():
         "name,license_number,level\nOne,SAME,Trin 4\nTwo,SAME,Trin 4\n",
     )
     assert invalid.can_commit is False
+    assert invalid.digest == invalid.digest
+    assert "row,field,message" in invalid.error_report_csv()
+    assert "Duplicate license number" in invalid.error_report_csv()
     with pytest.raises(ValueError):
         commit_gymnast_import(organization, invalid)
     assert organization.gymnasts.count() == 0
@@ -130,6 +133,21 @@ def test_csv_preview_is_atomic_and_rejects_duplicates():
         "name,license_number,discipline,level\nTwo,DK-2,UNKNOWN,Trin 4\n",
     )
     assert invalid_discipline.can_commit is False
+
+
+@pytest.mark.django_db
+def test_csv_commit_revalidates_stale_preview_inside_transaction():
+    organization = Organization.objects.create(name="Club", slug="stale-club")
+    level = Level.objects.create(organization=organization, name="Trin 4")
+    preview = preview_gymnast_csv(
+        organization, "name,license_number,level\nOne,DK-STALE,Trin 4\n"
+    )
+    Gymnast.objects.create(
+        organization=organization, display_name="Concurrent", license_number="DK-STALE",
+        level=level,
+    )
+    with pytest.raises(ValueError, match="preview is stale"):
+        commit_gymnast_import(organization, preview)
 
 
 @pytest.mark.django_db
