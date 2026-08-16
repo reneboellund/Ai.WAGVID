@@ -22,6 +22,12 @@ urlpatterns = [
     path("gymnasts/new/", views.gymnast_create, name="gymnast-create"),
     path("devices/", views.devices, name="devices"),
     path("analyses/", views.analyses, name="analyses"),
+    path("analyses/<uuid:job_id>/review/", views.analysis_review, name="analysis-review"),
+    path(
+        "analyses/deductions/<uuid:candidate_id>/decision/",
+        views.review_decision,
+        name="review-decision",
+    ),
     path("imports-exports/", views.exchange, name="exchange"),
     path(
         "imports-exports/gymnasts/commit/",

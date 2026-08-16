@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import Gymnast
+from .models import Gymnast, ReviewDecision
 
 
 class GymnastForm(forms.ModelForm):
@@ -27,3 +27,17 @@ class GymnastImportForm(forms.Form):
         except UnicodeDecodeError as exc:
             raise forms.ValidationError("CSV-filen skal være UTF-8.") from exc
         return upload
+
+
+class ReviewDecisionForm(forms.ModelForm):
+    class Meta:
+        model = ReviewDecision
+        fields = ["decision", "accepted_amount", "notes"]
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("decision") == ReviewDecision.Decision.CORRECT_AI and cleaned.get(
+            "accepted_amount"
+        ) is None:
+            self.add_error("accepted_amount", "Angiv det korrigerede fradrag.")
+        return cleaned

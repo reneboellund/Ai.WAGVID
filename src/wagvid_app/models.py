@@ -2,7 +2,7 @@ import uuid
 
 from django.conf import settings
 from django.contrib.auth.hashers import check_password, make_password
-from django.core.validators import MinValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 
@@ -88,6 +88,58 @@ class Gymnast(TimestampedModel):
         return f"{self.display_name} ({self.license_number})"
 
 
+class Event(TimestampedModel):
+    class Kind(models.TextChoices):
+        COMPETITION = "competition", "Konkurrence"
+        TRAINING = "training", "Træning"
+        TEST = "test", "Test"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="events")
+    name = models.CharField(max_length=240)
+    kind = models.CharField(max_length=20, choices=Kind.choices)
+    starts_at = models.DateTimeField()
+    ends_at = models.DateTimeField(null=True, blank=True)
+    venue = models.CharField(max_length=240, blank=True)
+    external_source = models.CharField(max_length=80, blank=True)
+    external_id = models.CharField(max_length=160, blank=True)
+
+    class Meta:
+        ordering = ["-starts_at"]
+
+
+class Routine(TimestampedModel):
+    class Apparatus(models.TextChoices):
+        VAULT = "VT", "Spring"
+        BARS = "UB", "Forskudt barre"
+        BEAM = "BB", "Bom"
+        FLOOR = "FX", "Gulv"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="routines")
+    event = models.ForeignKey(Event, on_delete=models.PROTECT, related_name="routines")
+    gymnast = models.ForeignKey(Gymnast, on_delete=models.PROTECT, related_name="routines")
+    apparatus = models.CharField(max_length=2, choices=Apparatus.choices)
+    category = models.CharField(max_length=120, blank=True)
+    start_order = models.PositiveIntegerField(null=True, blank=True)
+    rulepack_id = models.CharField(max_length=200)
+    external_id = models.CharField(max_length=160, blank=True)
+    official_d_score = models.DecimalField(max_digits=5, decimal_places=3, null=True, blank=True)
+    official_e_score = models.DecimalField(max_digits=5, decimal_places=3, null=True, blank=True)
+    official_neutral = models.DecimalField(max_digits=5, decimal_places=3, null=True, blank=True)
+    official_final_score = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
+    official_frozen_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["event", "external_id"],
+                condition=~models.Q(external_id=""),
+                name="unique_external_routine_per_event",
+            )
+        ]
+
+
 class Device(TimestampedModel):
     class State(models.TextChoices):
         UNPAIRED = "unpaired", "Ikke parret"
@@ -133,6 +185,9 @@ class MediaAsset(TimestampedModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="media")
     gymnast = models.ForeignKey(Gymnast, on_delete=models.PROTECT, related_name="media")
+    routine = models.ForeignKey(
+        Routine, on_delete=models.SET_NULL, null=True, blank=True, related_name="media"
+    )
     device = models.ForeignKey(
         Device, on_delete=models.SET_NULL, null=True, blank=True, related_name="media"
     )
@@ -184,6 +239,83 @@ class AnalysisJob(TimestampedModel):
         constraints = [
             models.UniqueConstraint(fields=["media", "revision"], name="unique_analysis_revision")
         ]
+
+
+class AnalysisResult(TimestampedModel):
+    class State(models.TextChoices):
+        DRAFT_AI = "draft-ai", "AI-kladde"
+        NEEDS_REVIEW = "needs-review", "Kræver review"
+        HUMAN_CONFIRMED = "human-confirmed", "Menneskeligt godkendt"
+        PANEL_CONFIRMED = "panel-confirmed", "Panelgodkendt"
+        FROZEN = "frozen", "Låst"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    analysis_job = models.OneToOneField(
+        AnalysisJob, on_delete=models.PROTECT, related_name="result"
+    )
+    state = models.CharField(max_length=24, choices=State.choices, default=State.DRAFT_AI)
+    proposed_d_score = models.DecimalField(max_digits=5, decimal_places=3, null=True, blank=True)
+    proposed_e_score = models.DecimalField(max_digits=5, decimal_places=3, null=True, blank=True)
+    proposed_neutral = models.DecimalField(max_digits=5, decimal_places=3, null=True, blank=True)
+    proposed_final_score = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
+    score_ledger = models.JSONField(default=dict)
+    model_run = models.JSONField(default=dict)
+    frozen_at = models.DateTimeField(null=True, blank=True)
+
+
+class DeductionCandidate(TimestampedModel):
+    class ReviewState(models.TextChoices):
+        PENDING = "pending", "Afventer"
+        ACCEPTED = "accepted", "Godkendt"
+        REJECTED = "rejected", "Afvist"
+        CORRECTED = "corrected", "Rettet"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    result = models.ForeignKey(AnalysisResult, on_delete=models.CASCADE, related_name="deductions")
+    criterion = models.CharField(max_length=200)
+    rule_reference = models.CharField(max_length=200)
+    start_ms = models.PositiveIntegerField()
+    end_ms = models.PositiveIntegerField()
+    proposed_amount = models.DecimalField(max_digits=4, decimal_places=3)
+    model_confidence = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        validators=[MinValueValidator(0), MaxValueValidator(1)],
+    )
+    evidence = models.JSONField(default=dict)
+    review_state = models.CharField(
+        max_length=20, choices=ReviewState.choices, default=ReviewState.PENDING
+    )
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(end_ms__gte=models.F("start_ms")),
+                name="deduction_time_range_valid",
+            )
+        ]
+
+
+class ReviewDecision(models.Model):
+    class Decision(models.TextChoices):
+        ACCEPT_AI = "accept-ai", "AI-forslag godkendt"
+        ACCEPT_OFFICIAL = "accept-official", "Officiel bedømmelse godkendt"
+        CORRECT_AI = "correct-ai", "AI rettet"
+        OFFICIAL_ERROR = "official-error", "Mulig officiel dommerfejl"
+        INCONCLUSIVE = "inconclusive", "Utilstrækkelig evidens"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    candidate = models.ForeignKey(
+        DeductionCandidate, on_delete=models.PROTECT, related_name="decisions"
+    )
+    reviewer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    decision = models.CharField(max_length=24, choices=Decision.choices)
+    accepted_amount = models.DecimalField(max_digits=4, decimal_places=3, null=True, blank=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
 
 
 class ExchangeJob(TimestampedModel):

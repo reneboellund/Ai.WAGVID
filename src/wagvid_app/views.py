@@ -4,11 +4,11 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import DatabaseError
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 
-from .forms import GymnastForm, GymnastImportForm
+from .forms import GymnastForm, GymnastImportForm, ReviewDecisionForm
 from .imports import commit_gymnast_import, preview_gymnast_csv
-from .models import ExchangeJob, Membership
+from .models import AnalysisJob, DeductionCandidate, ExchangeJob, Membership, ReviewDecision
 from .runtime import runtime_probes
 from .services import dashboard_status
 
@@ -120,6 +120,76 @@ def analyses(request):
             "jobs": organization.analysis_jobs.select_related("media", "media__gymnast"),
         },
     )
+
+
+@login_required
+def analysis_review(request, job_id):
+    organization = active_organization(request)
+    if not organization:
+        return HttpResponseForbidden()
+    job = get_object_or_404(
+        AnalysisJob.objects.select_related("media__gymnast", "media__routine__event", "result"),
+        pk=job_id,
+        organization=organization,
+    )
+    result = getattr(job, "result", None)
+    deductions = result.deductions.prefetch_related("decisions__reviewer") if result else []
+    return render(
+        request,
+        "wagvid/analysis_review.html",
+        {"organization": organization, "job": job, "result": result, "deductions": deductions},
+    )
+
+
+@login_required
+def review_decision(request, candidate_id):
+    organization = active_organization(request)
+    if not organization:
+        return HttpResponseForbidden()
+    allowed_roles = {
+        Membership.Role.SYSTEM_ADMIN,
+        Membership.Role.ORGANIZATION_ADMIN,
+        Membership.Role.REVIEWER,
+    }
+    membership = request.user.wagvid_memberships.filter(
+        organization=organization, active=True
+    ).first()
+    if not membership or membership.role not in allowed_roles:
+        return HttpResponseForbidden()
+    candidate = get_object_or_404(
+        DeductionCandidate.objects.select_related("result__analysis_job"),
+        pk=candidate_id,
+        result__analysis_job__organization=organization,
+    )
+    if request.method != "POST":
+        return redirect("analysis-review", job_id=candidate.result.analysis_job_id)
+    form = ReviewDecisionForm(request.POST)
+    if not form.is_valid():
+        messages.error(request, "Afgørelsen mangler påkrævede oplysninger.")
+        return redirect("analysis-review", job_id=candidate.result.analysis_job_id)
+    decision = form.save(commit=False)
+    decision.candidate = candidate
+    decision.reviewer = request.user
+    decision.save()
+    state_map = {
+        ReviewDecision.Decision.ACCEPT_AI: DeductionCandidate.ReviewState.ACCEPTED,
+        ReviewDecision.Decision.CORRECT_AI: DeductionCandidate.ReviewState.CORRECTED,
+        ReviewDecision.Decision.ACCEPT_OFFICIAL: DeductionCandidate.ReviewState.REJECTED,
+        ReviewDecision.Decision.OFFICIAL_ERROR: DeductionCandidate.ReviewState.ACCEPTED,
+        ReviewDecision.Decision.INCONCLUSIVE: DeductionCandidate.ReviewState.PENDING,
+    }
+    candidate.review_state = state_map[decision.decision]
+    candidate.save(update_fields=["review_state", "updated_at"])
+    organization.audit_events.create(
+        actor=request.user,
+        action="deduction.reviewed",
+        object_type="review-decision",
+        object_id=str(decision.id),
+        reason=decision.notes,
+        metadata={"candidate_id": str(candidate.id), "decision": decision.decision},
+    )
+    messages.success(request, "Afgørelsen er registreret i reviewhistorikken.")
+    return redirect("analysis-review", job_id=candidate.result.analysis_job_id)
 
 
 @login_required

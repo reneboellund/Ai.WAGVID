@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Review: {{ job.media.gymnast.display_name }}</h1>
+{% if job.media.routine %}<p>{{ job.media.routine.event.name }} · {{ job.media.routine.get_apparatus_display }}</p>{% endif %}
+{% if result %}
+<div class="cards"><div class="card"><h2>AI-forslag</h2><p>D {{ result.proposed_d_score|default:"-" }} · E {{ result.proposed_e_score|default:"-" }} · Final {{ result.proposed_final_score|default:"-" }}</p></div>{% if job.media.routine %}<div class="card"><h2>Officielt resultat</h2><p>D {{ job.media.routine.official_d_score|default:"-" }} · E {{ job.media.routine.official_e_score|default:"-" }} · Final {{ job.media.routine.official_final_score|default:"-" }}</p></div>{% endif %}</div>
+<h2>Fradrag og evidens</h2>
+{% for candidate in deductions %}<section class="card"><h3>{{ candidate.criterion }} · {{ candidate.proposed_amount }}</h3><p>{{ candidate.start_ms }}–{{ candidate.end_ms }} ms · confidence {{ candidate.model_confidence }} · {{ candidate.rule_reference }}</p><p>Status: {{ candidate.get_review_state_display }}</p><details><summary>Evidens</summary><pre>{{ candidate.evidence }}</pre></details><form method="post" action="{% url 'review-decision' candidate.id %}">{% csrf_token %}<select name="decision" required><option value="">Vælg afgørelse</option><option value="accept-ai">Godkend AI</option><option value="accept-official">Godkend officiel bedømmelse</option><option value="correct-ai">Ret AI</option><option value="official-error">Mulig officiel fejl</option><option value="inconclusive">Utilstrækkelig evidens</option></select><input name="accepted_amount" type="number" min="0" step="0.001" placeholder="Korrigeret fradrag"><textarea name="notes" placeholder="Faglig begrundelse"></textarea><button class="primary">Registrér afgørelse</button></form>{% for decision in candidate.decisions.all %}<p>{{ decision.created_at }} · {{ decision.get_decision_display }} · {{ decision.reviewer }}</p>{% endfor %}</section>{% empty %}<p>Ingen fradragskandidater.</p>{% endfor %}
+{% else %}<p>Analysejobbet har endnu intet resultat.</p>{% endif %}
+{% endblock %}
