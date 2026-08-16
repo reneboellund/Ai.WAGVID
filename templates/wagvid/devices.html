@@ -1,0 +1,1 @@
+{% extends "base.html" %}{% block content %}<h1>Android-enheder</h1><div class="cards">{% for device in devices %}<div class="card"><h2>{{ device.name }}</h2><p>{{ device.get_state_display }}</p><p>{{ device.queued_uploads }} i uploadkø</p></div>{% empty %}<p>Ingen enheder parret.</p>{% endfor %}</div>{% endblock %}
