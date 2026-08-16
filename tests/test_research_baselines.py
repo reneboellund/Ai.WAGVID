@@ -33,12 +33,17 @@ def test_usage_is_internal_non_commercial_and_non_redistributive() -> None:
     assert usage["public_dataset_redistribution"] is False
 
 
-def test_unresolved_finegrade_license_blocks_direct_adoption() -> None:
-    finegrade = next(
-        item for item in load_registry()["candidates"] if item["id"] == "finegrade"
-    )
-    assert finegrade["status"] == "research-hold"
-    assert finegrade["license_status"] == "unresolved"
+def test_all_relevant_online_datasets_are_catalogued() -> None:
+    usage = load_registry()["usage_profile"]
+    assert usage["online_dataset_discovery"] == "catalog-all-relevant"
+    assert usage["unresolved_data_handling"] == "controlled-acquisition-quarantine"
+
+
+def test_unresolved_finegrade_and_finegym_are_included_in_quarantine() -> None:
+    entries = {item["id"]: item for item in load_registry()["candidates"]}
+    assert entries["finegrade"]["status"] == "catalogued-rights-unresolved"
+    assert entries["finegym"]["status"] == "catalogued-rights-unresolved"
+    assert entries["finegrade"]["license_status"] == "unresolved"
 
 
 def test_athletepose3d_is_allowed_only_for_internal_research() -> None:
