@@ -1,63 +1,76 @@
 # Implementation readiness review
 
-Date: 2026-08-16
+Date: 2026-08-17
 
-## Ready in the local release branch
+See `docs/CURRENT_STATUS.md` for the compact source-of-truth implementation summary. This document focuses on release gates.
 
-- runnable Django 5.2-compatible application shell and initial migration;
-- authentication and organization membership roles;
-- organization-scoped gymnast, level, device, media, analysis and exchange records;
-- immutable audit-event model;
-- status dashboard, operator page, gymnast create/list, device, analysis, exchange and system views;
-- bootstrap command for first organization, owner membership and starter levels;
-- health and database-readiness endpoints;
-- existing rule, AI-layer, capture, research, schema and UI tests retained.
-- worker leasing, expired-lease recovery, monotonic append-only progress and bounded retries;
-- overall official-versus-AI score review with append-only conclusions and audit history;
+## Ready in the current `main` baseline
+
+- runnable Django 5.2-compatible application shell with organization-scoped authentication and roles;
+- Concept 3 operational UI across dashboard, gymnasts/levels, devices, capture, analyses, exchange, competitions, system status and evidence review;
+- organization-scoped gymnast create/edit/archive/restore and level create/edit/deactivate with append-only audit events;
+- organization-scoped device, media, analysis, competition and exchange records;
+- resumable Android upload API with strict offsets, SHA-256 verification and idempotent finalize;
+- durable analysis-worker leases, expired-lease recovery, append-only progress and bounded retries;
+- health/database readiness endpoints and operational status cards;
+- atomic gymnast CSV preview/import, row-error report and UTF-8 CSV export;
+- short-lived signed immutable-media access with authenticated source-video review and HTTP byte-range seeking;
+- evidence review with millisecond evidence jumps, deduction decisions, overall official-versus-AI score adjudication and append-only history;
 - controlled human-reviewed learning-label export;
-- leakage-safe dataset manifests and deterministic grouped splits;
-- validated model-component catalogue and offline validation CLI.
-- KIGA competition/routine/video/official-result dry-run import and schema-compatible export;
-- rights-gated external media catalogue with immutable official result versions.
+- leakage-safe dataset manifests and deterministic grouped athlete/event/source splits;
+- model-component catalogue, model-neutral analysis contracts and offline validation CLI;
+- KIGA competition/routine/video/official-result no-write preview + atomic import and schema-compatible export;
+- rights-gated external media catalogue with immutable official-result versions;
+- native Android Kotlin/Compose/CameraX/Room/WorkManager project foundation plus backend pairing, heartbeat and command contracts;
+- Wasabi layout/cost/reconciliation/provider foundation behind the storage abstraction;
+- Python 3.11/3.13 repository validation covering Ruff, pytest, source registry and rule-pack manifest.
 
-## Must be completed before an internal alpha
+## Must still be completed before an internal alpha
 
-- PostgreSQL environment settings and production-safe secret configuration;
-- object-storage client and signed media access;
-- external queue transport and continuously running worker process;
-- Android build/emulator/device validation of the implemented CameraX/Room/WorkManager skeleton;
-- foreground-service hardening and real-device validation of authenticated remote recording;
-- browser upload and resumable backend upload endpoint;
-- full gymnast edit/archive/merge and CSV import dry-run;
-- real system probes for object storage, worker queue and backups;
-- organization selector for users belonging to multiple organizations;
-- reviewer inbox filtering, synchronized replay and frame/clip evidence delivery;
-- structured error pages, CSRF/security deployment checks and rate limiting;
-- Docker/on-prem deployment and restore rehearsal.
+- production-safe secrets/configuration workflow and durable credential administration;
+- continuously running external worker/queue deployment and real operational probes;
+- production object-storage connection/admin workflow and persisted storage-routing/retention metadata;
+- Android production UI wiring for pairing, gymnast/capture context, archive/queue/device health and command reconciliation;
+- Android SDK/Gradle plus emulator/physical-device validation, including network-loss recovery;
+- audited gymnast duplicate merge and richer import field mapping/profiles;
+- user invitations, role administration and multi-organization selector;
+- persisted canonical frame timeline/index and exact frame stepping in review;
+- full annotation authoring/revision comparison UX;
+- structured error pages, deployment security checks and rate limiting;
+- Docker/on-prem deployment plus backup/restore rehearsal.
 
-## Must be completed before research evaluation
+## Must still be completed before research evaluation
 
-- dataset acquisition manifests and controlled storage adapters;
-- split/leakage enforcement by gymnast and competition;
-- FFmpeg normalization and immutable source checksums;
-- RTMPose baseline adapter producing the PerceptionBundle contract;
-- benchmark runner and evaluation reports;
-- annotation/evidence export beyond the implemented score-label correction loop;
-- canonical pose adapter interface plus MediaPipe-class baseline and RTMPose/YOLO-class challenger;
-- FineGym/Gym288/OSL label and temporal-dataset adapters with athlete/event split enforcement;
-- annotated proxy renderer and versioned JSON/CSV/REST/CLI analysis exports;
-- separately calibrated AQA challenger channel;
-- MAG rule sources, element catalogues, fixtures and apparatus-specific metric packs.
+Already ready as foundation:
+
+- dataset manifest/governance structures;
+- gymnast/event/source leakage-safe split enforcement;
+- immutable source checksums and media inspection/timeline utilities;
+- model-neutral perception/export/benchmark interfaces;
+- benchmark manifest/report scaffolding and reviewed-label correction loop.
+
+Still required empirically/operationally:
+
+- durable FFmpeg normalization/proxy execution and persisted canonical frame indexing;
+- rights-cleared RTMPose/RTMW benchmark producing real measured results;
+- promotion or rejection of an executable pose/tracker baseline based on those measurements;
+- temporal segmentation/element-recognition benchmark and OOD/confusion evaluation;
+- annotation/evidence export integrated with the authoring workstation;
+- apparatus-specific validation data and deterministic scoring/deduction coverage;
+- calibrated AQA challenger results kept separate from deterministic scoring;
+- MAG rule-source/content expansion where production scope requires it.
+
+No RTMPose/RTMW checkpoint, GPU benchmark or large production inference run has been completed merely because adapters and manifests exist.
 
 ## Must be completed before any external or competition use
 
 - privacy/consent review, retention enforcement and data-subject workflow;
 - threat model, security review, audit export and incident procedure;
-- redundancy, offline/failover rehearsal and capacity/load testing;
-- qualified judge validation and formal rulepack release process;
+- production object-store/worker redundancy, backup/restore and capacity/load testing;
+- qualified judge validation and formal released rule-pack process;
+- validated model cards and benchmark evidence for any promoted inference models;
 - explicit authorization for any changed commercial/external scope.
 
 ## Deferred intentionally
 
-GPU model training, large dataset downloads, full video transcodes and load tests are excluded from
-this preparation run. Their interfaces and release gates must exist before those expensive jobs run.
+GPU model training, large dataset/model downloads, bulk video transcodes, Android release builds and load tests are not run as routine development checks. They require an explicit milestone-specific reason. Development should continue to prefer cheap contract/unit/integration work and one consolidated repository validation at meaningful integration boundaries.
