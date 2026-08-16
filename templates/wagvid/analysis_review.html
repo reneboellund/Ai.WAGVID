@@ -27,7 +27,7 @@
       <span class="status-badge neutral">Timecode <strong data-evidence-time>00:00.000</strong></span>
       <span class="status-badge info" data-evidence-status>Ikke indlæst</span>
     </div>
-    <p><small>Frame-knapperne bruger kun den canonical PTS/DTS-timeline, når et valideret sidecar-manifest findes for præcis denne source SHA-256. Hvis manifestet ikke er klar, forbliver millisekund-navigationen tilgængelig uden at systemet opfinder frame-numre.</small></p>
+    <p><small>Frame-knapperne bruger kun den canonical PTS/DTS-timeline, når et valideret sidecar-manifest findes for præcis denne source SHA-256. Hvis manifestet ikke er klar, forbliver millisekund-navigationen tilgængelig; systemet opfinder ikke frame-numre.</small></p>
   {% else %}
     <div class="empty-state"><span class="empty-visual"><svg><use href="#i-play"/></svg></span><h3>Source-video er ikke tilgængelig som verified stored object</h3><p>Review kan fortsætte på eksisterende evidensmetadata, men originalen kan først afspilles efter færdig ingest og checksum-verifikation.</p></div>
   {% endif %}
