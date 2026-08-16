@@ -3,7 +3,7 @@ package com.boellund.wagvid.capture.camera
 import android.content.Context
 import androidx.camera.view.CameraController
 import androidx.camera.view.LifecycleCameraController
-import androidx.camera.video.AudioConfig
+import androidx.camera.view.video.AudioConfig
 import androidx.camera.video.FileOutputOptions
 import androidx.camera.video.Recording
 import androidx.camera.video.VideoRecordEvent
