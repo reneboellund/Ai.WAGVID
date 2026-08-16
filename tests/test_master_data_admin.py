@@ -63,8 +63,10 @@ def test_archive_and_restore_preserve_gymnast_record(client):
     gymnast.refresh_from_db()
     assert gymnast.archived_at is not None
     assert org.audit_events.filter(action="gymnast.archived", object_id=str(gymnast.id)).exists()
-    assert "Ada Example" not in client.get(reverse("gymnasts")).content.decode()
-    assert "Ada Example" in client.get(reverse("gymnasts-archived")).content.decode()
+    active_page = client.get(reverse("gymnasts")).content.decode()
+    assert "0 profiler" in active_page
+    archived_page = client.get(reverse("gymnasts-archived")).content.decode()
+    assert "Ada Example" in archived_page
 
     restored = client.post(reverse("gymnast-restore", args=[gymnast.id]))
     assert restored.status_code == 302

@@ -2,7 +2,7 @@
 {% block title %}KIGA import-preview · Ai.WAGVID{% endblock %}
 {% block breadcrumb %}Import/eksport / KIGA preview{% endblock %}
 {% block content %}
-<section class="page-head"><div><p class="eyebrow">No-write validation</p><h1>KIGA import-<span class="text-gradient">preview</span></h1><p>Payloaden er valideret og planlagt, men der er endnu ikke skrevet data. Gennemgå handlingerne før den atomiske commit.</p></div><div class="page-actions"><a class="button" href="{% url 'exchange' %}">Annullér og gå tilbage</a></div></section>
+<section class="page-head"><div><p class="eyebrow">No-write validation</p><h1>KIGA import-<span class="text-gradient">preview</span></h1><p><strong>Ingen data er skrevet endnu.</strong> Payloaden er valideret og planlagt; gennemgå handlingerne før den atomiske commit.</p></div><div class="page-actions"><a class="button" href="{% url 'exchange' %}">Annullér og gå tilbage</a></div></section>
 <section class="surface surface-pad">
   <header class="section-head"><div><h2>Planlagte handlinger</h2><p>Deterministisk preview fra `competition-video-v1`-importen</p></div><span class="status-badge warning">Ingen mutation endnu</span></header>
   <div class="activity-list">{% for action in preview.actions %}<div class="activity-item"><span class="activity-icon" style="--accent:var(--cyan)"><svg><use href="#i-check"/></svg></span><span class="activity-copy"><strong>Planlagt ændring</strong><small>{{ action }}</small></span></div>{% empty %}<div class="empty-state"><h3>Ingen ændringer nødvendige</h3><p>Payloaden giver ingen nye handlinger i den aktuelle organisation.</p></div>{% endfor %}</div>
