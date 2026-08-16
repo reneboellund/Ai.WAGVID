@@ -6,20 +6,28 @@ Ai.WAGVID is currently an internal, non-commercial research and test tool. It is
 service, competition decision system or commercial product. A future change of scope requires a
 new legal, privacy and dataset-license review before existing data or trained artifacts are reused.
 
-## Admission rule
+## Discovery and inclusion rule
 
-A research dataset may be used only when its recorded terms explicitly permit the intended internal
-non-commercial research use. Public availability, a paper citation or a downloadable archive is not
-permission by itself. Sources with unresolved terms remain on research hold.
+Every relevant research dataset that is discoverable online is included in Ai.WAGVID's research
+catalog, even when its license or source-video terms cannot yet be validated. Inclusion means that
+the source, claimed contents, research relevance and access path are recorded; it does not claim
+ownership or permission.
 
-Before ingestion, record:
+A catalogued source with unresolved terms is placed in a controlled acquisition quarantine. Its
+metadata, documentation, structure and integrity information may be inspected. Raw media must not
+be redistributed or committed to Git, and it must not enter routine model training until a named
+responsible researcher records the lawful basis and approves that exact use. This preserves every
+research lead without silently treating public availability as a license.
+
+Before acquisition, record:
 
 - dataset and version, source URL, access date and responsible researcher;
-- license/terms snapshot and the exact permitted purpose;
+- license/terms snapshot, or an explicit `unresolved` marker and review ticket;
 - source-video and annotation provenance where separately governed;
 - athlete/competition identifiers needed for leakage-safe splits;
 - integrity hashes, retention period and deletion/withdrawal procedure;
-- whether minors or other sensitive personal data are present.
+- whether minors or other sensitive personal data are present;
+- quarantine location and the decision that releases or rejects the dataset.
 
 ## Storage and publication boundary
 
