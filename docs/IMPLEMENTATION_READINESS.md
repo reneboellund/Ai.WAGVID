@@ -17,6 +17,8 @@ Date: 2026-08-16
 - controlled human-reviewed learning-label export;
 - leakage-safe dataset manifests and deterministic grouped splits;
 - validated model-component catalogue and offline validation CLI.
+- KIGA competition/routine/video/official-result dry-run import and schema-compatible export;
+- rights-gated external media catalogue with immutable official result versions.
 
 ## Must be completed before an internal alpha
 

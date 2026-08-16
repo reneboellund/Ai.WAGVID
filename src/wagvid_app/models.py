@@ -106,6 +106,13 @@ class Event(TimestampedModel):
     starts_at = models.DateTimeField()
     ends_at = models.DateTimeField(null=True, blank=True)
     venue = models.CharField(max_length=240, blank=True)
+    timezone_name = models.CharField(max_length=80, default="Europe/Copenhagen")
+    city = models.CharField(max_length=160, blank=True)
+    country_code = models.CharField(max_length=2, blank=True)
+    organizer = models.CharField(max_length=200, blank=True)
+    federation = models.CharField(max_length=200, blank=True)
+    competition_level = models.CharField(max_length=120, blank=True)
+    rule_profile = models.CharField(max_length=200, blank=True)
     external_source = models.CharField(max_length=80, blank=True)
     external_id = models.CharField(max_length=160, blank=True)
 
@@ -130,6 +137,10 @@ class Routine(TimestampedModel):
     gymnast = models.ForeignKey(Gymnast, on_delete=models.PROTECT, related_name="routines")
     apparatus = models.CharField(max_length=2, choices=Apparatus.choices)
     category = models.CharField(max_length=120, blank=True)
+    age_category = models.CharField(max_length=120, blank=True)
+    round_name = models.CharField(max_length=120, blank=True)
+    rotation = models.PositiveIntegerField(null=True, blank=True)
+    performed_at = models.DateTimeField(null=True, blank=True)
     start_order = models.PositiveIntegerField(null=True, blank=True)
     rulepack_id = models.CharField(max_length=200)
     external_id = models.CharField(max_length=160, blank=True)
@@ -147,6 +158,91 @@ class Routine(TimestampedModel):
                 name="unique_external_routine_per_event",
             )
         ]
+
+
+class ExternalMediaReference(TimestampedModel):
+    class State(models.TextChoices):
+        DISCOVERED = "discovered", "Fundet"
+        READY = "ready", "Klar til hentning"
+        IMPORTED = "imported", "Importeret"
+        BLOCKED = "blocked", "Blokeret"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="external_media_references"
+    )
+    routine = models.ForeignKey(
+        Routine, on_delete=models.CASCADE, related_name="external_media_references"
+    )
+    provider = models.CharField(max_length=80, default="KIGA")
+    external_media_id = models.CharField(max_length=200)
+    download_uri = models.URLField(max_length=1000)
+    sha256 = models.CharField(max_length=64, db_index=True)
+    captured_at = models.DateTimeField()
+    content_type = models.CharField(max_length=120)
+    size_bytes = models.BigIntegerField(null=True, blank=True)
+    duration_ms = models.PositiveIntegerField(null=True, blank=True)
+    camera_id = models.CharField(max_length=120, blank=True)
+    view = models.CharField(max_length=120, blank=True)
+    download_allowed = models.BooleanField()
+    analysis_allowed = models.BooleanField()
+    training_allowed = models.BooleanField()
+    retention_until = models.DateField(null=True, blank=True)
+    consent_reference = models.CharField(max_length=240, blank=True)
+    access_policy = models.CharField(max_length=240, blank=True)
+    state = models.CharField(max_length=20, choices=State.choices, default=State.DISCOVERED)
+    media_asset = models.ForeignKey(
+        "MediaAsset", on_delete=models.SET_NULL, null=True, blank=True, related_name="external_sources"
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "provider", "external_media_id"],
+                name="unique_external_media_per_provider",
+            )
+        ]
+
+
+class OfficialResultSnapshot(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    routine = models.ForeignKey(Routine, on_delete=models.PROTECT, related_name="official_versions")
+    provider = models.CharField(max_length=80)
+    source = models.CharField(max_length=240)
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ("provisional", "Foreløbig"),
+            ("official", "Officiel"),
+            ("corrected", "Korrigeret"),
+            ("withdrawn", "Tilbagetrukket"),
+        ],
+    )
+    result_version = models.CharField(max_length=120)
+    d_score = models.DecimalField(max_digits=5, decimal_places=3, null=True, blank=True)
+    e_score = models.DecimalField(max_digits=5, decimal_places=3, null=True, blank=True)
+    artistry = models.DecimalField(max_digits=5, decimal_places=3, null=True, blank=True)
+    neutral = models.DecimalField(max_digits=5, decimal_places=3, null=True, blank=True)
+    final_score = models.DecimalField(max_digits=6, decimal_places=3)
+    source_captured_at = models.DateTimeField()
+    imported_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["routine", "provider", "result_version"],
+                name="unique_official_result_version",
+            )
+        ]
+        ordering = ["-source_captured_at"]
+
+    def save(self, *args, **kwargs):
+        if self.pk and OfficialResultSnapshot.objects.filter(pk=self.pk).exists():
+            raise ValueError("Official result snapshots are append-only")
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("Official result snapshots are append-only")
 
 
 class Device(TimestampedModel):

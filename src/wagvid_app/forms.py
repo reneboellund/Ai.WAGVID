@@ -29,6 +29,21 @@ class GymnastImportForm(forms.Form):
         return upload
 
 
+class KigaImportForm(forms.Form):
+    json_file = forms.FileField(label="KIGA competition-video JSON")
+
+    def clean_json_file(self):
+        upload = self.cleaned_data["json_file"]
+        if upload.size > 5 * 1024 * 1024:
+            raise forms.ValidationError("KIGA JSON-filen må højst være 5 MB.")
+        try:
+            upload.seek(0)
+            upload.decoded_text = upload.read().decode("utf-8-sig")
+        except UnicodeDecodeError as exc:
+            raise forms.ValidationError("KIGA JSON-filen skal være UTF-8.") from exc
+        return upload
+
+
 class ReviewDecisionForm(forms.ModelForm):
     class Meta:
         model = ReviewDecision

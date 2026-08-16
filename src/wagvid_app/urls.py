@@ -47,6 +47,12 @@ urlpatterns = [
     path("gymnasts/new/", views.gymnast_create, name="gymnast-create"),
     path("devices/", views.devices, name="devices"),
     path("analyses/", views.analyses, name="analyses"),
+    path("competitions/", views.competitions, name="competitions"),
+    path(
+        "competitions/routines/<uuid:routine_id>/kiga.json",
+        views.kiga_routine_export,
+        name="kiga-routine-export",
+    ),
     path("analyses/<uuid:job_id>/review/", views.analysis_review, name="analysis-review"),
     path(
         "analyses/<uuid:job_id>/score-review/",
@@ -59,6 +65,8 @@ urlpatterns = [
         name="review-decision",
     ),
     path("imports-exports/", views.exchange, name="exchange"),
+    path("imports-exports/kiga/preview/", views.kiga_import_preview, name="kiga-import-preview"),
+    path("imports-exports/kiga/commit/", views.kiga_import_commit, name="kiga-import-commit"),
     path(
         "imports-exports/gymnasts/commit/",
         views.gymnast_import_commit,

@@ -10,6 +10,11 @@
       <form method="post" enctype="multipart/form-data">{% csrf_token %}{{ form.as_p }}<button class="primary">Kontrollér import</button></form>
     {% else %}<p>Kun administratorer kan importere.</p>{% endif %}
   </section>
+  <section class="card">
+    <h2>KIGA konkurrence/video</h2>
+    <p>Validerer metadata, rettigheder, gymnastmapping og officielle resultater før commit. Video downloades ikke under import.</p>
+    {% if can_manage %}<form method="post" enctype="multipart/form-data" action="{% url 'kiga-import-preview' %}">{% csrf_token %}{{ kiga_form.as_p }}<button class="primary">Kontrollér KIGA-import</button></form>{% else %}<p>Kun administratorer kan importere.</p>{% endif %}
+  </section>
   {% if preview %}
   <section class="card">
     <h2>Preview: {{ preview.valid_rows|length }} gyldige rækker</h2>

@@ -12,15 +12,19 @@ from .device_operations import DeviceOperationError, create_pairing_offer, enque
 from .forms import (
     GymnastForm,
     GymnastImportForm,
+    KigaImportForm,
     ReviewDecisionForm,
     ScoreComparisonReviewForm,
 )
 from .imports import commit_gymnast_import, preview_gymnast_csv
+from .kiga import commit_kiga_record, preview_kiga_record
+from .kiga_exports import export_kiga_routine
 from .learning_exports import reviewed_score_labels
 from .models import (
     AnalysisJob,
     DeductionCandidate,
     Device,
+    Event,
     ExchangeJob,
     MediaAsset,
     Membership,
@@ -351,10 +355,118 @@ def exchange(request):
             "organization": organization,
             "jobs": organization.exchange_jobs.all(),
             "form": form,
+            "kiga_form": KigaImportForm(),
             "preview": preview,
             "can_manage": can_manage_master_data(request, organization),
         },
     )
+
+
+@login_required
+def kiga_import_preview(request):
+    organization = active_organization(request)
+    if not organization or not can_manage_master_data(request, organization):
+        return HttpResponseForbidden()
+    if request.method != "POST":
+        return redirect("exchange")
+    form = KigaImportForm(request.POST, request.FILES)
+    if not form.is_valid():
+        messages.error(request, "KIGA-filen kunne ikke læses.")
+        return redirect("exchange")
+    content = form.cleaned_data["json_file"].decoded_text
+    preview = preview_kiga_record(organization, content)
+    if not preview.valid:
+        messages.error(request, "KIGA-importen har fejl: " + "; ".join(preview.errors))
+        return redirect("exchange")
+    request.session["wagvid_kiga_import"] = content
+    return render(
+        request,
+        "wagvid/kiga_preview.html",
+        {"organization": organization, "preview": preview},
+    )
+
+
+@login_required
+def kiga_import_commit(request):
+    organization = active_organization(request)
+    if not organization or not can_manage_master_data(request, organization):
+        return HttpResponseForbidden()
+    if request.method != "POST":
+        return redirect("exchange")
+    content = request.session.pop("wagvid_kiga_import", "")
+    preview = preview_kiga_record(organization, content)
+    if not preview.valid:
+        messages.error(request, "KIGA-importen skal valideres igen.")
+        return redirect("exchange")
+    event, routine, references, snapshot = commit_kiga_record(organization, preview)
+    job = ExchangeJob.objects.create(
+        organization=organization,
+        direction=ExchangeJob.Direction.IMPORT,
+        kind="kiga-competition-video",
+        state=ExchangeJob.State.COMPLETED,
+        schema_version="competition-video-v1",
+        result_summary={
+            "event_id": str(event.id),
+            "routine_id": str(routine.id),
+            "media_references": len(references),
+            "official_result_version": snapshot.result_version,
+        },
+        requested_by=request.user,
+    )
+    organization.audit_events.create(
+        actor=request.user,
+        action="kiga.competition-video-imported",
+        object_type="exchange-job",
+        object_id=str(job.id),
+        metadata=job.result_summary,
+    )
+    messages.success(request, "KIGA-konkurrence, video og officielt resultat er importeret.")
+    return redirect("competitions")
+
+
+@login_required
+def competitions(request):
+    organization = active_organization(request)
+    if not organization:
+        return HttpResponseForbidden()
+    events = (
+        organization.events.filter(kind=Event.Kind.COMPETITION)
+        .prefetch_related("routines__gymnast", "routines__external_media_references")
+        .order_by("-starts_at")
+    )
+    return render(
+        request,
+        "wagvid/competitions.html",
+        {"organization": organization, "events": events},
+    )
+
+
+@login_required
+def kiga_routine_export(request, routine_id):
+    organization = active_organization(request)
+    if not organization:
+        return HttpResponseForbidden()
+    routine = get_object_or_404(
+        Routine.objects.select_related("event", "gymnast").prefetch_related(
+            "external_media_references", "official_versions"
+        ),
+        pk=routine_id,
+        organization=organization,
+    )
+    try:
+        payload = export_kiga_routine(routine)
+    except ValueError as error:
+        return JsonResponse({"error": "kiga-export-not-ready", "detail": str(error)}, status=409)
+    organization.audit_events.create(
+        actor=request.user,
+        action="kiga.routine-exported",
+        object_type="routine",
+        object_id=str(routine.id),
+        metadata={"schema": payload["schema"]},
+    )
+    response = JsonResponse(payload)
+    response["Content-Disposition"] = f'attachment; filename="wagvid-kiga-{routine.id}.json"'
+    return response
 
 
 @login_required
