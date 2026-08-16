@@ -1,0 +1,85 @@
+schema_version: 1.0.0
+last_verified_at: "2026-08-16"
+candidates:
+  - id: finegrade
+    category: temporal-aqa
+    priority: 1
+    status: research-hold
+    paper_url: https://openaccess.thecvf.com/content/CVPR2026F/html/Li_FineGrade_A_Rule-Consistent_Scoring_Framework_for_Fine-Grained_Action_Quality_Assessment_CVPRF_2026_paper.html
+    code_url: https://github.com/yicong1/FineGym-AQA
+    license_status: unresolved
+    artifact_status: annotations-visible-code-not-confirmed
+    intended_use: baseline
+    blockers:
+      - Verify dataset and video reuse rights.
+      - Confirm whether training/evaluation code is released under an explicit license.
+      - Audit identity and official-score leakage before use.
+  - id: finegym
+    category: gymnastics-taxonomy
+    priority: 1
+    status: research-hold
+    paper_url: https://openaccess.thecvf.com/content_CVPR_2020/html/Shao_FineGym_A_Hierarchical_Video_Dataset_for_Fine-Grained_Action_Understanding_CVPR_2020_paper.html
+    code_url: https://github.com/open-mmlab/mmaction2/tree/main/tools/data/gym
+    license_status: dataset-rights-review-required
+    artifact_status: preprocessing-available
+    intended_use: taxonomy-and-benchmark
+    blockers:
+      - Verify annotation and source-video rights for Ai.WAGVID use.
+      - Preserve athlete and competition split boundaries.
+  - id: mmpose-rtmpose
+    category: pose-2d-3d
+    priority: 1
+    status: approved-for-spike
+    paper_url: https://arxiv.org/abs/2303.07399
+    code_url: https://github.com/open-mmlab/mmpose
+    license_status: Apache-2.0
+    artifact_status: code-and-model-zoo-available
+    intended_use: first-pose-baseline
+    blockers:
+      - Audit licenses and provenance of each selected checkpoint and training dataset.
+  - id: athletepose3d
+    category: sports-pose-dataset
+    priority: 2
+    status: research-only
+    paper_url: https://openaccess.thecvf.com/content/CVPR2025W/CVSPORTS/papers/Yeung_AthletePose3D_A_Benchmark_Dataset_for_3D_Human_Pose_Estimation_and_CVPRW_2025_paper.pdf
+    code_url: https://github.com/calvinyeungck/AthletePose3D
+    license_status: non-commercial-research-only
+    artifact_status: dataset-code-checkpoints-available
+    intended_use: domain-gap-benchmark
+    blockers:
+      - Do not use for commercial/product training without separate permission.
+      - Use corrected post-erratum artifacts only.
+  - id: kasportsformer
+    category: sports-pose-3d
+    priority: 2
+    status: evaluate
+    paper_url: https://arxiv.org/abs/2507.20763
+    code_url: https://github.com/jw0r1n/KASportsFormer
+    license_status: verify-before-use
+    artifact_status: authors-report-code-and-models
+    intended_use: 3d-pose-challenger
+    blockers:
+      - Verify repository license and checkpoint/data terms.
+      - Reproduce results on WAG-specific validation clips.
+  - id: motionbert
+    category: motion-representation-3d
+    priority: 2
+    status: evaluate
+    paper_url: https://openaccess.thecvf.com/content/ICCV2023/html/Zhu_MotionBERT_A_Unified_Perspective_on_Learning_Human_Motion_Representations_ICCV_2023_paper.html
+    code_url: https://github.com/Walter0807/MotionBERT
+    license_status: Apache-2.0
+    artifact_status: code-and-checkpoints-available
+    intended_use: temporal-3d-baseline
+    blockers:
+      - Validate single-gymnast tracking assumptions and WAG domain error.
+  - id: hierarchical-neurosymbolic-aqa
+    category: explainable-aqa
+    priority: 1
+    status: architecture-reference
+    paper_url: https://openaccess.thecvf.com/content/CVPR2024W/CVsports/html/Okamoto_Hierarchical_NeuroSymbolic_Approach_for_Comprehensive_and_Explainable_Action_Quality_Assessment_CVPRW_2024_paper.html
+    code_url: null
+    license_status: paper-reference-only
+    artifact_status: diving-specific-method
+    intended_use: architecture-comparison
+    blockers:
+      - Translate concepts to WAG rules; do not assume diving microprograms transfer directly.
