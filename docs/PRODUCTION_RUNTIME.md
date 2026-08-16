@@ -29,6 +29,37 @@ cookies, HTTPS redirect and HSTS.
 adapter: safe keys, temporary writes, size and SHA-256 verification, then atomic publication. Video
 bytes never enter PostgreSQL. Original retention remains separate from upload completion.
 
+### Wasabi native integration
+
+Issue #47 defines first-class Wasabi provisioning. `wagvid_app.wasabi` implements
+the deterministic desired state and cost policy; `wagvid_app.wasabi_provider`
+implements read-only S3 capability preflight and explicit approval-gated apply.
+Boto3 is a lazy `wasabi` optional dependency and is never imported by the normal
+web process unless a provider client is requested.
+
+The default bounded layout uses sharded `originals` and `derivatives` pools plus
+single `metadata`, `results` and optional `audit` buckets. It avoids per-athlete or
+per-event bucket proliferation. Organization/content keys are assigned with
+rendezvous hashing; routing maps must be versioned when pool membership changes.
+Generated names are DNS-safe, contain a non-secret account fingerprint, and stay
+within 63 characters. The configured Wasabi region selects its official endpoint;
+unknown regions require an explicit endpoint override.
+
+Preflight lists and inspects only desired buckets, redacts the access key to its
+last four characters, and plans changes without mutation. Public buckets, region
+conflicts, missing inspection permissions or changed plan digests block apply.
+Apply accepts only the reviewed plan digest plus the phrase
+`CREATE PRIVATE WASABI BUCKETS` in an unexpired admin approval. Runtime credentials
+and provisioning credentials must be separate in production and secrets must live
+outside the application database/logs.
+
+Pay-Go configuration fixes the normal minimum storage duration at 90 days; RCS is
+represented explicitly as 30 days. Each object must record `billable_until`.
+Deletion previews calculate remaining GB-days and physical deletion must respect
+evidence retention, consent, legal hold and object lock. Transient frames/cache do
+not belong in this storage tier. Setup defaults to dry-run; unit tests use a fake S3
+control client and never create cloud resources.
+
 ## Upload sessions
 
 `UploadSession` persists capture ID, organization-scoped idempotency key, expected size/checksum,
