@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/reneboellund/Ai.WAGVID/schemas/ui-route-registry-v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "application", "shell", "screens"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "application": {"const": "ai-wagvid-web"},
+    "shell": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["implementation", "home"],
+      "properties": {
+        "implementation": {"const": "django-templates-htmx-pwa"},
+        "home": {"type": "string", "minLength": 1}
+      }
+    },
+    "screens": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "area", "path", "roles", "actions"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+          "area": {"type": "string", "minLength": 1},
+          "path": {"type": "string", "pattern": "^/"},
+          "roles": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {"enum": ["system-admin", "organization-admin", "operator", "coach", "reviewer", "researcher", "viewer"]}
+          },
+          "actions": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"}
+          }
+        }
+      }
+    }
+  }
+}
