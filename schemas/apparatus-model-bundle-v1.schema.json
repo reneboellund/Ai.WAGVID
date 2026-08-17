@@ -1,0 +1,25 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://github.com/reneboellund/Ai.WAGVID/schemas/apparatus-model-bundle-v1.schema.json",
+  "title":"Ai.WAGVID apparatus model bundle v1",
+  "type":"object",
+  "additionalProperties":false,
+  "required":["schema","model_bundle_id","apparatus","adapter_id","adapter_version","checkpoint_sha256","config_sha256","label_map_sha256","training_dataset_manifest_sha256","training_rights_ref","framework","framework_version","created_at","model_bundle_digest"],
+  "properties":{
+    "schema":{"const":"ai.wagvid.apparatus-model-bundle.v1"},
+    "model_bundle_id":{"type":"string","minLength":1},
+    "apparatus":{"enum":["VT","UB","BB","FX"]},
+    "adapter_id":{"type":"string","minLength":1},
+    "adapter_version":{"type":"string","minLength":1},
+    "checkpoint_sha256":{"$ref":"#/$defs/sha"},
+    "config_sha256":{"$ref":"#/$defs/sha"},
+    "label_map_sha256":{"$ref":"#/$defs/sha"},
+    "training_dataset_manifest_sha256":{"$ref":"#/$defs/sha"},
+    "training_rights_ref":{"type":"string","minLength":1},
+    "framework":{"type":"string","minLength":1},
+    "framework_version":{"type":"string","minLength":1},
+    "created_at":{"type":"string","format":"date-time"},
+    "model_bundle_digest":{"$ref":"#/$defs/sha"}
+  },
+  "$defs":{"sha":{"type":"string","pattern":"^[a-f0-9]{64}$"}}
+}
