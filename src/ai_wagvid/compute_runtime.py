@@ -7,7 +7,7 @@ job scheduling independent of CUDA/ROCm/OpenVINO/AWS/Azure/GCP APIs.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import StrEnum
 from typing import Iterable
 
@@ -132,7 +132,9 @@ def _compatible(
         local = requirement.storage_locality in worker.storage_locality
         if requirement.require_storage_locality and not local:
             return False, "storage-locality-required"
-    if requirement.minimum_vram_mb:
+    # VRAM is a GPU resource. Explicit CPU fallback remains valid even when the GPU
+    # execution contract carries a non-zero VRAM floor.
+    if requirement.minimum_vram_mb and device.is_gpu:
         if device.total_vram_mb is None or device.total_vram_mb < requirement.minimum_vram_mb:
             return False, "insufficient-vram"
         if device.free_vram_mb is not None and device.free_vram_mb < requirement.minimum_vram_mb:

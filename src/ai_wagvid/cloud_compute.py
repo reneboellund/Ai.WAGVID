@@ -88,6 +88,16 @@ def _sku_allowed(offering: CloudGpuOffering, policy: CloudComputePolicy) -> bool
     return not prefixes or offering.sku.startswith(prefixes)
 
 
+def _provider_rank(provider: CloudProvider, preferred: tuple[str, ...]) -> int:
+    if preferred:
+        try:
+            return preferred.index(provider.value)
+        except ValueError:
+            return len(preferred) + 1
+    # Stable default only when the job/admin policy does not express a preference.
+    return (CloudProvider.AWS, CloudProvider.AZURE, CloudProvider.GCP).index(provider)
+
+
 def choose_cloud_placement(
     offerings: Iterable[CloudGpuOffering],
     requirement: ExecutionRequirement,
@@ -97,7 +107,6 @@ def choose_cloud_placement(
 ) -> CloudPlacementDecision:
     candidates: list[CloudPlacement] = []
     rejected: list[tuple[str, str]] = []
-    provider_order = [CloudProvider.AWS, CloudProvider.AZURE, CloudProvider.GCP]
 
     for offering in offerings:
         identity = f"{offering.provider.value}:{offering.region}:{offering.sku}"
@@ -145,7 +154,7 @@ def choose_cloud_placement(
         locality_penalty = 0
         if requirement.storage_locality:
             locality_penalty = int(requirement.storage_locality not in offering.storage_locality)
-        provider_rank = provider_order.index(offering.provider)
+        provider_rank = _provider_rank(offering.provider, requirement.preferred_providers)
         cost_rank = effective_cost if effective_cost is not None else float("inf")
         score = (
             locality_penalty,
