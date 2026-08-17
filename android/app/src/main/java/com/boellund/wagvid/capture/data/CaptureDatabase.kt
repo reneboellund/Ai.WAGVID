@@ -84,10 +84,10 @@ interface CaptureDao {
     @Query("SELECT * FROM captures WHERE captureId = :captureId")
     suspend fun capture(captureId: String): CaptureEntity?
 
-    @Query("SELECT COUNT(*) FROM upload_queue WHERE state != 'uploaded'")
+    @Query("SELECT COUNT(*) FROM upload_queue WHERE state IN ('queued','retry-wait','uploading')")
     fun queuedCount(): Flow<Int>
 
-    @Query("SELECT COUNT(*) FROM upload_queue WHERE state != 'uploaded'")
+    @Query("SELECT COUNT(*) FROM upload_queue WHERE state IN ('queued','retry-wait','uploading')")
     suspend fun queuedCountSnapshot(): Int
 }
 
