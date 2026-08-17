@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/reneboellund/Ai.WAGVID/schemas/kiga-notification-v1.schema.json",
+  "title": "Ai.WAGVID KIGA notification v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "notification_id", "idempotency_key", "event_type", "destination_ref",
+    "export_id", "export_digest", "analysis_schema", "review_state", "disclosure", "created_at"
+  ],
+  "properties": {
+    "schema": {"const": "ai.wagvid.kiga-notification.v1"},
+    "notification_id": {"type": "string", "pattern": "^kiga-notification:"},
+    "idempotency_key": {"$ref": "#/$defs/sha256"},
+    "event_type": {"type": "string", "minLength": 1},
+    "destination_ref": {"type": "string", "minLength": 1},
+    "export_id": {"type": "string", "pattern": "^kiga-export:"},
+    "export_digest": {"$ref": "#/$defs/sha256"},
+    "analysis_schema": {"type": "string", "pattern": "^[A-Za-z0-9._-]+-v[1-9][0-9]*$"},
+    "review_state": {"enum": ["draft", "needs-review", "reviewed"]},
+    "disclosure": {"enum": ["provisional", "confirmed"]},
+    "created_at": {"type": "string", "format": "date-time"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"review_state": {"const": "reviewed"}}, "required": ["review_state"]},
+      "then": {"properties": {"disclosure": {"const": "confirmed"}}},
+      "else": {"properties": {"disclosure": {"const": "provisional"}}}
+    }
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}
