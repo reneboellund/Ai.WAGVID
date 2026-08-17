@@ -41,6 +41,17 @@ data class UploadQueueEntity(
     val nextAttemptAtEpochMs: Long = 0,
 )
 
+data class CaptureArchiveRow(
+    val captureId: String,
+    val gymnastName: String,
+    val kind: String,
+    val recordedAtEpochMs: Long,
+    val sizeBytes: Long,
+    val uploadState: String?,
+    val uploadedBytes: Long?,
+    val lastError: String?,
+)
+
 @Dao
 interface CaptureDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
@@ -53,6 +64,14 @@ interface CaptureDao {
 
     @Query("SELECT * FROM captures ORDER BY recordedAtEpochMs DESC")
     fun archive(): Flow<List<CaptureEntity>>
+
+    @Query(
+        "SELECT c.captureId, c.gymnastName, c.kind, c.recordedAtEpochMs, c.sizeBytes, " +
+            "q.state AS uploadState, q.uploadedBytes AS uploadedBytes, q.lastError AS lastError " +
+            "FROM captures c LEFT JOIN upload_queue q ON q.captureId = c.captureId " +
+            "ORDER BY c.recordedAtEpochMs DESC LIMIT :limit",
+    )
+    fun archiveRows(limit: Int = 30): Flow<List<CaptureArchiveRow>>
 
     @Query("SELECT * FROM upload_queue WHERE state IN ('queued','retry-wait','uploading') ORDER BY nextAttemptAtEpochMs, captureId LIMIT 1")
     suspend fun nextUpload(): UploadQueueEntity?
@@ -67,7 +86,7 @@ interface CaptureDao {
     suspend fun queuedCountSnapshot(): Int
 }
 
-@Database(entities = [CaptureEntity::class, UploadQueueEntity::class], version = 1, exportSchema = true)
+@Database(entities = [CaptureEntity::class, UploadQueueEntity::class], version = 1, exportSchema = false)
 abstract class CaptureDatabase : RoomDatabase() {
     abstract fun captures(): CaptureDao
 }

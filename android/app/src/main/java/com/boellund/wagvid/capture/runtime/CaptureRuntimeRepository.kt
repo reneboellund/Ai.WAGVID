@@ -15,6 +15,10 @@ class CaptureRuntimeRepository(context: Context) {
 
     fun credential(): BackendCredential? = credentialStore.load()
 
+    fun disconnect() {
+        credentialStore.clear()
+    }
+
     suspend fun pair(
         baseUrl: String,
         pairingId: String,

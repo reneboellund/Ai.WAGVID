@@ -44,4 +44,8 @@ class CredentialStore(context: Context) {
             preferences.getString("certificate_fingerprint", null),
         )
     }
+
+    fun clear() {
+        preferences.edit().clear().apply()
+    }
 }

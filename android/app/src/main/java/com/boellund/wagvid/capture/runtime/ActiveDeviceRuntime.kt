@@ -37,17 +37,28 @@ class ActiveDeviceRuntime(
     ) {
         var lastHeartbeatAt = 0L
         while (currentCoroutineContext().isActive) {
+            var connected = false
+            var lastError: String? = null
+
             try {
                 coordinator.pollOnce()
-                val now = System.currentTimeMillis()
-                if (now - lastHeartbeatAt >= HEARTBEAT_INTERVAL_MS) {
+                connected = true
+            } catch (error: Exception) {
+                lastError = error.message ?: error.javaClass.simpleName
+            }
+
+            val now = System.currentTimeMillis()
+            if (now - lastHeartbeatAt >= HEARTBEAT_INTERVAL_MS) {
+                try {
                     sendHeartbeat()
                     lastHeartbeatAt = now
+                    connected = true
+                } catch (error: Exception) {
+                    lastError = error.message ?: error.javaClass.simpleName
                 }
-                onConnected()
-            } catch (error: Exception) {
-                onConnectionError(error.message ?: error.javaClass.simpleName)
             }
+
+            if (connected) onConnected() else onConnectionError(lastError ?: "Backend unavailable")
             delay(POLL_INTERVAL_MS)
         }
     }
