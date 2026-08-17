@@ -1,0 +1,44 @@
+schema: ai.wagvid.apparatus-benchmark-manifest.v1
+apparatus: VT
+scope: post-routine-offline-validation
+status: template
+model_bundle_digest: REQUIRED
+rulepack_digest: REQUIRED
+validation_dataset_manifest_sha256: REQUIRED
+split_manifest_sha256: REQUIRED
+rights_ref: REQUIRED
+hardware_runtime_manifest_sha256: REQUIRED
+parameters:
+  top_k: REQUIRED_BEFORE_EXECUTION
+  ood_threshold_milli: REQUIRED_BEFORE_EXECUTION
+required_slices:
+  - vt-fixed-side-standard-fps
+  - vt-fixed-side-high-fps
+  - vt-broadcast-camera
+  - vt-motion-blur
+  - vt-partial-occlusion
+  - vt-rare-identity-confusion
+  - vt-corridor-calibrated
+  - vt-corridor-unavailable
+promotion_metrics:
+  - id: phase-event-timing-error-ms
+    direction: lower
+    threshold: REQUIRED_BEFORE_EXECUTION
+  - id: top1-identity-accuracy-milli
+    direction: higher
+    threshold: REQUIRED_BEFORE_EXECUTION
+  - id: topk-identity-recall-milli
+    direction: higher
+    threshold: REQUIRED_BEFORE_EXECUTION
+  - id: unknown-ood-detection-milli
+    direction: higher
+    threshold: REQUIRED_BEFORE_EXECUTION
+  - id: landing-event-timing-error-ms
+    direction: lower
+    threshold: REQUIRED_BEFORE_EXECUTION
+  - id: boundary-capability-correctness-milli
+    direction: higher
+    threshold: REQUIRED_BEFORE_EXECUTION
+notes:
+  - Threshold values must be frozen before execution.
+  - Calibrated and unavailable corridor slices are both mandatory; unavailable geometry must not be scored as no violation.
