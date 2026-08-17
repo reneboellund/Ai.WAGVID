@@ -1,0 +1,47 @@
+schema: ai.wagvid.apparatus-benchmark-manifest.v1
+apparatus: BB
+scope: post-routine-offline-validation
+status: template
+model_bundle_digest: REQUIRED
+rulepack_digest: REQUIRED
+validation_dataset_manifest_sha256: REQUIRED
+split_manifest_sha256: REQUIRED
+rights_ref: REQUIRED
+hardware_runtime_manifest_sha256: REQUIRED
+parameters:
+  top_k: REQUIRED_BEFORE_EXECUTION
+  ood_threshold_milli: REQUIRED_BEFORE_EXECUTION
+required_slices:
+  - bb-fixed-side
+  - bb-high-camera
+  - bb-broadcast-camera
+  - bb-dance-acro-confusion
+  - bb-series-borderline
+  - bb-partial-occlusion
+  - bb-geometry-calibrated
+  - bb-geometry-unavailable
+promotion_metrics:
+  - id: topk-element-recall-milli
+    direction: higher
+    threshold: REQUIRED_BEFORE_EXECUTION
+  - id: series-state-agreement-milli
+    direction: higher
+    threshold: REQUIRED_BEFORE_EXECUTION
+  - id: pause-timing-error-ms
+    direction: lower
+    threshold: REQUIRED_BEFORE_EXECUTION
+  - id: fall-off-beam-event-recall-milli
+    direction: higher
+    threshold: REQUIRED_BEFORE_EXECUTION
+  - id: geometry-capability-correctness-milli
+    direction: higher
+    threshold: REQUIRED_BEFORE_EXECUTION
+  - id: criterion-evidence-agreement-milli
+    direction: higher
+    threshold: REQUIRED_BEFORE_EXECUTION
+  - id: unknown-ood-detection-milli
+    direction: higher
+    threshold: REQUIRED_BEFORE_EXECUTION
+notes:
+  - Threshold values must be frozen before execution.
+  - Artistry validation is criterion-evidence agreement with qualified review; no aggregate machine artistry score is permitted.
