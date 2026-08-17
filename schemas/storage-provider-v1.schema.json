@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/reneboellund/Ai.WAGVID/schemas/storage-provider-v1.schema.json",
+  "title": "Ai.WAGVID object storage provider configuration v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "provider_id", "provider_type", "tls_required", "addressing_style", "logical_roles"],
+  "properties": {
+    "schema": {"const": "ai.wagvid.storage-provider.v1"},
+    "provider_id": {"type": "string", "minLength": 1},
+    "provider_type": {"enum": ["local", "wasabi", "aws-s3", "ontap-s3", "vast-s3", "ootbi-s3", "generic-s3"]},
+    "endpoint": {"type": ["string", "null"]},
+    "region": {"type": ["string", "null"]},
+    "credential_ref": {"type": ["string", "null"], "pattern": "^(?!.*(?:password|secret)=).*$"},
+    "ca_bundle_ref": {"type": ["string", "null"]},
+    "tls_required": {"type": "boolean"},
+    "addressing_style": {"enum": ["auto", "virtual", "path"]},
+    "logical_roles": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "minItems": 1,
+        "uniqueItems": true,
+        "items": {"type": "string", "minLength": 1}
+      }
+    },
+    "governance_profile": {"type": ["string", "null"]},
+    "provisioning_enabled": {"type": "boolean", "default": false}
+  }
+}
