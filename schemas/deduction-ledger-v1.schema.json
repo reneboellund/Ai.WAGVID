@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/reneboellund/Ai.WAGVID/schemas/deduction-ledger-v1.schema.json",
+  "title": "Ai.WAGVID human-adjudicated deduction ledger v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "rulepack_id", "rulepack_digest", "policy_digest", "apparatus",
+    "units_per_point", "accepted", "rejected_candidate_ids", "unresolved_candidate_ids",
+    "escalated_candidate_ids", "accepted_deduction_units", "fully_resolved"
+  ],
+  "properties": {
+    "schema": {"const": "ai.wagvid.deduction-ledger.v1"},
+    "rulepack_id": {"type": "string", "minLength": 1},
+    "rulepack_digest": {"$ref": "#/$defs/sha256"},
+    "policy_digest": {"$ref": "#/$defs/sha256"},
+    "apparatus": {"enum": ["VT", "UB", "BB", "FX"]},
+    "units_per_point": {"type": "integer", "minimum": 1},
+    "accepted": {"type": "array", "items": {"$ref": "#/$defs/accepted"}},
+    "rejected_candidate_ids": {"$ref": "#/$defs/idArray"},
+    "unresolved_candidate_ids": {"$ref": "#/$defs/idArray"},
+    "escalated_candidate_ids": {"$ref": "#/$defs/idArray"},
+    "accepted_deduction_units": {"type": "integer", "minimum": 0},
+    "fully_resolved": {"type": "boolean"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "idArray": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "accepted": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate_id", "rule_id", "channel", "criterion_id", "scope", "scope_ref",
+        "severity_id", "deduction_units", "evidence_ids", "decision_id",
+        "decision_author_id", "decision_reason", "source_rule_id"
+      ],
+      "properties": {
+        "candidate_id": {"type": "string", "minLength": 1},
+        "rule_id": {"type": "string", "minLength": 1},
+        "channel": {"enum": ["execution", "artistry", "neutral"]},
+        "criterion_id": {"type": "string", "minLength": 1},
+        "scope": {"enum": ["element", "phase", "routine", "procedural"]},
+        "scope_ref": {"type": "string", "minLength": 1},
+        "severity_id": {"type": "string", "minLength": 1},
+        "deduction_units": {"type": "integer", "minimum": 0},
+        "evidence_ids": {"$ref": "#/$defs/idArray"},
+        "decision_id": {"type": "string", "minLength": 1},
+        "decision_author_id": {"type": "string", "minLength": 1},
+        "decision_reason": {"type": "string", "minLength": 1},
+        "source_rule_id": {"type": ["string", "null"]}
+      }
+    }
+  }
+}
