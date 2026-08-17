@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/reneboellund/Ai.WAGVID/schemas/system-object-inventory-v1.schema.json",
+  "title": "Ai.WAGVID recoverable object inventory v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "generated_at", "objects"],
+  "properties": {
+    "schema": {"const": "ai.wagvid.system-object-inventory.v1"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "objects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["asset_id", "organization_id", "provider_id", "provider_type", "location", "size_bytes", "sha256"],
+        "properties": {
+          "asset_id": {"type": "string", "minLength": 1},
+          "organization_id": {"type": "string", "minLength": 1},
+          "provider_id": {"type": "string", "minLength": 1},
+          "provider_type": {"type": "string", "minLength": 1},
+          "location": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "bucket": {"type": ["string", "null"]},
+              "key": {"type": ["string", "null"]},
+              "filesystem": {"type": ["string", "null"]},
+              "path": {"type": ["string", "null"]},
+              "version_id": {"type": ["string", "null"]}
+            },
+            "anyOf": [
+              {"required": ["bucket", "key"]},
+              {"required": ["filesystem", "path"]}
+            ]
+          },
+          "size_bytes": {"type": "integer", "minimum": 0},
+          "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+          "retention_until": {"type": ["string", "null"], "format": "date-time"},
+          "legal_hold": {"type": ["boolean", "null"]},
+          "object_lock_mode": {"type": ["string", "null"]},
+          "protection_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+        }
+      }
+    }
+  }
+}
