@@ -41,12 +41,14 @@ def dscore_policy_from_mapping(payload: Mapping[str, Any]) -> DScorePolicy:
         optional={"composition", "connections", "adjustments", "max_ambiguity_outcomes"},
         context="D-score policy",
     )
-    if payload["schema"] != DSCORE_POLICY_SCHEMA_VERSION:
-        raise DScoreError(f"unsupported D-score policy schema: {payload['schema']}")
+    schema = _string(payload["schema"], "schema")
+    if schema != DSCORE_POLICY_SCHEMA_VERSION:
+        raise DScoreError(f"unsupported D-score policy schema: {schema}")
+    apparatus_value = _string(payload["apparatus"], "apparatus")
     try:
-        apparatus = Apparatus(str(payload["apparatus"]))
+        apparatus = Apparatus(apparatus_value)
     except ValueError as error:
-        raise DScoreError(f"invalid D-score apparatus: {payload['apparatus']}") from error
+        raise DScoreError(f"invalid D-score apparatus: {apparatus_value}") from error
 
     elements = tuple(_element_rule(item) for item in _mapping_sequence(payload["elements"], "elements"))
     counting = _counting_policy(_mapping(payload["counting"], "counting"))
@@ -63,8 +65,8 @@ def dscore_policy_from_mapping(payload: Mapping[str, Any]) -> DScorePolicy:
         for item in _mapping_sequence(payload.get("adjustments", ()), "adjustments")
     )
     return DScorePolicy(
-        rulepack_id=str(payload["rulepack_id"]),
-        rulepack_digest=str(payload["rulepack_digest"]),
+        rulepack_id=_string(payload["rulepack_id"], "rulepack_id"),
+        rulepack_digest=_string(payload["rulepack_digest"], "rulepack_digest"),
         apparatus=apparatus,
         units_per_point=_integer(payload["units_per_point"], "units_per_point"),
         elements=elements,
@@ -86,11 +88,11 @@ def _element_rule(payload: Mapping[str, Any]) -> ElementRule:
         context="element rule",
     )
     return ElementRule(
-        element_id=str(payload["element_id"]),
+        element_id=_string(payload["element_id"], "element.element_id"),
         value_units=_integer(payload["value_units"], "element.value_units"),
-        repetition_key=str(payload["repetition_key"]),
+        repetition_key=_string(payload["repetition_key"], "element.repetition_key"),
         groups=frozenset(_string_sequence(payload.get("groups", ()), "element.groups")),
-        source_rule_id=_optional_string(payload.get("source_rule_id")),
+        source_rule_id=_optional_string(payload.get("source_rule_id"), "element.source_rule_id"),
     )
 
 
@@ -125,7 +127,7 @@ def _counting_quota(payload: Mapping[str, Any]) -> CountingQuota:
     )
     maximum = payload.get("maximum_counted")
     return CountingQuota(
-        group=str(payload["group"]),
+        group=_string(payload["group"], "quota.group"),
         minimum_counted=_integer(payload.get("minimum_counted", 0), "quota.minimum_counted"),
         maximum_counted=(
             None if maximum is None else _integer(maximum, "quota.maximum_counted")
@@ -141,12 +143,12 @@ def _composition_requirement(payload: Mapping[str, Any]) -> CompositionRequireme
         context="composition requirement",
     )
     return CompositionRequirement(
-        requirement_id=str(payload["requirement_id"]),
-        match_group=str(payload["match_group"]),
+        requirement_id=_string(payload["requirement_id"], "composition.requirement_id"),
+        match_group=_string(payload["match_group"], "composition.match_group"),
         minimum_count=_integer(payload["minimum_count"], "composition.minimum_count"),
         award_units=_integer(payload["award_units"], "composition.award_units"),
-        scope=str(payload.get("scope", "performed")),
-        source_rule_id=_optional_string(payload.get("source_rule_id")),
+        scope=_string(payload.get("scope", "performed"), "composition.scope"),
+        source_rule_id=_optional_string(payload.get("source_rule_id"), "composition.source_rule_id"),
     )
 
 
@@ -166,7 +168,7 @@ def _connection_rule(payload: Mapping[str, Any]) -> ConnectionRule:
         context="connection rule",
     )
     return ConnectionRule(
-        rule_id=str(payload["rule_id"]),
+        rule_id=_string(payload["rule_id"], "connection.rule_id"),
         award_units=_integer(payload["award_units"], "connection.award_units"),
         priority=_integer(payload.get("priority", 0), "connection.priority"),
         left_groups_any=frozenset(
@@ -182,7 +184,7 @@ def _connection_rule(payload: Mapping[str, Any]) -> ConnectionRule:
             _string_sequence(payload.get("right_element_ids", ()), "connection.right_element_ids")
         ),
         require_adjacent=_boolean(payload.get("require_adjacent", True), "connection.require_adjacent"),
-        source_rule_id=_optional_string(payload.get("source_rule_id")),
+        source_rule_id=_optional_string(payload.get("source_rule_id"), "connection.source_rule_id"),
     )
 
 
@@ -194,9 +196,9 @@ def _adjustment_rule(payload: Mapping[str, Any]) -> AdjustmentRule:
         context="adjustment rule",
     )
     return AdjustmentRule(
-        rule_id=str(payload["rule_id"]),
+        rule_id=_string(payload["rule_id"], "adjustment.rule_id"),
         value_units=_integer(payload["value_units"], "adjustment.value_units"),
-        source_rule_id=_optional_string(payload.get("source_rule_id")),
+        source_rule_id=_optional_string(payload.get("source_rule_id"), "adjustment.source_rule_id"),
     )
 
 
@@ -230,10 +232,16 @@ def _mapping_sequence(value: Any, label: str) -> tuple[Mapping[str, Any], ...]:
 def _string_sequence(value: Any, label: str) -> tuple[str, ...]:
     if isinstance(value, (str, bytes)) or not isinstance(value, Sequence):
         raise DScoreError(f"{label} must be an array of strings")
-    result = tuple(str(item) for item in value)
-    if any(not item for item in result):
-        raise DScoreError(f"{label} cannot contain empty values")
+    result = tuple(_string(item, label) for item in value)
+    if len(result) != len(set(result)):
+        raise DScoreError(f"{label} cannot contain duplicate values")
     return result
+
+
+def _string(value: Any, label: str) -> str:
+    if not isinstance(value, str) or not value:
+        raise DScoreError(f"{label} must be a non-empty string")
+    return value
 
 
 def _integer(value: Any, label: str) -> int:
@@ -248,10 +256,7 @@ def _boolean(value: Any, label: str) -> bool:
     return value
 
 
-def _optional_string(value: Any) -> str | None:
+def _optional_string(value: Any, label: str) -> str | None:
     if value is None:
         return None
-    result = str(value)
-    if not result:
-        raise DScoreError("optional string value cannot be empty")
-    return result
+    return _string(value, label)
