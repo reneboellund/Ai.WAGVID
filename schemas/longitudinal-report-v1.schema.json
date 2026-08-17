@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/reneboellund/Ai.WAGVID/schemas/longitudinal-report-v1.schema.json",
+  "title": "Ai.WAGVID longitudinal report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "report_id", "athlete_group_id", "apparatus", "generated_at", "snapshot_digests", "trends"],
+  "properties": {
+    "schema": {"const": "ai.wagvid.longitudinal-report.v1"},
+    "report_id": {"type": "string", "minLength": 1},
+    "athlete_group_id": {"type": "string", "minLength": 1},
+    "apparatus": {"enum": ["VT", "UB", "BB", "FX"]},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "snapshot_digests": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/sha256"}
+    },
+    "trends": {"type": "array", "items": {"$ref": "#/$defs/trend"}}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "metricPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "snapshot_digest", "routine_id", "occurred_at", "value_units", "occurrence_count",
+        "composition_signature", "analysis_revision_id", "rulepack_digest", "model_bundle_digest"
+      ],
+      "properties": {
+        "snapshot_digest": {"$ref": "#/$defs/sha256"},
+        "routine_id": {"type": "string", "minLength": 1},
+        "occurred_at": {"type": "string", "format": "date-time"},
+        "value_units": {"type": "integer", "minimum": 0},
+        "occurrence_count": {"type": "integer", "minimum": 0},
+        "composition_signature": {"type": "string", "minLength": 1},
+        "analysis_revision_id": {"type": "string", "minLength": 1},
+        "rulepack_digest": {"$ref": "#/$defs/sha256"},
+        "model_bundle_digest": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "trend": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "athlete_group_id", "apparatus", "category", "polarity", "points", "direction",
+        "earlier_median_units", "later_median_units", "delta_units", "composition_changed",
+        "rulepack_changed", "model_bundle_changed", "comparability_reasons", "trend_digest"
+      ],
+      "properties": {
+        "athlete_group_id": {"type": "string", "minLength": 1},
+        "apparatus": {"enum": ["VT", "UB", "BB", "FX"]},
+        "category": {"type": "string", "minLength": 1},
+        "polarity": {"enum": ["strength", "point-loss", "neutral"]},
+        "points": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/metricPoint"}},
+        "direction": {
+          "enum": ["improving", "stable", "worsening", "insufficient-data", "not-comparable"]
+        },
+        "earlier_median_units": {"type": ["integer", "number", "null"]},
+        "later_median_units": {"type": ["integer", "number", "null"]},
+        "delta_units": {"type": ["integer", "number", "null"]},
+        "composition_changed": {"type": "boolean"},
+        "rulepack_changed": {"type": "boolean"},
+        "model_bundle_changed": {"type": "boolean"},
+        "comparability_reasons": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1}
+        },
+        "trend_digest": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}
