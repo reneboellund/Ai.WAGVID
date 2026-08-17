@@ -32,7 +32,7 @@ class UploadWorker(context: Context, parameters: WorkerParameters) : CoroutineWo
         val credentials = CredentialStore(applicationContext).load() ?: return@withContext Result.retry()
 
         while (true) {
-            val queued = dao.nextUpload(System.currentTimeMillis()) ?: return@withContext Result.success()
+            val queued = dao.nextUpload(System.currentTimeMillis()) ?: break
             val capture = dao.capture(queued.captureId)
             if (capture == null) {
                 dao.updateUpload(queued.copy(state = "failed", lastError = "LOCAL_CAPTURE_MISSING"))
@@ -59,6 +59,7 @@ class UploadWorker(context: Context, parameters: WorkerParameters) : CoroutineWo
                 return@withContext Result.retry()
             }
         }
+        Result.success()
     }
 
     private suspend fun uploadOne(
