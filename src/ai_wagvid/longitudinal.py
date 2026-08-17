@@ -261,16 +261,12 @@ def build_category_trends(
     )
     result = []
     for category, polarity in categories:
+        # Every selected routine contributes one point. A category that disappears in a later
+        # routine therefore contributes zero instead of vanishing from the trend series.
         points = tuple(
             _metric_point(snapshot, category=category, polarity=polarity)
             for snapshot in items
-            if any(
-                observation.category == category and observation.polarity is polarity
-                for observation in snapshot.observations
-            )
         )
-        if not points:
-            continue
         rulepacks = {point.rulepack_digest for point in points}
         models = {point.model_bundle_digest for point in points}
         compositions = {point.composition_signature for point in points}
@@ -280,6 +276,10 @@ def build_category_trends(
         reasons: list[str] = []
         if rulepack_changed:
             reasons.append("rulepack-changed")
+        if model_changed:
+            reasons.append("model-bundle-changed")
+        if composition_changed:
+            reasons.append("composition-changed")
         if len(points) < policy.minimum_points:
             reasons.append(f"insufficient-points:{len(points)}<{policy.minimum_points}")
 
@@ -303,6 +303,8 @@ def build_category_trends(
             elif polarity is ObservationPolarity.STRENGTH:
                 direction = TrendDirection.IMPROVING if delta > 0 else TrendDirection.WORSENING
             else:
+                # Neutral observations are descriptive; their count direction is not inherently
+                # better or worse without a reviewed domain interpretation.
                 direction = TrendDirection.STABLE
         result.append(
             CategoryTrend(
