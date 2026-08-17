@@ -49,7 +49,9 @@ import com.boellund.wagvid.capture.control.LocalCaptureControl
 import com.boellund.wagvid.capture.control.LocalCaptureState
 import com.boellund.wagvid.capture.data.CaptureEntity
 import com.boellund.wagvid.capture.data.UploadQueueEntity
+import com.boellund.wagvid.capture.network.BackendDiscovery
 import com.boellund.wagvid.capture.network.CaptureContextResponse
+import com.boellund.wagvid.capture.network.DiscoveredBackend
 import com.boellund.wagvid.capture.network.GymnastContext
 import com.boellund.wagvid.capture.runtime.ActiveDeviceRuntime
 import com.boellund.wagvid.capture.runtime.CaptureRuntimeRepository
@@ -133,9 +135,6 @@ class MainActivity : ComponentActivity() {
             mutableStateOf(if (credential == null) "IKKE PARRET" else "FORBINDER")
         }
         val currentActiveCaptureId by rememberUpdatedState(activeCaptureId)
-        val permissionLauncher = rememberLauncherForActivityResult(
-            ActivityResultContracts.RequestMultiplePermissions(),
-        ) { }
 
         val captureControl = remember(controller) {
             object : LocalCaptureControl {
@@ -191,6 +190,32 @@ class MainActivity : ComponentActivity() {
                     status = "GEMMER"
                     controller.stop()
                 }
+            }
+        }
+
+        val permissionLauncher = rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions(),
+        ) { result ->
+            val granted = result[Manifest.permission.CAMERA] == true &&
+                result[Manifest.permission.RECORD_AUDIO] == true
+            if (!granted) {
+                status = "KAMERA/MIKROFON-TILLADELSE MANGLER"
+                return@rememberLauncherForActivityResult
+            }
+            val gymnast = selectedGymnast
+            val kind = selectedKind
+            if (gymnast == null || kind == null || captureState != LocalCaptureState.READY) {
+                status = "KLAR"
+                return@rememberLauncherForActivityResult
+            }
+            coroutineScope.launch {
+                captureControl.start(
+                    mapOf(
+                        "capture_id" to UUID.randomUUID().toString(),
+                        "gymnast_id" to gymnast.gymnast_id,
+                        "kind" to kind,
+                    ),
+                )
             }
         }
 
@@ -298,6 +323,7 @@ class MainActivity : ComponentActivity() {
                                 val kind = selectedKind ?: return@Button
                                 val permissions = arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO)
                                 if (permissions.any { ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED }) {
+                                    status = "VENTER PÅ KAMERA/MIKROFON-TILLADELSE"
                                     permissionLauncher.launch(permissions)
                                 } else {
                                     coroutineScope.launch {
@@ -320,14 +346,32 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun PairingScreen(status: String, onPair: (String, String, String, String) -> Unit) {
+        val context = LocalContext.current
         var baseUrl by remember { mutableStateOf("") }
         var pairingId by remember { mutableStateOf("") }
         var code by remember { mutableStateOf("") }
         var deviceName by remember { mutableStateOf("Ai.WAGVID Android") }
+        var discovered by remember { mutableStateOf<List<DiscoveredBackend>>(emptyList()) }
+
+        LaunchedEffect(Unit) {
+            BackendDiscovery(context).discover().collect { backend ->
+                discovered = (discovered.filterNot { it.httpsUrl == backend.httpsUrl } + backend)
+                    .sortedBy { it.name.lowercase() }
+            }
+        }
+
         Surface(Modifier.fillMaxSize(), color = Color(0xFF07101E)) {
             Column(Modifier.fillMaxSize().padding(28.dp), verticalArrangement = Arrangement.Center) {
                 Text("Par enhed", color = Color.White, style = MaterialTheme.typography.headlineMedium)
-                Text("Brug backend-adressen, pairing-ID og 6-cifret kode fra Ai.WAGVID web-UI.", color = Color.White)
+                Text("Brug lokal discovery eller backend-adressen, pairing-ID og 6-cifret kode fra Ai.WAGVID web-UI.", color = Color.White)
+                if (discovered.isNotEmpty()) {
+                    Text("Fundne Ai.WAGVID-servere", color = Color.White)
+                    discovered.take(4).forEach { backend ->
+                        Button(onClick = { baseUrl = backend.httpsUrl }) {
+                            Text("${backend.name} · ${backend.httpsUrl}")
+                        }
+                    }
+                }
                 OutlinedTextField(baseUrl, { baseUrl = it }, label = { Text("Backend URL") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(pairingId, { pairingId = it }, label = { Text("Pairing-ID") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(code, { code = it.filter(Char::isDigit).take(6) }, label = { Text("6-cifret kode") }, singleLine = true, modifier = Modifier.fillMaxWidth())

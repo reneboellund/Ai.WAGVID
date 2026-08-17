@@ -35,7 +35,7 @@ class ActiveDeviceRuntime(
         onConnected: () -> Unit,
         onConnectionError: (String) -> Unit,
     ) {
-        var lastHeartbeatAt = 0L
+        var lastHeartbeatAttemptAt = 0L
         while (currentCoroutineContext().isActive) {
             var connected = false
             var lastError: String? = null
@@ -48,10 +48,10 @@ class ActiveDeviceRuntime(
             }
 
             val now = System.currentTimeMillis()
-            if (now - lastHeartbeatAt >= HEARTBEAT_INTERVAL_MS) {
+            if (now - lastHeartbeatAttemptAt >= HEARTBEAT_INTERVAL_MS) {
+                lastHeartbeatAttemptAt = now
                 try {
                     sendHeartbeat()
-                    lastHeartbeatAt = now
                     connected = true
                 } catch (error: Exception) {
                     lastError = error.message ?: error.javaClass.simpleName
