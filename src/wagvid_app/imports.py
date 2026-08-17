@@ -2,6 +2,7 @@ import csv
 import hashlib
 import io
 import json
+import re
 from dataclasses import dataclass, field
 
 from django.db import transaction
@@ -44,22 +45,98 @@ class GymnastImportPreview:
 
 
 REQUIRED_GYMNAST_COLUMNS = {"name", "license_number", "level"}
+GYMNAST_COLUMN_ALIASES = {
+    "name": "name",
+    "navn": "name",
+    "gymnast": "name",
+    "gymnast_name": "name",
+    "display_name": "name",
+    "license_number": "license_number",
+    "license": "license_number",
+    "licens": "license_number",
+    "licensnummer": "license_number",
+    "licens_nummer": "license_number",
+    "level": "level",
+    "niveau": "level",
+    "trin": "level",
+    "discipline": "discipline",
+    "disciplin": "discipline",
+    "kiga_id": "kiga_id",
+    "kiga": "kiga_id",
+}
+DISCIPLINE_ALIASES = {
+    "WAG": Gymnast.Discipline.WAG,
+    "KVINDER": Gymnast.Discipline.WAG,
+    "WOMEN": Gymnast.Discipline.WAG,
+    "MAG": Gymnast.Discipline.MAG,
+    "MÆND": Gymnast.Discipline.MAG,
+    "MAEND": Gymnast.Discipline.MAG,
+    "MEN": Gymnast.Discipline.MAG,
+}
+
+
+def _normalize_header(value: str) -> str:
+    normalized = value.lstrip("\ufeff").strip().lower()
+    normalized = re.sub(r"[\s\-/]+", "_", normalized)
+    return re.sub(r"_+", "_", normalized).strip("_")
+
+
+def _dialect_for(content: str):
+    try:
+        return csv.Sniffer().sniff(content[:4096], delimiters=",;\t")
+    except csv.Error:
+        return csv.excel
+
+
+def _header_map(fieldnames: list[str] | None) -> tuple[dict[str, str], list[str]]:
+    mapping: dict[str, str] = {}
+    canonical_sources: dict[str, list[str]] = {}
+    for original in fieldnames or []:
+        normalized = _normalize_header(original)
+        canonical = GYMNAST_COLUMN_ALIASES.get(normalized, normalized)
+        mapping[original] = canonical
+        canonical_sources.setdefault(canonical, []).append(original)
+    ambiguous = [
+        canonical
+        for canonical, sources in canonical_sources.items()
+        if len(sources) > 1 and canonical in GYMNAST_COLUMN_ALIASES.values()
+    ]
+    return mapping, sorted(ambiguous)
 
 
 def preview_gymnast_csv(organization: Organization, content: str) -> GymnastImportPreview:
     preview = GymnastImportPreview()
-    reader = csv.DictReader(io.StringIO(content))
-    missing = REQUIRED_GYMNAST_COLUMNS - set(reader.fieldnames or [])
+    reader = csv.DictReader(io.StringIO(content), dialect=_dialect_for(content))
+    mapping, ambiguous = _header_map(reader.fieldnames)
+    if ambiguous:
+        preview.errors.append(
+            ImportErrorRow(
+                1,
+                "header",
+                "Ambiguous columns map to the same field: " + ", ".join(ambiguous),
+            )
+        )
+        return preview
+    canonical_headers = set(mapping.values())
+    missing = REQUIRED_GYMNAST_COLUMNS - canonical_headers
     if missing:
         preview.errors.append(
             ImportErrorRow(1, "header", f"Missing columns: {', '.join(sorted(missing))}")
         )
         return preview
+
     existing = set(organization.gymnasts.values_list("license_number", flat=True))
     seen: set[str] = set()
-    levels = set(organization.levels.filter(active=True).values_list("name", flat=True))
+    levels_by_key = {
+        level.name.casefold(): level.name
+        for level in organization.levels.filter(active=True)
+    }
     for row_number, raw in enumerate(reader, start=2):
-        row = {key: (value or "").strip() for key, value in raw.items()}
+        row = {
+            mapping.get(key, _normalize_header(key)): (value or "").strip()
+            for key, value in raw.items()
+            if key is not None
+        }
         license_number = row["license_number"]
         if not row["name"]:
             preview.errors.append(ImportErrorRow(row_number, "name", "Name is required"))
@@ -71,15 +148,25 @@ def preview_gymnast_csv(organization: Organization, content: str) -> GymnastImpo
             preview.errors.append(
                 ImportErrorRow(row_number, "license_number", "Duplicate license number")
             )
-        if row["level"] not in levels:
+
+        level_key = row["level"].casefold()
+        canonical_level = levels_by_key.get(level_key)
+        if canonical_level is None:
             preview.errors.append(ImportErrorRow(row_number, "level", "Unknown active level"))
-        discipline = row.get("discipline", Gymnast.Discipline.WAG).upper()
-        if discipline not in Gymnast.Discipline.values:
+        else:
+            row["level"] = canonical_level
+
+        raw_discipline = row.get("discipline", Gymnast.Discipline.WAG).strip().upper()
+        discipline = DISCIPLINE_ALIASES.get(raw_discipline)
+        if discipline is None:
             preview.errors.append(
                 ImportErrorRow(row_number, "discipline", "Discipline must be WAG or MAG")
             )
-        row["discipline"] = discipline
-        seen.add(license_number)
+        else:
+            row["discipline"] = discipline
+
+        if license_number:
+            seen.add(license_number)
         if not any(error.row == row_number for error in preview.errors):
             preview.valid_rows.append(row)
     return preview
@@ -91,8 +178,6 @@ def commit_gymnast_import(
 ) -> list[Gymnast]:
     if not preview.can_commit:
         raise ValueError("Import preview is not commit-ready")
-    # Serialize imports for one organization and repeat validation inside the
-    # transaction. A preview is advisory; database state is authoritative.
     Organization.objects.select_for_update().get(pk=organization.pk)
     licenses = [row["license_number"] for row in preview.valid_rows]
     conflicts = set(
