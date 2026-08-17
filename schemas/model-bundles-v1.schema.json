@@ -20,7 +20,22 @@
           "artifact_status": {"enum": ["contract-only", "local-available", "validated"]},
           "config_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
           "checkpoint_digest": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"},
-          "limitations": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}
+          "limitations": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+          "execution": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["backends", "precisions", "minimum_vram_mb", "recommended_vram_mb", "cpu_fallback"],
+            "properties": {
+              "backends": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["cpu", "cuda", "rocm", "openvino-gpu"]}},
+              "precisions": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["fp32", "fp16", "bf16", "int8"]}},
+              "minimum_vram_mb": {"type": "integer", "minimum": 0},
+              "recommended_vram_mb": {"type": "integer", "minimum": 0},
+              "cpu_fallback": {"type": "boolean"},
+              "required_capabilities": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+              "validated": {"type": "boolean", "default": false},
+              "validation_reference": {"type": ["string", "null"]}
+            }
+          }
         }
       }
     },
