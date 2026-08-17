@@ -13,10 +13,10 @@ from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
 from enum import StrEnum
-from typing import Iterable
+from typing import Iterable, Mapping
 
 from .domain import Apparatus
-from .score_comparison import ScoreComparison, ScoreDifference, ScoreLine, compare_scores
+from .score_comparison import ScoreComparison, ScoreLine, compare_scores
 
 
 class ScoreVerificationError(ValueError):
@@ -75,6 +75,10 @@ class EvidenceLink:
             raise ScoreVerificationError("evidence_id is required")
         _require_sha256("evidence digest", self.evidence_digest)
 
+    @property
+    def digest(self) -> str:
+        return _stable_digest(asdict(self))
+
 
 @dataclass(frozen=True)
 class RuleLink:
@@ -84,6 +88,10 @@ class RuleLink:
     def __post_init__(self) -> None:
         if not self.rule_id or not self.source_locator:
             raise ScoreVerificationError("rule_id and source locator are required")
+
+    @property
+    def digest(self) -> str:
+        return _stable_digest(asdict(self))
 
 
 @dataclass(frozen=True)
@@ -132,6 +140,7 @@ class FrozenAnalysis:
             raise ScoreVerificationError("frozen_at must be timezone-aware")
         _require_sha256("rulepack digest", self.rulepack_digest)
         _require_sha256("software digest", self.software_digest)
+        _validate_score_line(self.reconstructed_score, "reconstructed score")
         if self.d_ledger.rulepack_id != self.rulepack_id:
             raise ScoreVerificationError("D ledger rulepack does not match frozen analysis")
         if self.d_ledger.rulepack_digest != self.rulepack_digest:
@@ -165,10 +174,43 @@ class OfficialScoreVersion:
             raise ScoreVerificationError("official result imported_at must be timezone-aware")
         if not self.status:
             raise ScoreVerificationError("official result status is required")
+        _validate_score_line(self.score, "official score")
 
     @property
     def digest(self) -> str:
         return _stable_digest(_official_payload(self))
+
+
+class OfficialScoreHistory:
+    """Append-only corrected/withdrawn official-result versions; no in-place overwrite."""
+
+    def __init__(self, versions: Iterable[OfficialScoreVersion] = ()) -> None:
+        self._versions: list[OfficialScoreVersion] = []
+        for value in versions:
+            self.append(value)
+
+    def append(self, value: OfficialScoreVersion) -> None:
+        if not self._versions:
+            if value.version != 1:
+                raise ScoreVerificationError("first official result version must be 1")
+            self._versions.append(value)
+            return
+        previous = self._versions[-1]
+        if value.official_result_id != previous.official_result_id:
+            raise ScoreVerificationError("official score history cannot change result identity")
+        if value.version != previous.version + 1:
+            raise ScoreVerificationError("official score versions must be contiguous")
+        if value.imported_at <= previous.imported_at:
+            raise ScoreVerificationError("new official score version must be imported later")
+        self._versions.append(value)
+
+    @property
+    def versions(self) -> tuple[OfficialScoreVersion, ...]:
+        return tuple(self._versions)
+
+    @property
+    def current(self) -> OfficialScoreVersion | None:
+        return self._versions[-1] if self._versions else None
 
 
 @dataclass(frozen=True)
@@ -184,8 +226,8 @@ class ScoreVerificationComparison:
         _require_sha256("official score digest", self.official_score_digest)
         if self.compared_at.tzinfo is None or self.compared_at.utcoffset() is None:
             raise ScoreVerificationError("compared_at must be timezone-aware")
-        if self.threshold < 0:
-            raise ScoreVerificationError("comparison threshold cannot be negative")
+        if not self.threshold.is_finite() or self.threshold < 0:
+            raise ScoreVerificationError("comparison threshold must be a finite non-negative decimal")
 
     @property
     def digest(self) -> str:
@@ -212,6 +254,14 @@ class DiscrepancyCase:
         _require_sha256("comparison digest", self.comparison_digest)
         if self.created_at.tzinfo is None or self.created_at.utcoffset() is None:
             raise ScoreVerificationError("discrepancy created_at must be timezone-aware")
+        for label, value in (
+            ("official value", self.official_value),
+            ("reconstructed value", self.reconstructed_value),
+            ("delta", self.delta),
+            ("arithmetic impact", self.arithmetic_impact),
+        ):
+            if not value.is_finite():
+                raise ScoreVerificationError(f"{label} must be finite")
         if self.confidence_milli is not None:
             if (
                 isinstance(self.confidence_milli, bool)
@@ -223,6 +273,12 @@ class DiscrepancyCase:
             raise ScoreVerificationError("discrepancy delta arithmetic is inconsistent")
         if len({item.digest for item in self.evidence}) != len(self.evidence):
             raise ScoreVerificationError("duplicate evidence links in discrepancy case")
+        if len({item.digest for item in self.rules}) != len(self.rules):
+            raise ScoreVerificationError("duplicate rule links in discrepancy case")
+
+    @property
+    def review_ready(self) -> bool:
+        return bool(self.evidence) and bool(self.rules)
 
     @property
     def digest(self) -> str:
@@ -271,7 +327,11 @@ class DiscrepancyAdjudication:
 class DiscrepancyAdjudicationLedger:
     """Append-only, non-forking adjudication history per immutable discrepancy case."""
 
-    def __init__(self, cases: Iterable[DiscrepancyCase], adjudications: Iterable[DiscrepancyAdjudication] = ()) -> None:
+    def __init__(
+        self,
+        cases: Iterable[DiscrepancyCase],
+        adjudications: Iterable[DiscrepancyAdjudication] = (),
+    ) -> None:
         case_items = tuple(cases)
         self._cases = {item.case_id: item for item in case_items}
         if len(self._cases) != len(case_items):
@@ -292,6 +352,10 @@ class DiscrepancyAdjudicationLedger:
         )
         if case is None:
             raise ScoreVerificationError("adjudication references unknown discrepancy case")
+        if not case.review_ready and adjudication.decision is not DiscrepancyDecision.UNRESOLVED:
+            raise ScoreVerificationError(
+                "substantive discrepancy decision requires both evidence and rule source links"
+            )
         history = self.history(case.case_id)
         if adjudication.supersedes_adjudication_id is None:
             if history:
@@ -342,12 +406,12 @@ def compare_frozen_to_official(
 ) -> ScoreVerificationComparison:
     if compared_at.tzinfo is None or compared_at.utcoffset() is None:
         raise ScoreVerificationError("compared_at must be timezone-aware")
-    if official.imported_at < frozen.frozen_at:
+    if official.imported_at <= frozen.frozen_at:
         raise ScoreVerificationError(
-            "official score was imported before AI freeze; leakage-safe verification is invalid"
+            "official score was imported at/before AI freeze; leakage-safe verification is invalid"
         )
-    if compared_at < official.imported_at or compared_at < frozen.frozen_at:
-        raise ScoreVerificationError("comparison cannot predate freeze or official import")
+    if compared_at < official.imported_at:
+        raise ScoreVerificationError("comparison cannot predate official import")
     return ScoreVerificationComparison(
         frozen_analysis_digest=frozen.digest,
         official_score_digest=official.digest,
@@ -457,7 +521,15 @@ def _case_payload(value: DiscrepancyCase) -> dict:
         "arithmetic_impact": _decimal_text(value.arithmetic_impact),
         "confidence_milli": value.confidence_milli,
         "created_at": value.created_at.astimezone(UTC).isoformat(),
+        "review_ready": value.review_ready,
     }
+
+
+def _validate_score_line(score: ScoreLine, label: str) -> None:
+    for field in ("d_score", "e_score", "neutral", "final_score"):
+        value = getattr(score, field)
+        if value is not None and not value.is_finite():
+            raise ScoreVerificationError(f"{label} {field} must be finite")
 
 
 def _decimal_text(value: Decimal | None) -> str | None:
