@@ -3,11 +3,12 @@
 A competition exchange record may contain an official result at ingest time. This module splits
 that record into two trust domains:
 
-1. an analysis task payload containing only competition/routine/media/rule context; and
+1. an analysis task payload containing only the media/apparatus/rule execution context; and
 2. a withheld official-result envelope retained by the control plane.
 
 The official payload may be received early, but cannot be revealed to comparison/report code until
-the corresponding AI analysis revision has an immutable freeze receipt.
+the corresponding AI analysis revision has an immutable freeze receipt. Athlete/team/competition
+identity remains in the control-plane mapping and is intentionally absent from the worker payload.
 """
 
 from __future__ import annotations
@@ -80,6 +81,8 @@ class MediaTaskRef:
 
 @dataclass(frozen=True)
 class AnalysisTask:
+    """Control-plane task mapping plus a deliberately identity-minimized worker projection."""
+
     task_id: str
     idempotency_key: str
     source_record_digest: str
@@ -105,6 +108,7 @@ class AnalysisTask:
         ):
             raise CompetitionBatchError("analysis task stable identity/context is required")
         _require_sha256("source record digest", self.source_record_digest)
+        _require_sha256("idempotency key", self.idempotency_key)
         _require_sha256("analysis profile digest", self.analysis_profile_digest)
         if self.requested_at.tzinfo is None or self.requested_at.utcoffset() is None:
             raise CompetitionBatchError("analysis task requested_at must be timezone-aware")
@@ -118,18 +122,17 @@ class AnalysisTask:
             raise CompetitionBatchError("analysis task cannot include duplicate media bytes")
 
     def worker_payload(self) -> dict[str, Any]:
-        """Leakage-safe payload. Official/adjudication/learning data cannot appear here."""
+        """Identity- and official-score-minimized execution payload.
+
+        Task/idempotency IDs are opaque orchestration handles. Athlete/team/event/routine external
+        IDs, source-record digest, performed-at context and all official/adjudication/learning data
+        remain in the control plane and are not exposed as potential model features.
+        """
         return {
             "schema": "ai.wagvid.competition-analysis-task.v1",
             "task_id": self.task_id,
             "idempotency_key": self.idempotency_key,
-            "source_record_digest": self.source_record_digest,
-            "competition_external_id": self.competition_external_id,
-            "routine_external_id": self.routine_external_id,
-            "athlete_external_id": self.athlete_external_id,
-            "team_external_id": self.team_external_id,
             "apparatus": self.apparatus.value,
-            "performed_at": self.performed_at,
             "rule_profile": self.rule_profile,
             "media": [asdict(item) for item in self.media],
             "analysis_profile_digest": self.analysis_profile_digest,
@@ -230,6 +233,12 @@ class PlannedRoutine:
     task: AnalysisTask
     withheld_official: WithheldOfficialResult
 
+    def __post_init__(self) -> None:
+        if self.task.routine_external_id != self.withheld_official.routine_external_id:
+            raise CompetitionBatchError("official result belongs to a different routine")
+        if self.task.source_record_digest != self.withheld_official.source_record_digest:
+            raise CompetitionBatchError("task and withheld official result came from different records")
+
 
 @dataclass(frozen=True)
 class ExcludedRoutine:
@@ -279,6 +288,14 @@ class CompetitionBatchPlan:
                 "requested_at": self.requested_at.astimezone(UTC).isoformat(),
                 "analysis_profile_digest": self.analysis_profile_digest,
                 "tasks": [item.task.digest for item in self.routines],
+                "control_mappings": [
+                    {
+                        "competition_external_id": item.task.competition_external_id,
+                        "routine_external_id": item.task.routine_external_id,
+                        "source_record_digest": item.task.source_record_digest,
+                    }
+                    for item in self.routines
+                ],
                 "withheld_official_digests": [
                     item.withheld_official.official_payload_digest for item in self.routines
                 ],
@@ -392,9 +409,15 @@ def plan_competition_batch(
             apparatus = Apparatus(_string(routine.get("apparatus"), "routine.apparatus"))
         except ValueError as error:
             raise CompetitionBatchError(f"invalid routine apparatus: {routine.get('apparatus')}") from error
+        rule_profile = _optional_string(competition.get("rule_profile"))
+        # Idempotency deliberately excludes official/adjudication/learning payloads. Correcting an
+        # official score must not change/re-run the independent AI analysis of the same media.
         idempotency_key = _stable_digest(
             {
-                "source_record_digest": record_digest,
+                "competition_external_id": competition_id,
+                "routine_external_id": routine_id,
+                "apparatus": apparatus.value,
+                "rule_profile": rule_profile,
                 "analysis_profile_digest": analysis_profile_digest,
                 "media_sha256": sorted(item.sha256 for item in media),
             }
@@ -412,7 +435,7 @@ def plan_competition_batch(
             team_external_id=_optional_string(routine.get("team_external_id")),
             apparatus=apparatus,
             performed_at=_string(routine.get("performed_at"), "routine.performed_at"),
-            rule_profile=_optional_string(competition.get("rule_profile")),
+            rule_profile=rule_profile,
             media=media,
             analysis_profile_digest=analysis_profile_digest,
             requested_at=requested_at,
@@ -435,8 +458,18 @@ def plan_competition_batch(
         batch_id=batch_id,
         requested_at=requested_at,
         analysis_profile_digest=analysis_profile_digest,
-        routines=tuple(sorted(planned, key=lambda item: (item.task.competition_external_id, item.task.routine_external_id))),
-        excluded=tuple(sorted(excluded, key=lambda item: (item.competition_external_id, item.routine_external_id))),
+        routines=tuple(
+            sorted(
+                planned,
+                key=lambda item: (
+                    item.task.competition_external_id,
+                    item.task.routine_external_id,
+                ),
+            )
+        ),
+        excluded=tuple(
+            sorted(excluded, key=lambda item: (item.competition_external_id, item.routine_external_id))
+        ),
     )
 
 
@@ -448,6 +481,8 @@ def reveal_official_result(
 ) -> RevealedOfficialResult:
     if freeze.task_id != planned.task.task_id or freeze.task_digest != planned.task.digest:
         raise CompetitionBatchError("freeze receipt does not belong to planned analysis task")
+    if planned.task.source_record_digest != planned.withheld_official.source_record_digest:
+        raise CompetitionBatchError("withheld official result source does not match task mapping")
     if revealed_at.tzinfo is None or revealed_at.utcoffset() is None:
         raise CompetitionBatchError("revealed_at must be timezone-aware")
     if revealed_at <= freeze.frozen_at:
@@ -478,6 +513,8 @@ class DisagreementRecord:
         if not self.routine_external_id or not self.category:
             raise CompetitionBatchError("disagreement routine/category are required")
         _require_sha256("comparison digest", self.comparison_digest)
+        if isinstance(self.delta_milli_points, bool) or not isinstance(self.delta_milli_points, int):
+            raise CompetitionBatchError("delta_milli_points must be an integer")
 
 
 @dataclass(frozen=True)
