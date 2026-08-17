@@ -73,8 +73,13 @@ interface CaptureDao {
     )
     fun archiveRows(limit: Int = 30): Flow<List<CaptureArchiveRow>>
 
-    @Query("SELECT * FROM upload_queue WHERE state IN ('queued','retry-wait','uploading') ORDER BY nextAttemptAtEpochMs, captureId LIMIT 1")
-    suspend fun nextUpload(): UploadQueueEntity?
+    @Query(
+        "SELECT * FROM upload_queue " +
+            "WHERE state IN ('queued','uploading') " +
+            "OR (state = 'retry-wait' AND nextAttemptAtEpochMs <= :nowEpochMs) " +
+            "ORDER BY nextAttemptAtEpochMs, captureId LIMIT 1",
+    )
+    suspend fun nextUpload(nowEpochMs: Long): UploadQueueEntity?
 
     @Query("SELECT * FROM captures WHERE captureId = :captureId")
     suspend fun capture(captureId: String): CaptureEntity?
