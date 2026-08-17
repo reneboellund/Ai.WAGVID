@@ -63,6 +63,7 @@ urlpatterns = [
     path("gymnasts/archived/", master_data_views.archived_gymnasts, name="gymnasts-archived"),
     path("gymnasts/<uuid:gymnast_id>/edit/", master_data_views.gymnast_edit, name="gymnast-edit"),
     path("gymnasts/<uuid:gymnast_id>/archive/", master_data_views.gymnast_archive, name="gymnast-archive"),
+    path("gymnasts/<uuid:gymnast_id>/merge/", master_data_views.gymnast_merge, name="gymnast-merge"),
     path("gymnasts/<uuid:gymnast_id>/restore/", master_data_views.gymnast_restore, name="gymnast-restore"),
     path("levels/", master_data_views.levels, name="levels"),
     path("levels/new/", master_data_views.level_create, name="level-create"),
