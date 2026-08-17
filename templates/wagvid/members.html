@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Brugere & roller · Ai.WAGVID{% endblock %}
+{% block breadcrumb %}Brugere & roller{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="eyebrow">Organisation & adgang</p>
+    <h1>Brugere <span class="text-gradient">& roller</span></h1>
+    <p>Administrér eksisterende Ai.WAGVID-brugeres adgang til {{ organization.name }}. Ændringer audit-logges.</p>
+  </div>
+  <div class="page-actions">
+    <a class="button" href="{% url 'gymnasts' %}">Tilbage</a>
+    <a class="button button-primary" href="{% url 'member-create' %}"><svg><use href="#i-plus"/></svg>Tilføj bruger</a>
+  </div>
+</section>
+<section class="surface table-surface">
+  {% if memberships %}
+  <table class="data-table">
+    <thead><tr><th>Bruger</th><th>E-mail</th><th>Rolle</th><th>Status</th><th>Administration</th></tr></thead>
+    <tbody>
+      {% for membership in memberships %}
+      <tr>
+        <td><strong>{{ membership.user.get_full_name|default:membership.user.username }}</strong><small>{{ membership.user.username }}</small></td>
+        <td>{{ membership.user.email|default:"—" }}</td>
+        <td>{{ membership.get_role_display }}</td>
+        <td><span class="status-badge {% if not membership.active %}neutral{% endif %}">{% if membership.active %}Aktiv{% else %}Deaktiveret{% endif %}</span></td>
+        <td><a class="text-button" href="{% url 'member-edit' membership.id %}">Redigér adgang</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state"><h3>Ingen memberships</h3><p>Tilføj en eksisterende Ai.WAGVID-bruger til organisationen.</p></div>
+  {% endif %}
+</section>
+{% endblock %}

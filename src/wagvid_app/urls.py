@@ -1,6 +1,14 @@
 from django.urls import path
 
-from . import analysis_api, device_api, master_data_views, media_access, media_timeline_api, views
+from . import (
+    analysis_api,
+    device_api,
+    master_data_views,
+    media_access,
+    media_timeline_api,
+    member_views,
+    views,
+)
 
 urlpatterns = [
     path("health/", views.health, name="health"),
@@ -69,6 +77,13 @@ urlpatterns = [
     path("levels/new/", master_data_views.level_create, name="level-create"),
     path("levels/<uuid:level_id>/edit/", master_data_views.level_edit, name="level-edit"),
     path("levels/<uuid:level_id>/archive/", master_data_views.level_archive, name="level-archive"),
+    path("organization/members/", member_views.members, name="members"),
+    path("organization/members/new/", member_views.member_create, name="member-create"),
+    path(
+        "organization/members/<int:membership_id>/edit/",
+        member_views.member_edit,
+        name="member-edit",
+    ),
     path("devices/", views.devices, name="devices"),
     path("analyses/", views.analyses, name="analyses"),
     path("analyses/<uuid:job_id>/cancel/", views.analysis_cancel, name="analysis-cancel"),
