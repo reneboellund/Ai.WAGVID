@@ -122,9 +122,10 @@ def evaluate_governance(
         blockers.append("tls-required")
     missing = preflight.capabilities.require(*sorted(requirement.required_features, key=str))
     blockers.extend(f"missing-capability:{feature.value}" for feature in missing)
-    if requirement.require_immutable_originals and not (
-        preflight.capabilities.supports(StorageFeature.OBJECT_LOCK)
-        or preflight.capabilities.supports(StorageFeature.VERSIONING)
+    # Versioning preserves history but does not make an object immutable. A provider
+    # must explicitly verify an immutability/Object Lock capability for this policy.
+    if requirement.require_immutable_originals and not preflight.capabilities.supports(
+        StorageFeature.OBJECT_LOCK
     ):
         blockers.append("immutable-originals-unavailable")
     return tuple(dict.fromkeys(blockers))

@@ -60,6 +60,9 @@ def inspect_bucket(client: S3InspectionClient, bucket: str) -> BucketProbe:
             warnings=(f"head-bucket:{head_error}",),
         )
 
+    # Range GET and multipart still require the provider integration contract test
+    # before production certification. The generic S3 preflight records them because
+    # they are mandatory core operations tested by the adapter, not from vendor name.
     features = {StorageFeature.RANGE_GET, StorageFeature.MULTIPART}
     warnings: list[str] = []
     versioning_state = None
@@ -77,8 +80,8 @@ def inspect_bucket(client: S3InspectionClient, bucket: str) -> BucketProbe:
         features.add(StorageFeature.OBJECT_LOCK)
         configuration = (value or {}).get("ObjectLockConfiguration", {})
         object_lock_enabled = configuration.get("ObjectLockEnabled") == "Enabled"
-        if object_lock_enabled:
-            features.add(StorageFeature.LEGAL_HOLD)
+        # Do not infer legal-hold support from Object Lock. ONTAP, for example,
+        # supports retention modes but does not support legal-hold operations.
     else:
         warnings.append(f"object-lock-unverified:{error}")
 
@@ -176,11 +179,7 @@ def create_boto3_s3_client(
 
 
 def default_provider_features(provider_type: ProviderType) -> frozenset[StorageFeature]:
-    """Return only protocol-level features safe to assume before endpoint probing.
-
-    Provider marketing claims are deliberately excluded. Range/multipart are verified
-    by integration contract tests before production enablement.
-    """
+    """Return only protocol-level features safe to assume before endpoint probing."""
     if provider_type == ProviderType.LOCAL:
         return frozenset({StorageFeature.RANGE_GET})
     return frozenset()

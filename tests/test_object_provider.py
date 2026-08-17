@@ -59,19 +59,13 @@ def test_governance_is_capability_driven_not_provider_name_driven():
     assert blockers == ("missing-capability:object-lock",)
 
 
-def test_immutable_originals_accept_object_lock_or_versioning_but_not_marketing_claims():
+def test_immutable_originals_requires_explicit_object_lock_not_versioning():
     profile = StorageConnectionProfile(
         provider_id="provider",
         provider_type=ProviderType.GENERIC_S3,
         endpoint="https://storage.example",
     )
-    unavailable = evaluate_governance(
-        profile,
-        StoragePreflight(True, StorageCapabilities()),
-        GovernanceRequirement(require_immutable_originals=True),
-    )
-    assert "immutable-originals-unavailable" in unavailable
-    versioned = evaluate_governance(
+    versioned_only = evaluate_governance(
         profile,
         StoragePreflight(
             True,
@@ -79,7 +73,16 @@ def test_immutable_originals_accept_object_lock_or_versioning_but_not_marketing_
         ),
         GovernanceRequirement(require_immutable_originals=True),
     )
-    assert versioned == ()
+    assert "immutable-originals-unavailable" in versioned_only
+    locked = evaluate_governance(
+        profile,
+        StoragePreflight(
+            True,
+            StorageCapabilities(features=frozenset({StorageFeature.OBJECT_LOCK})),
+        ),
+        GovernanceRequirement(require_immutable_originals=True),
+    )
+    assert locked == ()
 
 
 def test_preflight_connection_and_tls_fail_closed():
