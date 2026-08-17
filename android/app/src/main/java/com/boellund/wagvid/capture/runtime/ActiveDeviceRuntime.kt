@@ -26,7 +26,7 @@ class ActiveDeviceRuntime(
     private val database = (applicationContext as WagvidApplication).database
     private val captureDao = database.captures()
     private val receiptStore = RoomCommandReceiptStore(database.commandReceipts())
-    private val api = ApiFactory.create(credential.baseUrl)
+    private val api = ApiFactory.create(credential.baseUrl, credential.certificateFingerprint)
     private val bearer = "Bearer ${credential.apiToken}"
     private val coordinator = CommandCoordinator(credential, control, receiptStore)
     private val controlState = control

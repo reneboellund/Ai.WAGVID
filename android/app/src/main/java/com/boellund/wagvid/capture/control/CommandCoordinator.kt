@@ -27,7 +27,7 @@ interface RemoteCommandTransport {
 }
 
 class ApiRemoteCommandTransport(private val credentials: BackendCredential) : RemoteCommandTransport {
-    private val api = ApiFactory.create(credentials.baseUrl)
+    private val api = ApiFactory.create(credentials.baseUrl, credentials.certificateFingerprint)
     private val bearer = "Bearer ${credentials.apiToken}"
 
     override suspend fun poll(): List<RemoteCommand> =

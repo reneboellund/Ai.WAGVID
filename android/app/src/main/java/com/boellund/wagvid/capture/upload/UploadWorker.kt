@@ -69,7 +69,7 @@ class UploadWorker(context: Context, parameters: WorkerParameters) : CoroutineWo
         file: File,
     ) {
         val dao = (applicationContext as WagvidApplication).database.captures()
-        val api = ApiFactory.create(credentials.baseUrl)
+        val api = ApiFactory.create(credentials.baseUrl, credentials.certificateFingerprint)
         val token = "Bearer ${credentials.apiToken}"
         val opened = api.openUpload(
             credentials.deviceKey,

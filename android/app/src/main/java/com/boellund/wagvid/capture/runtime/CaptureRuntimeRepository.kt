@@ -48,7 +48,7 @@ class CaptureRuntimeRepository(context: Context) {
         credential: BackendCredential = credential()
             ?: error("Device is not paired"),
     ): CaptureContextResponse {
-        val api = ApiFactory.create(credential.baseUrl)
+        val api = ApiFactory.create(credential.baseUrl, credential.certificateFingerprint)
         return api.captureContext(
             credential.deviceKey,
             "Bearer ${credential.apiToken}",
