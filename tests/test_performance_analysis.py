@@ -1,3 +1,4 @@
+import hashlib
 from datetime import UTC, datetime
 
 import pytest
@@ -35,6 +36,7 @@ def observation(
     confidence: int = 900,
     state: ObservationReviewState = ObservationReviewState.ACCEPTED,
 ) -> PerformanceObservation:
+    evidence_digest = hashlib.sha256(f"evidence:{observation_id}".encode()).hexdigest()
     return PerformanceObservation(
         observation_id=observation_id,
         athlete_group_id="athlete-pseudo-1",
@@ -47,7 +49,7 @@ def observation(
         element_family="fixture-family",
         polarity=polarity,
         description="Evidence-backed fixture observation",
-        evidence=(PerformanceEvidenceRef(f"ev-{observation_id}", (observation_id[0] or "a") * 64),),
+        evidence=(PerformanceEvidenceRef(f"ev-{observation_id}", evidence_digest),),
         confidence_milli=confidence,
         review_state=state,
         source_digest="f" * 64,
