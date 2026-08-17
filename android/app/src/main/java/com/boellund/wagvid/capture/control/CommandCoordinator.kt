@@ -4,6 +4,7 @@ import com.boellund.wagvid.capture.network.ApiFactory
 import com.boellund.wagvid.capture.network.CommandAck
 import com.boellund.wagvid.capture.network.RemoteCommand
 import com.boellund.wagvid.capture.security.BackendCredential
+import java.time.Instant
 
 enum class LocalCaptureState(val wire: String) {
     READY("ready"),
@@ -23,6 +24,7 @@ interface LocalCaptureControl {
 class CommandCoordinator(
     private val credentials: BackendCredential,
     private val control: LocalCaptureControl,
+    private val now: () -> Instant = Instant::now,
 ) {
     private val api = ApiFactory.create(credentials.baseUrl)
     private val bearer = "Bearer ${credentials.apiToken}"
@@ -32,6 +34,10 @@ class CommandCoordinator(
     }
 
     private suspend fun execute(command: RemoteCommand) {
+        if (isExpired(command)) {
+            acknowledge(command, false, "COMMAND_EXPIRED")
+            return
+        }
         if (command.expected_device_state != control.state.wire) {
             acknowledge(command, false, "STATE_CONFLICT")
             return
@@ -52,6 +58,11 @@ class CommandCoordinator(
         } catch (error: Exception) {
             acknowledge(command, false, "LOCAL_CAPTURE_ERROR")
         }
+    }
+
+    private fun isExpired(command: RemoteCommand): Boolean {
+        val expiry = runCatching { Instant.parse(command.expires_at) }.getOrNull() ?: return true
+        return !expiry.isAfter(now())
     }
 
     private suspend fun acknowledge(command: RemoteCommand, accepted: Boolean, code: String) {
