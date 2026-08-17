@@ -1,0 +1,69 @@
+schema: ai.wagvid.model-selection-candidates.v1
+reviewed_at: '2026-08-17'
+status: candidate-selection-not-acquired
+scope: internal-non-commercial-research
+source_project:
+  name: OpenMMLab MMAction2
+  repository: https://github.com/open-mmlab/mmaction2
+candidates:
+  - id: posec3d-finegym-keypoint-u48
+    role: temporal-skeleton-action-baseline
+    apparatus: [VT, UB, BB, FX]
+    config_path: configs/skeleton/posec3d/slowonly_r50_8xb16-u48-240e_gym-keypoint.py
+    config_source: https://github.com/open-mmlab/mmaction2/blob/main/configs/skeleton/posec3d/slowonly_r50_8xb16-u48-240e_gym-keypoint.py
+    checkpoint_source: https://download.openmmlab.com/mmaction/v1.0/skeleton/posec3d/slowonly_r50_8xb16-u48-240e_gym-keypoint/slowonly_r50_8xb16-u48-240e_gym-keypoint_20220815-da338c58.pth
+    config_sha256: null
+    checkpoint_sha256: null
+    acquisition_status: selected-pending-acquisition-and-hash
+    input_contract:
+      representation: 2d-pose-keypoint-heatmap
+      keypoint_channels: 17
+      clip_len_frames: 48
+      upstream_class_count: 99
+      upstream_taxonomy: FineGYM/GYM99
+    official_reference_metric:
+      dataset: FineGYM
+      metric: mean-top1
+      value_percent: 93.5
+      testing_protocol: 10-clips
+      use: source-model-zoo-reference-only
+    blockers:
+      - Acquire exact config/checkpoint bytes and compute SHA-256.
+      - Freeze MMAction2/MMEngine/MMCV/PyTorch runtime versions.
+      - Pin the exact FineGYM/GYM99 upstream label map used by the checkpoint.
+      - Map upstream labels only through reviewed canonical candidates; never treat class index as FIG element ID.
+      - Preserve explicit unknown/OOD probability and unresolved family-only output.
+      - Run Ai.WAGVID rights-cleared apparatus/camera/visibility benchmarks; upstream FineGYM accuracy is not promotion evidence.
+
+  - id: posec3d-finegym-limb-u48
+    role: temporal-skeleton-action-challenger
+    apparatus: [VT, UB, BB, FX]
+    config_path: configs/skeleton/posec3d/slowonly_r50_8xb16-u48-240e_gym-limb.py
+    config_source: https://github.com/open-mmlab/mmaction2/blob/main/configs/skeleton/posec3d/slowonly_r50_8xb16-u48-240e_gym-limb.py
+    checkpoint_source: https://download.openmmlab.com/mmaction/v1.0/skeleton/posec3d/slowonly_r50_8xb16-u48-240e_gym-limb/slowonly_r50_8xb16-u48-240e_gym-limb_20220815-2e6e3c5c.pth
+    config_sha256: null
+    checkpoint_sha256: null
+    acquisition_status: selected-pending-acquisition-and-hash
+    input_contract:
+      representation: 2d-pose-limb-heatmap
+      clip_len_frames: 48
+      upstream_class_count: 99
+      upstream_taxonomy: FineGYM/GYM99
+    official_reference_metric:
+      dataset: FineGYM
+      metric: mean-top1
+      value_percent: 93.6
+      testing_protocol: 10-clips
+      use: source-model-zoo-reference-only
+    blockers:
+      - Acquire exact config/checkpoint bytes and compute SHA-256.
+      - Freeze runtime versions and exact upstream label map.
+      - Evaluate robustness to RTMPose/RTMW pose noise and missing joints on WAG footage.
+      - Map labels through reviewed canonical candidates with unknown/OOD handling.
+      - Run the same leakage-safe Ai.WAGVID benchmark slices as the keypoint variant.
+selection_policy:
+  - Keypoint and limb variants are challengers; upstream 93.5/93.6 results do not select a winner.
+  - Compare both against identical rights-cleared validation media and split manifest when feasible.
+  - FineGYM labels remain an upstream taxonomy, not FIG identities or D-values.
+  - Official score/result fields must not enter inference or label mapping before AI output freeze.
+  - No checkpoint is validated until exact bytes, hashes, rights/provenance and Ai.WAGVID benchmark report exist.
