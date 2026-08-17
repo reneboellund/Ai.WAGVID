@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Mapping
 
-from .recovery import pg_restore_command, verify_artifact
+from .recovery import pg_restore_command, sha256_file, safe_relative_path, verify_artifact
 
 
 @dataclass(frozen=True)
@@ -33,6 +33,22 @@ def _load_json(path: Path) -> dict:
     if not isinstance(value, dict):
         raise ValueError(f"Recovery artifact {path.name} must contain a JSON object")
     return value
+
+
+def _verify_database_artifact(root: Path, database: Mapping[str, object]):
+    """Verify the DB archive while preserving its manifest field name (`archive`)."""
+    if "archive" not in database or "sha256" not in database:
+        return False, "invalid-artifact-reference:database", None
+    try:
+        archive_path = safe_relative_path(root, str(database["archive"]))
+    except ValueError as exc:
+        return False, f"artifact-verification-failed:database:{exc}", None
+    if not archive_path.is_file():
+        return False, "artifact-verification-failed:database:Artifact is missing", archive_path
+    actual = sha256_file(archive_path)
+    if actual != str(database["sha256"]):
+        return False, "artifact-verification-failed:database:SHA-256 mismatch", archive_path
+    return True, None, archive_path
 
 
 def restore_preflight(
@@ -71,11 +87,16 @@ def restore_preflight(
     database = manifest.get("database", {})
     config_bundle = manifest.get("config_bundle", {})
     object_inventory = manifest.get("object_inventory", {})
-    for label, artifact in (
-        ("database", database),
-        ("config", config_bundle),
-        ("object-inventory", object_inventory),
-    ):
+
+    database_archive_path = None
+    if not isinstance(database, Mapping):
+        blockers.append("invalid-artifact-reference:database")
+    else:
+        ok, reason, database_archive_path = _verify_database_artifact(root, database)
+        if not ok and reason:
+            blockers.append(reason)
+
+    for label, artifact in (("config", config_bundle), ("object-inventory", object_inventory)):
         if not isinstance(artifact, Mapping) or "path" not in artifact or "sha256" not in artifact:
             blockers.append(f"invalid-artifact-reference:{label}")
             continue
@@ -92,12 +113,9 @@ def restore_preflight(
     inventory_path = None
     if isinstance(object_inventory, Mapping) and object_inventory.get("path"):
         try:
-            inventory_path = root / str(object_inventory["path"])
-            inventory_path = inventory_path.resolve()
-            inventory_path.relative_to(root)
-        except (ValueError, OSError):
+            inventory_path = safe_relative_path(root, str(object_inventory["path"]))
+        except ValueError:
             blockers.append("object-inventory-path-invalid")
-            inventory_path = None
 
     if inventory_path and inventory_path.is_file():
         try:
@@ -125,28 +143,17 @@ def restore_preflight(
                 warnings.append("object-provider-content-not-checked")
 
     restore_command = None
-    archive = database.get("path") if isinstance(database, Mapping) else None
-    if not archive and isinstance(database, Mapping):
-        archive = database.get("archive")
-    if archive:
-        archive_path = (root / str(archive)).resolve()
-        try:
-            archive_path.relative_to(root)
-        except ValueError:
-            blockers.append("database-archive-path-invalid")
-        else:
-            restore_command = tuple(
-                pg_restore_command(
-                    host=database_host,
-                    port=database_port,
-                    database=database_name,
-                    username=database_username,
-                    archive_path=archive_path,
-                    clean=False,
-                )
+    if database_archive_path is not None:
+        restore_command = tuple(
+            pg_restore_command(
+                host=database_host,
+                port=database_port,
+                database=database_name,
+                username=database_username,
+                archive_path=database_archive_path,
+                clean=False,
             )
-    else:
-        blockers.append("database-archive-missing")
+        )
 
     return RestorePreflight(
         allowed=not blockers,
