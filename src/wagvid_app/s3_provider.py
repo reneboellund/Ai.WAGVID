@@ -65,11 +65,54 @@ class MultipartHandle:
     expected_sha256: str
 
 
+@dataclass(frozen=True)
+class MultipartUploadInfo:
+    bucket: str
+    key: str
+    upload_id: str
+    initiated: str | None = None
+
+
+@dataclass(frozen=True)
+class MultipartDiagnostics:
+    uploads: tuple[MultipartUploadInfo, ...]
+    truncated: bool = False
+
+
+@dataclass(frozen=True)
+class PresignedRequest:
+    url: str
+    headers: dict[str, str]
+    expires_seconds: int
+
+
+@dataclass(frozen=True)
+class S3TransferTuning:
+    multipart_threshold_bytes: int = 64 * 1024 * 1024
+    part_size_bytes: int = 16 * 1024 * 1024
+    max_concurrency: int = 4
+
+    def __post_init__(self) -> None:
+        if self.multipart_threshold_bytes < 1:
+            raise ValueError("multipart_threshold_bytes must be positive")
+        if self.part_size_bytes < 5 * 1024 * 1024:
+            raise ValueError("part_size_bytes must be at least 5 MiB")
+        if not 1 <= self.max_concurrency <= 64:
+            raise ValueError("max_concurrency must be between 1 and 64")
+
+
 def _attempt(call, *args, **kwargs):
     try:
         return True, call(*args, **kwargs), None
     except Exception as error:  # noqa: BLE001 - provider SDK exceptions are optional
         return False, None, type(error).__name__
+
+
+def _attempt_named(client: Any, name: str, **kwargs):
+    call = getattr(client, name, None)
+    if call is None:
+        return False, None, "unsupported"
+    return _attempt(call, **kwargs)
 
 
 def inspect_bucket(client: S3InspectionClient, bucket: str) -> BucketProbe:
@@ -136,6 +179,12 @@ def inspect_bucket(client: S3InspectionClient, bucket: str) -> BucketProbe:
             warnings.append("public-access-block-not-fully-enabled")
     else:
         warnings.append(f"public-access-block-unverified:{error}")
+
+    ok, value, error = _attempt_named(client, "get_bucket_encryption", Bucket=bucket)
+    if ok and (value or {}).get("ServerSideEncryptionConfiguration", {}).get("Rules"):
+        features.add(StorageFeature.SERVER_SIDE_ENCRYPTION)
+    elif error != "unsupported":
+        warnings.append(f"server-side-encryption-unverified:{error or 'not-configured'}")
 
     return BucketProbe(
         bucket=bucket,
@@ -204,11 +253,7 @@ def _read_all_verified(
 
 
 class S3ObjectStorageProvider:
-    """Provider-neutral S3 data plane with immutable identity/checksum semantics.
-
-    `verified_features` comes from a provider/profile certification step. Protocol features
-    such as Range GET or multipart are not inferred from an endpoint name.
-    """
+    """Provider-neutral S3 data plane with immutable identity/checksum semantics."""
 
     def __init__(
         self,
@@ -217,14 +262,20 @@ class S3ObjectStorageProvider:
         *,
         buckets: Iterable[str],
         verified_features: frozenset[StorageFeature] = frozenset(),
+        transfer_tuning: S3TransferTuning | None = None,
     ) -> None:
         self.profile = profile
         self.client = client
         self.provider_id = profile.provider_id
         self.buckets = tuple(sorted(set(buckets)))
         self.verified_features = verified_features
+        self.transfer_tuning = transfer_tuning or S3TransferTuning()
         if not self.buckets:
             raise ValueError("At least one configured bucket is required")
+
+    def replace_client(self, client: S3DataClient) -> None:
+        """Rotate resolved credentials/client without changing provider/object identity."""
+        self.client = client
 
     def _location_kwargs(self, location: ObjectLocation) -> dict[str, Any]:
         if location.provider_id != self.provider_id:
@@ -367,6 +418,70 @@ class S3ObjectStorageProvider:
             **self._location_kwargs(handle.location), UploadId=handle.upload_id
         )
 
+    def multipart_diagnostics(self, *, bucket: str, prefix: str = "") -> MultipartDiagnostics:
+        if StorageFeature.MULTIPART not in self.verified_features:
+            raise S3ProviderError("Multipart diagnostics are not validated for this provider")
+        if bucket not in self.buckets:
+            raise ValueError("Bucket is not mapped to this provider")
+        call = getattr(self.client, "list_multipart_uploads", None)
+        if call is None:
+            raise S3ProviderError("Provider client does not expose multipart diagnostics")
+        response = call(Bucket=bucket, Prefix=prefix)
+        uploads = tuple(
+            MultipartUploadInfo(
+                bucket=bucket,
+                key=str(item.get("Key") or ""),
+                upload_id=str(item.get("UploadId") or ""),
+                initiated=str(item.get("Initiated")) if item.get("Initiated") is not None else None,
+            )
+            for item in response.get("Uploads", [])
+            if item.get("Key") and item.get("UploadId")
+        )
+        return MultipartDiagnostics(uploads=uploads, truncated=bool(response.get("IsTruncated")))
+
+    def presign_get(self, location: ObjectLocation, *, expires_seconds: int = 300) -> PresignedRequest:
+        if StorageFeature.PRESIGNED_GET not in self.verified_features:
+            raise S3ProviderError("Presigned GET is not validated for this provider")
+        if not 1 <= expires_seconds <= 3600:
+            raise ValueError("expires_seconds must be between 1 and 3600")
+        generator = getattr(self.client, "generate_presigned_url", None)
+        if generator is None:
+            raise S3ProviderError("Provider client cannot generate presigned URLs")
+        url = generator(
+            "get_object",
+            Params=self._location_kwargs(location),
+            ExpiresIn=expires_seconds,
+        )
+        return PresignedRequest(str(url), {}, expires_seconds)
+
+    def presign_put(
+        self,
+        location: ObjectLocation,
+        *,
+        expected_sha256: str,
+        expires_seconds: int = 300,
+    ) -> PresignedRequest:
+        if StorageFeature.PRESIGNED_PUT not in self.verified_features:
+            raise S3ProviderError("Presigned PUT is not validated for this provider")
+        if location.version_id:
+            raise ValueError("A presigned PUT cannot target an existing object version")
+        if not 1 <= expires_seconds <= 3600:
+            raise ValueError("expires_seconds must be between 1 and 3600")
+        expected = expected_sha256.casefold()
+        if len(expected) != 64 or any(ch not in "0123456789abcdef" for ch in expected):
+            raise ValueError("expected_sha256 must be a SHA-256 hex digest")
+        generator = getattr(self.client, "generate_presigned_url", None)
+        if generator is None:
+            raise S3ProviderError("Provider client cannot generate presigned URLs")
+        params = self._location_kwargs(location)
+        params["Metadata"] = {"sha256": expected}
+        url = generator("put_object", Params=params, ExpiresIn=expires_seconds)
+        return PresignedRequest(
+            str(url),
+            {"x-amz-meta-sha256": expected},
+            expires_seconds,
+        )
+
 
 def create_boto3_s3_client(
     profile: StorageConnectionProfile,
@@ -374,6 +489,7 @@ def create_boto3_s3_client(
     access_key_id: str | None = None,
     secret_access_key: str | None = None,
     session_token: str | None = None,
+    ca_bundle_path: str | None = None,
 ):
     """Lazy boto3 factory supporting AWS credential chain or resolved S3 credentials."""
     try:
@@ -392,10 +508,10 @@ def create_boto3_s3_client(
         kwargs["endpoint_url"] = profile.endpoint
     if profile.region:
         kwargs["region_name"] = profile.region
-    if profile.ca_bundle_ref:
-        # The secret/config resolver must translate the reference to a local CA path before
-        # constructing this client. Never turn TLS verification off for production profiles.
+    if profile.ca_bundle_ref and not ca_bundle_path:
         raise S3ProviderError("Resolve ca_bundle_ref to a verified local CA path before client creation")
+    if ca_bundle_path:
+        kwargs["verify"] = ca_bundle_path
     if access_key_id is not None:
         kwargs["aws_access_key_id"] = access_key_id
     if secret_access_key is not None:
