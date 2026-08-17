@@ -125,8 +125,12 @@ def preview_gymnast_csv(organization: Organization, content: str) -> GymnastImpo
         )
         return preview
 
-    existing = set(organization.gymnasts.values_list("license_number", flat=True))
-    seen: set[str] = set()
+    existing_licenses = set(organization.gymnasts.values_list("license_number", flat=True))
+    existing_kiga_ids = set(
+        organization.gymnasts.exclude(kiga_id="").values_list("kiga_id", flat=True)
+    )
+    seen_licenses: set[str] = set()
+    seen_kiga_ids: set[str] = set()
     levels_by_key = {
         level.name.casefold(): level.name
         for level in organization.levels.filter(active=True)
@@ -144,10 +148,15 @@ def preview_gymnast_csv(organization: Organization, content: str) -> GymnastImpo
             preview.errors.append(
                 ImportErrorRow(row_number, "license_number", "License number is required")
             )
-        elif license_number in existing or license_number in seen:
+        elif license_number in existing_licenses or license_number in seen_licenses:
             preview.errors.append(
                 ImportErrorRow(row_number, "license_number", "Duplicate license number")
             )
+
+        kiga_id = row.get("kiga_id", "").strip()
+        row["kiga_id"] = kiga_id
+        if kiga_id and (kiga_id in existing_kiga_ids or kiga_id in seen_kiga_ids):
+            preview.errors.append(ImportErrorRow(row_number, "kiga_id", "Duplicate KIGA ID"))
 
         level_key = row["level"].casefold()
         canonical_level = levels_by_key.get(level_key)
@@ -166,7 +175,9 @@ def preview_gymnast_csv(organization: Organization, content: str) -> GymnastImpo
             row["discipline"] = discipline
 
         if license_number:
-            seen.add(license_number)
+            seen_licenses.add(license_number)
+        if kiga_id:
+            seen_kiga_ids.add(kiga_id)
         if not any(error.row == row_number for error in preview.errors):
             preview.valid_rows.append(row)
     return preview
@@ -180,15 +191,25 @@ def commit_gymnast_import(
         raise ValueError("Import preview is not commit-ready")
     Organization.objects.select_for_update().get(pk=organization.pk)
     licenses = [row["license_number"] for row in preview.valid_rows]
-    conflicts = set(
+    license_conflicts = set(
         Gymnast.objects.filter(
             organization=organization, license_number__in=licenses
         ).values_list("license_number", flat=True)
     )
-    if conflicts:
+    if license_conflicts:
         raise ValueError(
             "Import preview is stale; license numbers now exist: "
-            + ", ".join(sorted(conflicts))
+            + ", ".join(sorted(license_conflicts))
+        )
+    kiga_ids = [row.get("kiga_id", "") for row in preview.valid_rows if row.get("kiga_id", "")]
+    kiga_conflicts = set(
+        Gymnast.objects.filter(organization=organization, kiga_id__in=kiga_ids).values_list(
+            "kiga_id", flat=True
+        )
+    )
+    if kiga_conflicts:
+        raise ValueError(
+            "Import preview is stale; KIGA IDs now exist: " + ", ".join(sorted(kiga_conflicts))
         )
     levels = {level.name: level for level in organization.levels.filter(active=True)}
     missing_levels = {row["level"] for row in preview.valid_rows} - set(levels)
