@@ -8,6 +8,7 @@ import com.boellund.wagvid.capture.upload.UploadWorker
 class WagvidApplication : Application() {
     val database: CaptureDatabase by lazy {
         Room.databaseBuilder(this, CaptureDatabase::class.java, "wagvid-capture.db")
+            .addMigrations(CaptureDatabase.MIGRATION_1_2)
             .fallbackToDestructiveMigrationOnDowngrade()
             .build()
     }

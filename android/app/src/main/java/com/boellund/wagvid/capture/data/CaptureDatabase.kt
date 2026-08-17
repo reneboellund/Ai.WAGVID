@@ -10,6 +10,10 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.RoomDatabase
 import androidx.room.Update
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
+import com.boellund.wagvid.capture.control.CommandReceipt
+import com.boellund.wagvid.capture.control.CommandReceiptStore
 import kotlinx.coroutines.flow.Flow
 
 @Entity(tableName = "captures", indices = [Index("recordedAtEpochMs")])
@@ -39,6 +43,15 @@ data class UploadQueueEntity(
     val remoteMediaId: String? = null,
     val lastError: String? = null,
     val nextAttemptAtEpochMs: Long = 0,
+)
+
+@Entity(tableName = "command_receipts", indices = [Index("executedAtEpochMs")])
+data class CommandReceiptEntity(
+    @PrimaryKey val commandId: String,
+    val accepted: Boolean,
+    val finalState: String,
+    val rejectionCode: String,
+    val executedAtEpochMs: Long,
 )
 
 data class CaptureArchiveRow(
@@ -91,7 +104,79 @@ interface CaptureDao {
     suspend fun queuedCountSnapshot(): Int
 }
 
-@Database(entities = [CaptureEntity::class, UploadQueueEntity::class], version = 1, exportSchema = false)
+@Dao
+interface CommandReceiptDao {
+    @Query("SELECT * FROM command_receipts WHERE commandId = :commandId LIMIT 1")
+    suspend fun find(commandId: String): CommandReceiptEntity?
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insert(receipt: CommandReceiptEntity): Long
+
+    @Query("DELETE FROM command_receipts WHERE executedAtEpochMs < :beforeEpochMs")
+    suspend fun prune(beforeEpochMs: Long): Int
+}
+
+class RoomCommandReceiptStore(private val dao: CommandReceiptDao) : CommandReceiptStore {
+    override suspend fun find(commandId: String): CommandReceipt? = dao.find(commandId)?.let {
+        CommandReceipt(
+            commandId = it.commandId,
+            accepted = it.accepted,
+            finalState = it.finalState,
+            rejectionCode = it.rejectionCode,
+            executedAtEpochMs = it.executedAtEpochMs,
+        )
+    }
+
+    override suspend fun save(receipt: CommandReceipt) {
+        val inserted = dao.insert(
+            CommandReceiptEntity(
+                commandId = receipt.commandId,
+                accepted = receipt.accepted,
+                finalState = receipt.finalState,
+                rejectionCode = receipt.rejectionCode,
+                executedAtEpochMs = receipt.executedAtEpochMs,
+            ),
+        )
+        if (inserted == -1L) {
+            val existing = dao.find(receipt.commandId)
+            check(existing != null) { "Command receipt conflict without stored row" }
+            check(
+                existing.accepted == receipt.accepted &&
+                    existing.finalState == receipt.finalState &&
+                    existing.rejectionCode == receipt.rejectionCode
+            ) { "Command receipt outcome changed for ${receipt.commandId}" }
+        }
+    }
+
+    override suspend fun prune(beforeEpochMs: Long): Int = dao.prune(beforeEpochMs)
+}
+
+@Database(
+    entities = [CaptureEntity::class, UploadQueueEntity::class, CommandReceiptEntity::class],
+    version = 2,
+    exportSchema = false,
+)
 abstract class CaptureDatabase : RoomDatabase() {
     abstract fun captures(): CaptureDao
+    abstract fun commandReceipts(): CommandReceiptDao
+
+    companion object {
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS command_receipts (" +
+                        "commandId TEXT NOT NULL, " +
+                        "accepted INTEGER NOT NULL, " +
+                        "finalState TEXT NOT NULL, " +
+                        "rejectionCode TEXT NOT NULL, " +
+                        "executedAtEpochMs INTEGER NOT NULL, " +
+                        "PRIMARY KEY(commandId))",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_command_receipts_executedAtEpochMs " +
+                        "ON command_receipts(executedAtEpochMs)",
+                )
+            }
+        }
+    }
 }

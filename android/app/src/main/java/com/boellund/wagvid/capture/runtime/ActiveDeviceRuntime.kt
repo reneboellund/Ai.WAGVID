@@ -8,6 +8,7 @@ import com.boellund.wagvid.capture.BuildConfig
 import com.boellund.wagvid.capture.WagvidApplication
 import com.boellund.wagvid.capture.control.CommandCoordinator
 import com.boellund.wagvid.capture.control.LocalCaptureControl
+import com.boellund.wagvid.capture.data.RoomCommandReceiptStore
 import com.boellund.wagvid.capture.network.ApiFactory
 import com.boellund.wagvid.capture.network.HeartbeatRequest
 import com.boellund.wagvid.capture.security.BackendCredential
@@ -22,11 +23,13 @@ class ActiveDeviceRuntime(
     private val activeCaptureId: () -> String?,
 ) {
     private val applicationContext = context.applicationContext
+    private val database = (applicationContext as WagvidApplication).database
+    private val captureDao = database.captures()
+    private val receiptStore = RoomCommandReceiptStore(database.commandReceipts())
     private val api = ApiFactory.create(credential.baseUrl)
     private val bearer = "Bearer ${credential.apiToken}"
-    private val coordinator = CommandCoordinator(credential, control)
+    private val coordinator = CommandCoordinator(credential, control, receiptStore)
     private val controlState = control
-    private val dao = (applicationContext as WagvidApplication).database.captures()
     private val batteryManager = applicationContext.getSystemService(BatteryManager::class.java)
     private val connectivityManager =
         applicationContext.getSystemService(ConnectivityManager::class.java)
@@ -35,6 +38,9 @@ class ActiveDeviceRuntime(
         onConnected: () -> Unit,
         onConnectionError: (String) -> Unit,
     ) {
+        // Command IDs are short-lived server commands. Keep enough durable history to make ACK
+        // loss/restart safe without allowing the receipt table to grow forever.
+        receiptStore.prune(System.currentTimeMillis() - COMMAND_RECEIPT_RETENTION_MS)
         var lastHeartbeatAttemptAt = 0L
         while (currentCoroutineContext().isActive) {
             var connected = false
@@ -71,7 +77,7 @@ class ActiveDeviceRuntime(
                 state = controlState.state.wire,
                 battery_percent = batteryPercent(),
                 free_storage_bytes = applicationContext.filesDir.usableSpace,
-                queued_uploads = dao.queuedCountSnapshot(),
+                queued_uploads = captureDao.queuedCountSnapshot(),
                 network_type = networkType(),
                 app_version = BuildConfig.VERSION_NAME,
                 active_capture_id = activeCaptureId(),
@@ -99,5 +105,6 @@ class ActiveDeviceRuntime(
     private companion object {
         const val POLL_INTERVAL_MS = 2_000L
         const val HEARTBEAT_INTERVAL_MS = 15_000L
+        const val COMMAND_RECEIPT_RETENTION_MS = 30L * 24L * 60L * 60L * 1_000L
     }
 }
