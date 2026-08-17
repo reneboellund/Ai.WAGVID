@@ -16,12 +16,23 @@ User = get_user_model()
 ADMIN_ROLES = {Membership.Role.SYSTEM_ADMIN, Membership.Role.ORGANIZATION_ADMIN}
 
 
+def _allowed_role_choices(actor_membership):
+    choices = list(Membership.Role.choices)
+    if actor_membership.role != Membership.Role.SYSTEM_ADMIN:
+        choices = [item for item in choices if item[0] != Membership.Role.SYSTEM_ADMIN]
+    return choices
+
+
 class MembershipCreateForm(forms.Form):
     user_lookup = forms.CharField(
         label="Brugernavn eller e-mail",
         help_text="Brugeren skal allerede eksistere i Ai.WAGVID.",
     )
     role = forms.ChoiceField(label="Rolle", choices=Membership.Role.choices)
+
+    def __init__(self, *args, actor_membership, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["role"].choices = _allowed_role_choices(actor_membership)
 
     def clean_user_lookup(self):
         value = self.cleaned_data["user_lookup"].strip()
@@ -36,9 +47,23 @@ class MembershipEditForm(forms.ModelForm):
         model = Membership
         fields = ["role", "active"]
 
+    def __init__(self, *args, actor_membership, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["role"].choices = _allowed_role_choices(actor_membership)
+
 
 def _organization(request):
     return active_organization(request)
+
+
+def _actor_admin_membership(request, organization):
+    if not organization:
+        return None
+    return request.user.wagvid_memberships.filter(
+        organization=organization,
+        active=True,
+        role__in=ADMIN_ROLES,
+    ).first()
 
 
 def _can_manage(request, organization):
@@ -80,9 +105,10 @@ def members(request):
 @transaction.atomic
 def member_create(request):
     organization = _organization(request)
-    if not _can_manage(request, organization):
+    actor_membership = _actor_admin_membership(request, organization)
+    if actor_membership is None:
         return HttpResponseForbidden()
-    form = MembershipCreateForm(request.POST or None)
+    form = MembershipCreateForm(request.POST or None, actor_membership=actor_membership)
     if request.method == "POST" and form.is_valid():
         user = form.cleaned_data["user_lookup"]
         role = form.cleaned_data["role"]
@@ -118,14 +144,25 @@ def member_create(request):
 @transaction.atomic
 def member_edit(request, membership_id):
     organization = _organization(request)
-    if not _can_manage(request, organization):
+    actor_membership = _actor_admin_membership(request, organization)
+    if actor_membership is None:
         return HttpResponseForbidden()
     membership = get_object_or_404(
         Membership.objects.select_for_update().select_related("user"),
         pk=membership_id,
         organization=organization,
     )
-    form = MembershipEditForm(request.POST or None, instance=membership)
+    if (
+        membership.role == Membership.Role.SYSTEM_ADMIN
+        and actor_membership.role != Membership.Role.SYSTEM_ADMIN
+    ):
+        return HttpResponseForbidden()
+
+    form = MembershipEditForm(
+        request.POST or None,
+        instance=membership,
+        actor_membership=actor_membership,
+    )
     if request.method == "POST" and form.is_valid():
         role = form.cleaned_data["role"]
         active = form.cleaned_data["active"]

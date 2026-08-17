@@ -3,6 +3,7 @@ from django.urls import path
 from . import (
     analysis_api,
     device_api,
+    invitation_views,
     master_data_views,
     media_access,
     media_timeline_api,
@@ -53,6 +54,10 @@ urlpatterns = [
     path("organization/members/", member_views.members, name="members"),
     path("organization/members/new/", member_views.member_create, name="member-create"),
     path("organization/members/<int:membership_id>/edit/", member_views.member_edit, name="member-edit"),
+    path("organization/invitations/", invitation_views.invitation_list, name="membership-invitations"),
+    path("organization/invitations/new/", invitation_views.invitation_create, name="membership-invitation-create"),
+    path("organization/invitations/<uuid:invitation_id>/revoke/", invitation_views.invitation_revoke, name="membership-invitation-revoke"),
+    path("invite/<str:token>/", invitation_views.invitation_accept, name="membership-invitation-accept"),
     path("devices/", views.devices, name="devices"),
     path("analyses/", views.analyses, name="analyses"),
     path("analyses/<uuid:job_id>/cancel/", views.analysis_cancel, name="analysis-cancel"),

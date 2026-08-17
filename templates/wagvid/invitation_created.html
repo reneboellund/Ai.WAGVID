@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Invitation oprettet · Ai.WAGVID{% endblock %}
+{% block breadcrumb %}Invitation oprettet{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="eyebrow">Organisation & adgang</p>
+    <h1>Invitation <span class="text-gradient">oprettet</span></h1>
+    <p>{{ invitation.email }} er inviteret til {{ organization.name }} som {{ invitation.get_role_display }}.</p>
+  </div>
+  <div class="page-actions"><a class="button" href="{% url 'membership-invitations' %}">Til invitationer</a></div>
+</section>
+<section class="surface" style="max-width: 900px;">
+  <p class="eyebrow">Vises kun nu</p>
+  <h2>Kopiér invitationslinket</h2>
+  <p>Af sikkerhedsgrunde gemmer Ai.WAGVID kun en hash af invitationstokenet. Det fulde link kan derfor ikke vises igen fra databasen.</p>
+  <div class="form-field">
+    <label for="invite-url">Single-use link</label>
+    <input id="invite-url" type="text" readonly value="{{ invitation_url }}" onclick="this.select()">
+  </div>
+  <p><small>Udløber {{ invitation.expires_at|date:"d.m.Y H:i" }}. En ny invitation til samme e-mail tilbagekalder tidligere aktive invitationer.</small></p>
+</section>
+{% endblock %}

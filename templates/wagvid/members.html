@@ -6,12 +6,13 @@
   <div>
     <p class="eyebrow">Organisation & adgang</p>
     <h1>Brugere <span class="text-gradient">& roller</span></h1>
-    <p>Administrér eksisterende Ai.WAGVID-brugeres adgang til {{ organization.name }}. Ændringer audit-logges.</p>
+    <p>Administrér Ai.WAGVID-brugeres adgang til {{ organization.name }}. Ændringer audit-logges.</p>
   </div>
   <div class="page-actions">
     <a class="button" href="{% url 'workspaces' %}">Skift workspace</a>
+    <a class="button" href="{% url 'membership-invitations' %}">Invitationer</a>
     <a class="button" href="{% url 'gymnasts' %}">Tilbage</a>
-    <a class="button button-primary" href="{% url 'member-create' %}"><svg><use href="#i-plus"/></svg>Tilføj bruger</a>
+    <a class="button button-primary" href="{% url 'member-create' %}"><svg><use href="#i-plus"/></svg>Tilføj eksisterende</a>
   </div>
 </section>
 <section class="surface table-surface">
@@ -31,7 +32,7 @@
     </tbody>
   </table>
   {% else %}
-  <div class="empty-state"><h3>Ingen memberships</h3><p>Tilføj en eksisterende Ai.WAGVID-bruger til organisationen.</p></div>
+  <div class="empty-state"><h3>Ingen memberships</h3><p>Tilføj en eksisterende bruger eller opret en invitation.</p><a class="button button-primary" href="{% url 'membership-invitation-create' %}">Invitér bruger</a></div>
   {% endif %}
 </section>
 {% endblock %}

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Invitationer · Ai.WAGVID{% endblock %}
+{% block breadcrumb %}Invitationer{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="eyebrow">Organisation & adgang</p>
+    <h1>Bruger<span class="text-gradient">invitationer</span></h1>
+    <p>Single-use invitationer til {{ organization.name }}. Tokens gemmes aldrig i klartekst, og alle ændringer audit-logges.</p>
+  </div>
+  <div class="page-actions">
+    <a class="button" href="{% url 'members' %}">Brugere & roller</a>
+    <a class="button button-primary" href="{% url 'membership-invitation-create' %}"><svg><use href="#i-plus"/></svg>Ny invitation</a>
+  </div>
+</section>
+<section class="surface table-surface">
+  {% if invitations %}
+  <table class="data-table">
+    <thead><tr><th>E-mail</th><th>Rolle</th><th>Oprettet</th><th>Udløber</th><th>Status</th><th>Administration</th></tr></thead>
+    <tbody>
+      {% for invitation in invitations %}
+      <tr>
+        <td><strong>{{ invitation.email }}</strong><small>af {{ invitation.created_by.get_username }}</small></td>
+        <td>{{ invitation.get_role_display }}</td>
+        <td>{{ invitation.created_at|date:"d.m.Y H:i" }}</td>
+        <td>{{ invitation.expires_at|date:"d.m.Y H:i" }}</td>
+        <td>
+          {% if invitation.accepted_at %}<span class="status-badge">Accepteret</span>
+          {% elif invitation.revoked_at %}<span class="status-badge neutral">Tilbagekaldt</span>
+          {% else %}<span class="status-badge">Afventer / udløber automatisk</span>{% endif %}
+        </td>
+        <td>
+          {% if not invitation.accepted_at and not invitation.revoked_at %}
+          <form method="post" action="{% url 'membership-invitation-revoke' invitation.id %}">{% csrf_token %}
+            <button class="text-button" type="submit">Tilbagekald</button>
+          </form>
+          {% else %}—{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state"><h3>Ingen invitationer endnu</h3><p>Opret en single-use invitation til en ny eller eksisterende Ai.WAGVID-bruger.</p></div>
+  {% endif %}
+</section>
+{% endblock %}
