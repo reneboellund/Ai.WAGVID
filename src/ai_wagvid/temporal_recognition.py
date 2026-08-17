@@ -337,8 +337,13 @@ def accept_human_element_decision(
     notes: str,
     decided_at: datetime,
 ) -> HumanElementDecision:
-    ranked_ids = {item.element_id for item in candidate.probability.alternatives}
-    override = chosen_element_id is not None and chosen_element_id not in ranked_ids
+    ranked_by_id = {item.element_id: item for item in candidate.probability.alternatives}
+    ranked_candidate = ranked_by_id.get(chosen_element_id) if chosen_element_id is not None else None
+    if ranked_candidate is not None and chosen_family != ranked_candidate.family:
+        raise TemporalRecognitionError(
+            "human decision family must match the selected ranked element candidate"
+        )
+    override = chosen_element_id is not None and ranked_candidate is None
     return HumanElementDecision(
         decision_id=decision_id,
         segment_digest=candidate.digest,
