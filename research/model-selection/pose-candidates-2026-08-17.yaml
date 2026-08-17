@@ -1,0 +1,75 @@
+schema: ai.wagvid.model-selection-candidates.v1
+reviewed_at: '2026-08-17'
+status: candidate-selection-not-acquired
+scope: internal-non-commercial-research
+source_project:
+  name: OpenMMLab MMPose
+  repository: https://github.com/open-mmlab/mmpose
+candidates:
+  - id: rtmpose-l-coco-256x192
+    role: body-pose-baseline
+    apparatus: [VT, UB, BB, FX]
+    config_path: configs/body_2d_keypoint/rtmpose/coco/rtmpose-l_8xb256-420e_coco-256x192.py
+    config_source: https://github.com/open-mmlab/mmpose/blob/main/configs/body_2d_keypoint/rtmpose/coco/rtmpose-l_8xb256-420e_coco-256x192.py
+    checkpoint_source: https://download.openmmlab.com/mmpose/v1/projects/rtmposev1/rtmpose-l_simcc-coco_pt-aic-coco_420e-256x192-1352a4d2_20230127.pth
+    config_sha256: null
+    checkpoint_sha256: null
+    acquisition_status: selected-pending-acquisition-and-hash
+    keypoint_scope: coco-body-17
+    official_reference_metric:
+      dataset: COCO-val2017
+      metric: AP
+      value: 0.758
+      use: source-model-zoo-reference-only
+    blockers:
+      - Acquire exact config/checkpoint bytes into controlled model storage and compute SHA-256.
+      - Freeze the MMPose/MMCV/MMEngine/PyTorch runtime versions used for Ai.WAGVID validation.
+      - Record checkpoint and training-dataset rights/provenance in the model card.
+      - Run the Ai.WAGVID rights-cleared WAG apparatus benchmark; upstream COCO AP is not promotion evidence.
+
+  - id: rtmw-l-cocktail14-256x192
+    role: whole-body-pose-challenger
+    apparatus: [VT, UB, BB, FX]
+    config_path: configs/wholebody_2d_keypoint/rtmpose/cocktail14/rtmw-l_8xb1024-270e_cocktail14-256x192.py
+    config_source: https://github.com/open-mmlab/mmpose/blob/main/configs/wholebody_2d_keypoint/rtmpose/cocktail14/rtmw-l_8xb1024-270e_cocktail14-256x192.py
+    checkpoint_source: https://download.openmmlab.com/mmpose/v1/projects/rtmw/rtmw-dw-x-l_simcc-cocktail14_270e-256x192-20231122.pth
+    config_sha256: null
+    checkpoint_sha256: null
+    acquisition_status: selected-pending-acquisition-and-hash
+    keypoint_scope: whole-body-including-feet-hands
+    official_reference_metric:
+      dataset: COCO-WholeBody-v1.0-val
+      metric: body-AP
+      value: 0.743
+      use: source-model-zoo-reference-only
+    blockers:
+      - Acquire exact config/checkpoint bytes and compute SHA-256.
+      - Review provenance/terms for the Cocktail14 training dataset mixture before promotion.
+      - Freeze runtime versions and detector pairing.
+      - Benchmark whether foot/hand keypoints materially improve BB/FX/UB evidence versus RTMPose-L.
+
+  - id: rtmw-l-cocktail14-384x288
+    role: whole-body-high-resolution-challenger
+    apparatus: [VT, UB, BB, FX]
+    config_path: configs/wholebody_2d_keypoint/rtmpose/cocktail14/rtmw-l_8xb320-270e_cocktail14-384x288.py
+    config_source: https://github.com/open-mmlab/mmpose/blob/main/configs/wholebody_2d_keypoint/rtmpose/cocktail14/rtmw-l_8xb320-270e_cocktail14-384x288.py
+    checkpoint_source: https://download.openmmlab.com/mmpose/v1/projects/rtmw/rtmw-dw-x-l_simcc-cocktail14_270e-384x288-20231122.pth
+    config_sha256: null
+    checkpoint_sha256: null
+    acquisition_status: selected-pending-acquisition-and-hash
+    keypoint_scope: whole-body-including-feet-hands
+    official_reference_metric:
+      dataset: COCO-WholeBody-v1.0-val
+      metric: body-AP
+      value: 0.761
+      use: source-model-zoo-reference-only
+    blockers:
+      - Acquire exact config/checkpoint bytes and compute SHA-256.
+      - Review Cocktail14 training provenance/terms.
+      - Freeze runtime versions and detector pairing.
+      - Measure WAG accuracy benefit versus VRAM/latency cost before choosing it over 256x192.
+selection_policy:
+  - Do not mark any candidate validated before exact bytes and hashes are recorded.
+  - Compare at least two pose configurations on the same rights-cleared leakage-safe WAG validation manifest.
+  - Upstream benchmark numbers are context only and cannot satisfy Ai.WAGVID apparatus promotion gates.
+  - The chosen pose baseline remains replaceable behind the model-neutral perception contract.
