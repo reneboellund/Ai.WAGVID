@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/reneboellund/Ai.WAGVID/schemas/dscore-policy-v1.schema.json",
+  "title": "Ai.WAGVID declarative D-score policy v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "rulepack_id",
+    "rulepack_digest",
+    "apparatus",
+    "units_per_point",
+    "elements",
+    "counting"
+  ],
+  "properties": {
+    "schema": {"const": "ai.wagvid.dscore-policy.v1"},
+    "rulepack_id": {"type": "string", "minLength": 1},
+    "rulepack_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "apparatus": {"enum": ["VT", "UB", "BB", "FX"]},
+    "units_per_point": {"type": "integer", "minimum": 1},
+    "max_ambiguity_outcomes": {"type": "integer", "minimum": 1},
+    "elements": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/element"}
+    },
+    "counting": {"$ref": "#/$defs/counting"},
+    "composition": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/composition"}
+    },
+    "connections": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/connection"}
+    },
+    "adjustments": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/adjustment"}
+    }
+  },
+  "$defs": {
+    "sourceRule": {"type": ["string", "null"], "minLength": 1},
+    "stringSet": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "element": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["element_id", "value_units", "repetition_key"],
+      "properties": {
+        "element_id": {"type": "string", "minLength": 1},
+        "value_units": {"type": "integer", "minimum": 0},
+        "repetition_key": {"type": "string", "minLength": 1},
+        "groups": {"$ref": "#/$defs/stringSet"},
+        "source_rule_id": {"$ref": "#/$defs/sourceRule"}
+      }
+    },
+    "quota": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["group"],
+      "properties": {
+        "group": {"type": "string", "minLength": 1},
+        "minimum_counted": {"type": "integer", "minimum": 0},
+        "maximum_counted": {"type": ["integer", "null"], "minimum": 0}
+      }
+    },
+    "counting": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_counted_elements"],
+      "properties": {
+        "max_counted_elements": {"type": ["integer", "null"], "minimum": 0},
+        "repetition_limit_per_key": {"type": "integer", "minimum": 1},
+        "quotas": {"type": "array", "items": {"$ref": "#/$defs/quota"}}
+      }
+    },
+    "composition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requirement_id", "match_group", "minimum_count", "award_units"],
+      "properties": {
+        "requirement_id": {"type": "string", "minLength": 1},
+        "match_group": {"type": "string", "minLength": 1},
+        "minimum_count": {"type": "integer", "minimum": 1},
+        "award_units": {"type": "integer", "minimum": 0},
+        "scope": {"enum": ["performed", "counted"]},
+        "source_rule_id": {"$ref": "#/$defs/sourceRule"}
+      }
+    },
+    "connection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rule_id", "award_units"],
+      "properties": {
+        "rule_id": {"type": "string", "minLength": 1},
+        "award_units": {"type": "integer", "minimum": 0},
+        "priority": {"type": "integer"},
+        "left_groups_any": {"$ref": "#/$defs/stringSet"},
+        "right_groups_any": {"$ref": "#/$defs/stringSet"},
+        "left_element_ids": {"$ref": "#/$defs/stringSet"},
+        "right_element_ids": {"$ref": "#/$defs/stringSet"},
+        "require_adjacent": {"type": "boolean"},
+        "source_rule_id": {"$ref": "#/$defs/sourceRule"}
+      }
+    },
+    "adjustment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rule_id", "value_units"],
+      "properties": {
+        "rule_id": {"type": "string", "minLength": 1},
+        "value_units": {"type": "integer"},
+        "source_rule_id": {"$ref": "#/$defs/sourceRule"}
+      }
+    }
+  }
+}
