@@ -7,64 +7,37 @@ from . import (
     media_access,
     media_timeline_api,
     member_views,
+    organization_context,
     views,
 )
+
+# Keep workspace resolution isolated from the large operational view module while making all
+# existing views use the same session-selected organization resolver at runtime.
+views.active_organization = organization_context.active_organization
+master_data_views.active_organization = organization_context.active_organization
+member_views.active_organization = organization_context.active_organization
 
 urlpatterns = [
     path("health/", views.health, name="health"),
     path("ready/", views.readiness, name="readiness"),
     path("api/device/uploads/open/", device_api.upload_open, name="device-upload-open"),
     path("api/device/pairing/", device_api.pairing_create, name="device-pairing-create"),
-    path(
-        "api/device/pairing/<uuid:pairing_id>/claim/",
-        device_api.pairing_claim,
-        name="device-pairing-claim",
-    ),
+    path("api/device/pairing/<uuid:pairing_id>/claim/", device_api.pairing_claim, name="device-pairing-claim"),
     path("api/device/heartbeat/", device_api.heartbeat, name="device-heartbeat"),
     path("api/device/commands/", device_api.command_poll, name="device-command-poll"),
     path("api/device/capture-context/", device_api.capture_context, name="device-capture-context"),
-    path(
-        "api/device/commands/<uuid:command_id>/ack/",
-        device_api.command_acknowledge,
-        name="device-command-ack",
-    ),
-    path(
-        "api/devices/<uuid:device_id>/commands/",
-        device_api.command_create,
-        name="device-command-create",
-    ),
+    path("api/device/commands/<uuid:command_id>/ack/", device_api.command_acknowledge, name="device-command-ack"),
+    path("api/devices/<uuid:device_id>/commands/", device_api.command_create, name="device-command-create"),
     path("api/analyses/", analysis_api.analyses_create, name="api-analyses-create"),
-    path(
-        "api/media/<uuid:media_id>/grant/",
-        media_access.create_media_grant,
-        name="media-object-grant",
-    ),
-    path(
-        "api/media/<uuid:media_id>/timeline/",
-        media_timeline_api.media_timeline,
-        name="media-timeline",
-    ),
-    path(
-        "media/<uuid:media_id>/object/",
-        media_access.download_media_object,
-        name="media-object-download",
-    ),
-    path(
-        "api/analyses/<uuid:analysis_id>/",
-        analysis_api.analysis_detail,
-        name="api-analysis-detail",
-    ),
-    path(
-        "api/device/uploads/<uuid:upload_id>/chunk/",
-        device_api.upload_chunk,
-        name="device-upload-chunk",
-    ),
-    path(
-        "api/device/uploads/<uuid:upload_id>/finalize/",
-        device_api.upload_finalize,
-        name="device-upload-finalize",
-    ),
+    path("api/media/<uuid:media_id>/grant/", media_access.create_media_grant, name="media-object-grant"),
+    path("api/media/<uuid:media_id>/timeline/", media_timeline_api.media_timeline, name="media-timeline"),
+    path("media/<uuid:media_id>/object/", media_access.download_media_object, name="media-object-download"),
+    path("api/analyses/<uuid:analysis_id>/", analysis_api.analysis_detail, name="api-analysis-detail"),
+    path("api/device/uploads/<uuid:upload_id>/chunk/", device_api.upload_chunk, name="device-upload-chunk"),
+    path("api/device/uploads/<uuid:upload_id>/finalize/", device_api.upload_finalize, name="device-upload-finalize"),
     path("", views.dashboard, name="dashboard"),
+    path("workspaces/", organization_context.workspaces, name="workspaces"),
+    path("workspaces/<uuid:organization_id>/select/", organization_context.workspace_switch, name="workspace-switch"),
     path("operate/", views.operate, name="operate"),
     path("gymnasts/", master_data_views.gymnasts, name="gymnasts"),
     path("gymnasts/new/", views.gymnast_create, name="gymnast-create"),
@@ -79,49 +52,21 @@ urlpatterns = [
     path("levels/<uuid:level_id>/archive/", master_data_views.level_archive, name="level-archive"),
     path("organization/members/", member_views.members, name="members"),
     path("organization/members/new/", member_views.member_create, name="member-create"),
-    path(
-        "organization/members/<int:membership_id>/edit/",
-        member_views.member_edit,
-        name="member-edit",
-    ),
+    path("organization/members/<int:membership_id>/edit/", member_views.member_edit, name="member-edit"),
     path("devices/", views.devices, name="devices"),
     path("analyses/", views.analyses, name="analyses"),
     path("analyses/<uuid:job_id>/cancel/", views.analysis_cancel, name="analysis-cancel"),
     path("competitions/", views.competitions, name="competitions"),
-    path(
-        "competitions/routines/<uuid:routine_id>/kiga.json",
-        views.kiga_routine_export,
-        name="kiga-routine-export",
-    ),
+    path("competitions/routines/<uuid:routine_id>/kiga.json", views.kiga_routine_export, name="kiga-routine-export"),
     path("analyses/<uuid:job_id>/review/", views.analysis_review, name="analysis-review"),
-    path(
-        "analyses/<uuid:job_id>/score-review/",
-        views.score_comparison_review,
-        name="score-comparison-review",
-    ),
-    path(
-        "analyses/deductions/<uuid:candidate_id>/decision/",
-        views.review_decision,
-        name="review-decision",
-    ),
+    path("analyses/<uuid:job_id>/score-review/", views.score_comparison_review, name="score-comparison-review"),
+    path("analyses/deductions/<uuid:candidate_id>/decision/", views.review_decision, name="review-decision"),
     path("imports-exports/", views.exchange, name="exchange"),
     path("imports-exports/kiga/preview/", views.kiga_import_preview, name="kiga-import-preview"),
     path("imports-exports/kiga/commit/", views.kiga_import_commit, name="kiga-import-commit"),
-    path(
-        "imports-exports/gymnasts/commit/",
-        views.gymnast_import_commit,
-        name="gymnast-import-commit",
-    ),
+    path("imports-exports/gymnasts/commit/", views.gymnast_import_commit, name="gymnast-import-commit"),
     path("imports-exports/gymnasts.csv", views.gymnast_export, name="gymnast-export"),
-    path(
-        "imports-exports/reviewed-labels.json",
-        views.reviewed_labels_export,
-        name="reviewed-labels-export",
-    ),
-    path(
-        "imports-exports/gymnasts/errors.csv",
-        views.gymnast_import_errors,
-        name="gymnast-import-errors",
-    ),
+    path("imports-exports/reviewed-labels.json", views.reviewed_labels_export, name="reviewed-labels-export"),
+    path("imports-exports/gymnasts/errors.csv", views.gymnast_import_errors, name="gymnast-import-errors"),
     path("system/status/", views.system_status, name="system-status"),
 ]

@@ -9,6 +9,7 @@
     <p>Administrér eksisterende Ai.WAGVID-brugeres adgang til {{ organization.name }}. Ændringer audit-logges.</p>
   </div>
   <div class="page-actions">
+    <a class="button" href="{% url 'workspaces' %}">Skift workspace</a>
     <a class="button" href="{% url 'gymnasts' %}">Tilbage</a>
     <a class="button button-primary" href="{% url 'member-create' %}"><svg><use href="#i-plus"/></svg>Tilføj bruger</a>
   </div>

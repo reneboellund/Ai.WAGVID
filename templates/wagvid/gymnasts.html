@@ -4,7 +4,7 @@
 {% block content %}
 <section class="page-head">
   <div><p class="eyebrow">Atletkartotek</p><h1>Gymnast<span class="text-gradient">profiler</span></h1><p>Organisationens aktive WAG/MAG-profiler med licens, niveau og stabile eksterne identiteter.</p></div>
-  <div class="page-actions"><a class="button" href="{% url 'levels' %}"><svg><use href="#i-filter"/></svg>Niveauer</a><a class="button" href="{% url 'gymnasts-archived' %}">Arkiv</a><a class="button" href="{% url 'exchange' %}"><svg><use href="#i-exchange"/></svg>Import/eksport</a>{% if can_manage %}<a class="button" href="{% url 'members' %}"><svg><use href="#i-users"/></svg>Brugere & roller</a><a class="button button-primary" href="{% url 'gymnast-create' %}"><svg><use href="#i-plus"/></svg>Opret gymnast</a>{% endif %}</div>
+  <div class="page-actions"><a class="button" href="{% url 'workspaces' %}">Skift workspace</a><a class="button" href="{% url 'levels' %}"><svg><use href="#i-filter"/></svg>Niveauer</a><a class="button" href="{% url 'gymnasts-archived' %}">Arkiv</a><a class="button" href="{% url 'exchange' %}"><svg><use href="#i-exchange"/></svg>Import/eksport</a>{% if can_manage %}<a class="button" href="{% url 'members' %}"><svg><use href="#i-users"/></svg>Brugere & roller</a><a class="button button-primary" href="{% url 'gymnast-create' %}"><svg><use href="#i-plus"/></svg>Opret gymnast</a>{% endif %}</div>
 </section>
 <div class="toolbar"><label class="field-search"><svg><use href="#i-search"/></svg><input type="search" placeholder="Søg efter navn, niveau eller licens…" data-table-search="gymnast-table" aria-label="Søg gymnaster"></label><span class="status-badge neutral" data-result-count>{{ gymnasts|length }} profiler</span></div>
 <section class="surface table-surface">
