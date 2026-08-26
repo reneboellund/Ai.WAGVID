@@ -76,6 +76,27 @@ quarantine deadlines. This milestone does not yet expose cloud apply or physical
 deletion through the WebUI, so a saved plan or successful preflight cannot mutate
 Wasabi resources.
 
+The S3 data-plane adapter stages and hashes incoming bytes before any provider
+mutation. Small immutable objects use a verified single request; objects at or above
+100 MiB use checksummed multipart upload with 16 MiB parts and automatic abort on a
+failed part. Every write carries SHA-256 metadata and server-side AES-256 encryption,
+returns the provider version ID, and is registered in the ledger with its selected
+bucket. Reusing a key is allowed only when size and SHA-256 are identical. Downloads
+can be streamed by exact version or exposed through a provider-signed URL of at most
+one hour.
+
+Cloud apply is available only to storage administrators and requires the exact typed
+phrase `CREATE PRIVATE WASABI BUCKETS`. Apply always runs a fresh read-only preflight,
+binds the short-lived approval to that plan digest, and marks routes ready only after
+all provider actions complete. A partial provider failure is recorded as a sanitized
+audit event and leaves the connection degraded for reconciliation.
+
+Physical removal is also version-specific. A worker first claims only quarantined,
+due, non-held objects. Provider failure returns the item to quarantine for retry;
+success marks the ledger record deleted and appends an audit event. Neither path
+stores provider exception text or credentials. Provider calls still require the
+optional Boto3 dependency and runtime secret references; tests use contract fakes.
+
 ## Upload sessions
 
 `UploadSession` persists capture ID, organization-scoped idempotency key, expected size/checksum,

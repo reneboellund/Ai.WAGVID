@@ -14,6 +14,7 @@ from wagvid_app.models import (
 )
 from wagvid_app.secret_refs import EnvironmentSecretResolver, SecretReferenceError
 from wagvid_app.storage_lifecycle import (
+    apply_storage_connection,
     disconnect_storage_connection,
     preflight_storage_connection,
     preview_deletion,
@@ -237,3 +238,56 @@ def test_disconnect_preserves_bucket_and_object_registry():
     assert StoredObjectRecord.objects.filter(connection=profile).count() == 1
     event = organization.audit_events.get(action="storage.wasabi-disconnected")
     assert event.metadata == {"buckets_deleted": False, "objects_deleted": False}
+
+
+@pytest.mark.django_db
+def test_apply_repreflights_requires_typed_approval_and_marks_buckets_ready():
+    organization = Organization.objects.create(name="Club", slug="apply-club")
+    admin = User.objects.create_user("apply-admin")
+    Membership.objects.create(
+        organization=organization, user=admin, role=Membership.Role.ORGANIZATION_ADMIN
+    )
+    profile = connection(organization)
+    reconcile_desired_buckets(profile.id)
+
+    class ProvisioningClient:
+        def __init__(self):
+            self.names = set()
+            self.versioned = set()
+
+        def list_buckets(self):
+            return {"Buckets": [{"Name": name} for name in self.names]}
+
+        def create_bucket(self, **kwargs):
+            self.names.add(kwargs["Bucket"])
+            return {}
+
+        def put_bucket_versioning(self, **kwargs):
+            self.versioned.add(kwargs["Bucket"])
+            return {}
+
+    provider = ProvisioningClient()
+    resolver = EnvironmentSecretResolver(
+        {"WASABI_ACCESS_KEY": "ACCESS", "WASABI_SECRET_KEY": "SECRET"}
+    )
+    with pytest.raises(ValueError, match="explicit"):
+        apply_storage_connection(
+            profile.id,
+            actor=admin,
+            confirmation="yes",
+            resolver=resolver,
+            client_factory=lambda **kwargs: provider,
+        )
+    completed = apply_storage_connection(
+        profile.id,
+        actor=admin,
+        confirmation="CREATE PRIVATE WASABI BUCKETS",
+        resolver=resolver,
+        client_factory=lambda **kwargs: provider,
+    )
+    profile.refresh_from_db()
+    assert completed
+    assert provider.names == set(profile.buckets.values_list("bucket_name", flat=True))
+    assert profile.buckets.exclude(state=StorageBucket.State.READY).count() == 0
+    assert profile.status == StorageConnection.Status.VERIFIED
+    assert organization.audit_events.filter(action="storage.wasabi-applied").exists()

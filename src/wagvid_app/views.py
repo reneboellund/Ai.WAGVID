@@ -37,6 +37,7 @@ from .runtime import runtime_probes
 from .secret_refs import SecretReferenceError
 from .services import dashboard_status
 from .storage_lifecycle import (
+    apply_storage_connection,
     connection_plan,
     disconnect_storage_connection,
     preflight_storage_connection,
@@ -101,6 +102,20 @@ def storage_settings(request):
             messages.error(request, str(error))
         else:
             messages.success(request, "Forbindelsen er afbrudt uden at slette buckets eller data.")
+        return redirect("storage-settings")
+    if request.method == "POST" and request.POST.get("action") == "apply" and connection:
+        try:
+            completed = apply_storage_connection(
+                connection.id,
+                actor=request.user,
+                confirmation=request.POST.get("confirmation", ""),
+            )
+        except (SecretReferenceError, WasabiSetupError, PermissionError, ValueError) as error:
+            messages.error(request, f"Wasabi-opsætningen blev ikke anvendt: {error}")
+        else:
+            messages.success(
+                request, f"Wasabi-opsætningen er anvendt ({len(completed)} handlinger)."
+            )
         return redirect("storage-settings")
     form = WasabiConnectionForm(request.POST or None, instance=connection)
     if request.method == "POST" and form.is_valid():

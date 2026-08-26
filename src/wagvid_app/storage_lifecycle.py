@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from decimal import Decimal
 
-from django.db import transaction
+from django.db import models, transaction
 from django.db.models import Sum
 from django.utils import timezone
 
@@ -19,7 +19,13 @@ from .wasabi import (
     build_setup_plan,
     route_object,
 )
-from .wasabi_provider import create_boto3_client, run_preflight
+from .wasabi_provider import (
+    SetupApproval,
+    WasabiSetupError,
+    apply_setup,
+    create_boto3_client,
+    run_preflight,
+)
 
 
 def connection_plan(connection: StorageConnection):
@@ -95,7 +101,7 @@ def select_storage_bucket(
 def register_stored_object(
     *, organization: Organization, connection: StorageConnection, role: BucketRole,
     routing_key: str, object_key: str, content_sha256: str, size_bytes: int,
-    uploaded_at: datetime, retention_until: datetime | None = None,
+    uploaded_at: datetime, retention_until: datetime | None = None, version_id: str = "",
 ) -> StoredObjectRecord:
     if connection.organization_id != organization.id:
         raise ValueError("storage connection does not belong to organization")
@@ -114,6 +120,7 @@ def register_stored_object(
         connection=connection,
         bucket=bucket,
         object_key=object_key,
+        version_id=version_id,
         role=role.value,
         content_sha256=content_sha256,
         size_bytes=size_bytes,
@@ -296,6 +303,80 @@ def preflight_storage_connection(
     return result
 
 
+def apply_storage_connection(
+    connection_id,
+    *,
+    actor,
+    confirmation: str,
+    resolver=None,
+    client_factory=create_boto3_client,
+) -> tuple[str, ...]:
+    """Re-preflight and apply one exact desired-state plan after typed approval."""
+
+    connection = StorageConnection.objects.select_related("organization").get(pk=connection_id)
+    _require_storage_admin(connection, actor)
+    if confirmation != "CREATE PRIVATE WASABI BUCKETS":
+        raise ValueError("explicit Wasabi setup confirmation is required")
+    resolver = resolver or EnvironmentSecretResolver()
+    access_key = resolver.resolve(connection.access_key_secret_ref)
+    client = client_factory(
+        access_key_id=access_key,
+        secret_access_key=resolver.resolve(connection.secret_key_secret_ref),
+        region=connection.region,
+        endpoint=connection.endpoint,
+    )
+    plan = connection_plan(connection)
+    preflight = run_preflight(client, plan=plan, access_key_id=access_key)
+    now = timezone.now()
+    approval = SetupApproval(
+        plan.digest,
+        str(actor.id),
+        now,
+        now + timedelta(minutes=5),
+        confirmation,
+    )
+    try:
+        completed = apply_setup(
+            client, plan=plan, preflight=preflight, approval=approval, now=now
+        )
+    except Exception as error:
+        with transaction.atomic():
+            locked = StorageConnection.objects.select_for_update().get(pk=connection.id)
+            locked.status = StorageConnection.Status.DEGRADED
+            locked.save(update_fields=["status", "updated_at"])
+            locked.organization.audit_events.create(
+                actor=actor,
+                action="storage.wasabi-apply-failed",
+                object_type="storage-connection",
+                object_id=str(locked.id),
+                metadata={"error_code": type(error).__name__[:80], "plan_digest": plan.digest},
+            )
+        raise WasabiSetupError(f"provider apply failed: {type(error).__name__}") from error
+    with transaction.atomic():
+        locked = StorageConnection.objects.select_for_update().get(pk=connection.id)
+        if locked.desired_plan_digest != plan.digest:
+            raise WasabiSetupError("stored setup plan changed during provider apply")
+        locked.buckets.filter(routing_revision=locked.routing_revision).update(
+            state=StorageBucket.State.READY
+        )
+        locked.status = StorageConnection.Status.VERIFIED
+        locked.save(update_fields=["status", "updated_at"])
+        locked.organization.audit_events.create(
+            actor=actor,
+            action="storage.wasabi-applied",
+            object_type="storage-connection",
+            object_id=str(locked.id),
+            metadata={
+                "plan_digest": plan.digest,
+                "completed_actions": list(completed),
+                "bucket_count": locked.buckets.filter(
+                    routing_revision=locked.routing_revision
+                ).count(),
+            },
+        )
+    return completed
+
+
 @transaction.atomic
 def disconnect_storage_connection(connection_id, *, actor, reason: str) -> StorageConnection:
     connection = (
@@ -318,3 +399,73 @@ def disconnect_storage_connection(connection_id, *, actor, reason: str) -> Stora
         metadata={"buckets_deleted": False, "objects_deleted": False},
     )
     return connection
+
+
+@transaction.atomic
+def claim_due_deletions(*, now: datetime, limit: int = 50) -> tuple[StoredObjectRecord, ...]:
+    """Move eligible quarantined records to a retry-safe provider work state."""
+
+    if limit < 1 or limit > 500:
+        raise ValueError("deletion claim limit must be between 1 and 500")
+    candidates = list(
+        StoredObjectRecord.objects.select_for_update()
+        .filter(
+            state=StoredObjectRecord.State.QUARANTINED,
+            physical_delete_after__lte=now,
+            legal_hold=False,
+        )
+        .filter(models.Q(retention_until__isnull=True) | models.Q(retention_until__lte=now))
+        .select_related("connection", "bucket", "organization")
+        .order_by("physical_delete_after")[:limit]
+    )
+    for record in candidates:
+        record.state = StoredObjectRecord.State.PENDING_DELETE
+        record.save(update_fields=["state", "updated_at"])
+    return tuple(candidates)
+
+
+@transaction.atomic
+def complete_physical_deletion(record_id, *, actor=None) -> StoredObjectRecord:
+    record = (
+        StoredObjectRecord.objects.select_for_update()
+        .select_related("organization", "bucket")
+        .get(pk=record_id)
+    )
+    if record.state != StoredObjectRecord.State.PENDING_DELETE:
+        raise ValueError("only a claimed deletion can be completed")
+    record.state = StoredObjectRecord.State.DELETED
+    record.save(update_fields=["state", "updated_at"])
+    record.organization.audit_events.create(
+        actor=actor,
+        action="storage.object-physically-deleted",
+        object_type="stored-object",
+        object_id=str(record.id),
+        metadata={
+            "bucket": record.bucket.bucket_name,
+            "object_key": record.object_key,
+            "version_id": record.version_id,
+        },
+    )
+    return record
+
+
+@transaction.atomic
+def release_failed_deletion(record_id, *, error_code: str) -> StoredObjectRecord:
+    """Return a failed provider operation to quarantine without storing secret error text."""
+
+    record = StoredObjectRecord.objects.select_for_update().select_related("organization").get(
+        pk=record_id
+    )
+    if record.state != StoredObjectRecord.State.PENDING_DELETE:
+        raise ValueError("only a claimed deletion can be released")
+    if not error_code or len(error_code) > 80:
+        raise ValueError("bounded provider error code is required")
+    record.state = StoredObjectRecord.State.QUARANTINED
+    record.save(update_fields=["state", "updated_at"])
+    record.organization.audit_events.create(
+        action="storage.object-delete-failed",
+        object_type="stored-object",
+        object_id=str(record.id),
+        metadata={"error_code": error_code},
+    )
+    return record
