@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Wasabi storage · {{ organization.name }}</h1>
+<p>Denne side gemmer og validerer kun den lokale desired-state plan. Credentials angives som secret-referencer. Ingen bucket oprettes uden en separat preflight og eksplicit apply-godkendelse.</p>
+<div class="cards">
+  <section class="card"><h2>Status</h2><p>{% if connection %}{{ connection.get_status_display }} · {{ connection.region }}{% else %}Ikke konfigureret{% endif %}</p>{% if connection %}<p>Plan: <code>{{ connection.desired_plan_digest }}</code></p><p>Seneste preflight: {{ connection.last_preflight_at|default:"aldrig" }}</p>{% endif %}</section>
+  <section class="card"><h2>Aktiv storage</h2><p>{{ cost.active_bytes }} bytes · {{ cost.object_count }} objekter</p></section>
+  <section class="card"><h2>Afventer sletning</h2><p>{{ cost.pending_delete_bytes }} bytes</p></section>
+  <section class="card"><h2>Tidlig sletning</h2><p>{{ cost.early_delete_exposure_gb_days }} GB-dage eksponering</p></section>
+</div>
+<section class="card"><h2>Forbindelse og dry-run layout</h2><form method="post">{% csrf_token %}{{ form.as_p }}<button class="primary">Gem og beregn plan</button></form></section>
+{% if connection %}<section class="card"><h2>Forbindelseshandlinger</h2><form method="post">{% csrf_token %}<input type="hidden" name="action" value="preflight"><button class="primary">Kør read-only Wasabi preflight</button></form><form method="post">{% csrf_token %}<input type="hidden" name="action" value="disconnect"><input name="reason" required placeholder="Årsag til afbrydelse"><button>Afbrud uden at slette data</button></form>{% if connection.last_preflight %}<details><summary>Redigeret preflight-resultat</summary><pre>{{ connection.last_preflight }}</pre></details>{% endif %}</section>{% endif %}
+{% if plan %}<section class="card"><h2>Bucket-plan</h2><p>Endpoint: {{ plan.endpoint }} · minimum {{ plan.cost_policy.minimum_storage_days }} dage</p><table><tr><th>Rolle</th><th>Bucket</th><th>Shard</th><th>Versionering</th><th>Object lock</th><th>Status</th></tr>{% for bucket in buckets %}<tr><td>{{ bucket.role }}</td><td>{{ bucket.bucket_name }}</td><td>{{ bucket.shard }}</td><td>{{ bucket.versioning }}</td><td>{{ bucket.object_lock }}</td><td>{{ bucket.get_state_display }}</td></tr>{% endfor %}</table><h3>Sikkerhed/advarsler</h3><ul>{% for warning in plan.warnings %}<li>{{ warning }}</li>{% endfor %}</ul></section>{% endif %}
+{% endblock %}

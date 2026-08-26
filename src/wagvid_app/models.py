@@ -367,6 +367,149 @@ class MediaAsset(TimestampedModel):
     recorded_at = models.DateTimeField()
 
 
+class StorageConnection(TimestampedModel):
+    class Status(models.TextChoices):
+        DISCONNECTED = "disconnected", "Ikke forbundet"
+        CONFIGURED = "configured", "Konfigureret"
+        VERIFIED = "verified", "Verificeret"
+        DEGRADED = "degraded", "Kræver opmærksomhed"
+
+    class PricingModel(models.TextChoices):
+        PAY_GO = "pay-go", "Pay-Go (90 dage)"
+        RCS = "rcs", "Reserved Capacity (30 dage)"
+        CUSTOM = "custom", "Aftalespecifik"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="storage_connections"
+    )
+    name = models.CharField(max_length=120)
+    provider = models.CharField(max_length=20, default="wasabi")
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.DISCONNECTED)
+    project_slug = models.SlugField(max_length=24, default="wagvid")
+    environment = models.SlugField(max_length=16, default="production")
+    region = models.CharField(max_length=40, default="eu-central-1")
+    endpoint = models.URLField(max_length=300)
+    account_fingerprint = models.CharField(max_length=16)
+    access_key_secret_ref = models.CharField(max_length=200)
+    secret_key_secret_ref = models.CharField(max_length=200)
+    originals_shards = models.PositiveSmallIntegerField(default=2)
+    derivatives_shards = models.PositiveSmallIntegerField(default=2)
+    include_audit_bucket = models.BooleanField(default=True)
+    enable_versioning = models.BooleanField(default=True)
+    pricing_model = models.CharField(
+        max_length=20, choices=PricingModel.choices, default=PricingModel.PAY_GO
+    )
+    minimum_storage_days = models.PositiveSmallIntegerField(default=90)
+    routing_revision = models.PositiveIntegerField(default=1)
+    desired_plan_digest = models.CharField(max_length=64, blank=True)
+    last_preflight = models.JSONField(default=dict)
+    last_preflight_at = models.DateTimeField(null=True, blank=True)
+    active = models.BooleanField(default=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "name"], name="unique_storage_connection_name_per_org"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(originals_shards__gte=1, originals_shards__lte=32),
+                name="storage_original_shards_1_32",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(derivatives_shards__gte=1, derivatives_shards__lte=32),
+                name="storage_derivative_shards_1_32",
+            ),
+        ]
+
+
+class StorageBucket(TimestampedModel):
+    class State(models.TextChoices):
+        DESIRED = "desired", "Planlagt"
+        DISCOVERED = "discovered", "Fundet"
+        READY = "ready", "Klar"
+        CONFLICT = "conflict", "Konflikt"
+        RETIRED = "retired", "Udfaset"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    connection = models.ForeignKey(
+        StorageConnection, on_delete=models.CASCADE, related_name="buckets"
+    )
+    role = models.CharField(max_length=20)
+    shard = models.PositiveSmallIntegerField(default=0)
+    bucket_name = models.CharField(max_length=63)
+    region = models.CharField(max_length=40)
+    state = models.CharField(max_length=20, choices=State.choices, default=State.DESIRED)
+    routing_revision = models.PositiveIntegerField()
+    private = models.BooleanField(default=True)
+    versioning = models.BooleanField(default=False)
+    object_lock = models.BooleanField(default=False)
+    provider_metadata = models.JSONField(default=dict)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["connection", "role", "shard", "routing_revision"],
+                name="unique_storage_bucket_route",
+            ),
+            models.UniqueConstraint(
+                fields=["connection", "bucket_name"], name="unique_bucket_name_per_connection"
+            ),
+        ]
+
+
+class StoredObjectRecord(TimestampedModel):
+    class State(models.TextChoices):
+        ACTIVE = "active", "Aktiv"
+        QUARANTINED = "quarantined", "Soft-delete karantæne"
+        PENDING_DELETE = "pending-delete", "Afventer fysisk sletning"
+        DELETED = "deleted", "Fysisk slettet"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.PROTECT, related_name="stored_objects"
+    )
+    connection = models.ForeignKey(
+        StorageConnection, on_delete=models.PROTECT, related_name="stored_object_records"
+    )
+    bucket = models.ForeignKey(
+        StorageBucket, on_delete=models.PROTECT, related_name="stored_object_records"
+    )
+    object_key = models.CharField(max_length=700)
+    version_id = models.CharField(max_length=240, blank=True)
+    role = models.CharField(max_length=20)
+    content_sha256 = models.CharField(max_length=64)
+    size_bytes = models.BigIntegerField(validators=[MinValueValidator(0)])
+    uploaded_at = models.DateTimeField()
+    billable_until = models.DateTimeField()
+    retention_until = models.DateTimeField(null=True, blank=True)
+    legal_hold = models.BooleanField(default=False)
+    state = models.CharField(max_length=20, choices=State.choices, default=State.ACTIVE)
+    delete_requested_at = models.DateTimeField(null=True, blank=True)
+    physical_delete_after = models.DateTimeField(null=True, blank=True)
+    deletion_reason = models.TextField(blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["connection", "bucket", "object_key", "version_id"],
+                name="unique_stored_object_version",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(billable_until__gte=models.F("uploaded_at")),
+                name="stored_object_billable_after_upload",
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=["organization", "state"], name="wagvid_app__organiz_663a0c_idx"
+            ),
+            models.Index(
+                fields=["billable_until", "state"], name="wagvid_app__billabl_bba1bb_idx"
+            ),
+        ]
+
+
 class AnalysisJob(TimestampedModel):
     class State(models.TextChoices):
         DRAFT = "draft", "Kladde"

@@ -1,6 +1,7 @@
 from django import forms
 
-from .models import Gymnast, ReviewDecision, ScoreComparisonReview
+from .models import Gymnast, ReviewDecision, ScoreComparisonReview, StorageConnection
+from .wasabi import WASABI_REGION_ENDPOINTS
 
 
 class GymnastForm(forms.ModelForm):
@@ -81,4 +82,49 @@ class ScoreComparisonReviewForm(forms.ModelForm):
             ):
                 if cleaned.get(field) is None:
                     self.add_error(field, "Alle korrigerede scorefelter skal udfyldes.")
+        return cleaned
+
+
+class WasabiConnectionForm(forms.ModelForm):
+    class Meta:
+        model = StorageConnection
+        fields = [
+            "name",
+            "project_slug",
+            "environment",
+            "region",
+            "endpoint",
+            "account_fingerprint",
+            "access_key_secret_ref",
+            "secret_key_secret_ref",
+            "originals_shards",
+            "derivatives_shards",
+            "include_audit_bucket",
+            "enable_versioning",
+            "pricing_model",
+            "minimum_storage_days",
+        ]
+        help_texts = {
+            "access_key_secret_ref": "Fx env:WAGVID_WASABI_ACCESS_KEY. Selve nøglen gemmes ikke.",
+            "secret_key_secret_ref": "Fx env:WAGVID_WASABI_SECRET_KEY. Selve secret gemmes ikke.",
+        }
+
+    def clean(self):
+        cleaned = super().clean()
+        pricing = cleaned.get("pricing_model")
+        days = cleaned.get("minimum_storage_days")
+        expected = {StorageConnection.PricingModel.PAY_GO: 90, StorageConnection.PricingModel.RCS: 30}
+        if pricing in expected and days != expected[pricing]:
+            self.add_error(
+                "minimum_storage_days",
+                f"{pricing} skal bruge den eksplicitte minimumsperiode på {expected[pricing]} dage.",
+            )
+        for field in ("access_key_secret_ref", "secret_key_secret_ref"):
+            value = cleaned.get(field, "")
+            if value and not value.startswith(("env:", "vault:", "secret:")):
+                self.add_error(field, "Brug en secret-reference; credentials må ikke gemmes her.")
+        region = cleaned.get("region")
+        endpoint = cleaned.get("endpoint")
+        if region in WASABI_REGION_ENDPOINTS and endpoint != WASABI_REGION_ENDPOINTS[region]:
+            self.add_error("endpoint", "Endpoint matcher ikke den valgte officielle Wasabi-region.")
         return cleaned

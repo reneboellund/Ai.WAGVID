@@ -17,6 +17,9 @@ from .models import (
     Organization,
     ReviewDecision,
     Routine,
+    StorageBucket,
+    StorageConnection,
+    StoredObjectRecord,
     SystemAlert,
     UploadSession,
     WorkerNode,
@@ -45,5 +48,8 @@ for model in (
     UploadSession,
     WorkerNode,
     SystemAlert,
+    StorageConnection,
+    StorageBucket,
+    StoredObjectRecord,
 ):
     admin.site.register(model)

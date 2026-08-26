@@ -60,6 +60,22 @@ evidence retention, consent, legal hold and object lock. Transient frames/cache 
 not belong in this storage tier. Setup defaults to dry-run; unit tests use a fake S3
 control client and never create cloud resources.
 
+The administration page at `/system/storage/` now persists an organization-scoped
+connection profile and its versioned desired bucket routes. It stores credential
+references, never credential values. The built-in resolver deliberately supports
+only explicit `env:NAME` references; vault/secret-manager schemes require a separate
+adapter. A read-only preflight resolves credentials only for the provider call and
+persists a sanitized result, plan digest and audit event. Disconnect marks the
+connection inactive but never deletes remote buckets or local object records.
+
+`StoredObjectRecord` is the durable control-plane ledger for bucket, key, version,
+checksum, byte size, upload time, `billable_until`, retention and legal hold. Deletion
+is a two-stage operation: an administrator first quarantines an eligible record, then
+a future worker may physically delete it no earlier than the retention, billable and
+quarantine deadlines. This milestone does not yet expose cloud apply or physical
+deletion through the WebUI, so a saved plan or successful preflight cannot mutate
+Wasabi resources.
+
 ## Upload sessions
 
 `UploadSession` persists capture ID, organization-scoped idempotency key, expected size/checksum,

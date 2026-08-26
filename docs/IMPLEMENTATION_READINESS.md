@@ -19,11 +19,15 @@ Date: 2026-08-16
 - validated model-component catalogue and offline validation CLI.
 - KIGA competition/routine/video/official-result dry-run import and schema-compatible export;
 - rights-gated external media catalogue with immutable official result versions.
+- organization-scoped Wasabi desired-state administration with secret references,
+  read-only preflight, deterministic multi-bucket routing and sanitized audit history;
+- durable stored-object cost/retention ledger, legal hold and soft-delete quarantine.
 
 ## Must be completed before an internal alpha
 
 - PostgreSQL environment settings and production-safe secret configuration;
-- object-storage client and signed media access;
+- production S3 data-plane client, multipart upload and signed media access;
+- Wasabi apply workflow, provider contract tests, vault adapter and physical deletion worker;
 - external queue transport and continuously running worker process;
 - Android build/emulator/device validation of the implemented CameraX/Room/WorkManager skeleton;
 - foreground-service hardening and real-device validation of authenticated remote recording;

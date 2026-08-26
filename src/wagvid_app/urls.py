@@ -95,4 +95,5 @@ urlpatterns = [
         name="gymnast-import-errors",
     ),
     path("system/status/", views.system_status, name="system-status"),
+    path("system/storage/", views.storage_settings, name="storage-settings"),
 ]

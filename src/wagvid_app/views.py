@@ -15,6 +15,7 @@ from .forms import (
     KigaImportForm,
     ReviewDecisionForm,
     ScoreComparisonReviewForm,
+    WasabiConnectionForm,
 )
 from .imports import commit_gymnast_import, preview_gymnast_csv
 from .kiga import commit_kiga_record, preview_kiga_record
@@ -33,7 +34,16 @@ from .models import (
 )
 from .operations import InvalidStateTransition, cancel_analysis, record_score_comparison_review
 from .runtime import runtime_probes
+from .secret_refs import SecretReferenceError
 from .services import dashboard_status
+from .storage_lifecycle import (
+    connection_plan,
+    disconnect_storage_connection,
+    preflight_storage_connection,
+    reconcile_desired_buckets,
+    storage_cost_summary,
+)
+from .wasabi_provider import WasabiSetupError
 
 
 def active_organization(request):
@@ -62,6 +72,71 @@ def dashboard(request):
         request,
         "wagvid/dashboard.html",
         {"organization": organization, "status": dashboard_status(organization)},
+    )
+
+
+@login_required
+def storage_settings(request):
+    organization = active_organization(request)
+    if not organization or not can_manage_master_data(request, organization):
+        return HttpResponseForbidden()
+    connection = organization.storage_connections.filter(active=True, provider="wasabi").first()
+    if request.method == "POST" and request.POST.get("action") == "preflight" and connection:
+        try:
+            result = preflight_storage_connection(connection.id, actor=request.user)
+        except (SecretReferenceError, WasabiSetupError, ValueError) as error:
+            messages.error(request, f"Wasabi preflight kunne ikke gennemføres: {error}")
+        else:
+            message = "Preflight er klar til apply." if result.applicable else "Preflight fandt blockers."
+            messages.success(request, message)
+        return redirect("storage-settings")
+    if request.method == "POST" and request.POST.get("action") == "disconnect" and connection:
+        try:
+            disconnect_storage_connection(
+                connection.id,
+                actor=request.user,
+                reason=request.POST.get("reason", "Afbrudt fra storageadministration"),
+            )
+        except (PermissionError, ValueError) as error:
+            messages.error(request, str(error))
+        else:
+            messages.success(request, "Forbindelsen er afbrudt uden at slette buckets eller data.")
+        return redirect("storage-settings")
+    form = WasabiConnectionForm(request.POST or None, instance=connection)
+    if request.method == "POST" and form.is_valid():
+        connection = form.save(commit=False)
+        connection.organization = organization
+        connection.provider = "wasabi"
+        connection.save()
+        buckets = reconcile_desired_buckets(connection.id)
+        organization.audit_events.create(
+            actor=request.user,
+            action="storage.wasabi-plan-saved",
+            object_type="storage-connection",
+            object_id=str(connection.id),
+            metadata={
+                "plan_digest": connection.desired_plan_digest,
+                "bucket_count": len(buckets),
+                "region": connection.region,
+            },
+        )
+        messages.success(
+            request,
+            "Wasabi dry-run planen er gemt lokalt. Ingen cloud-buckets blev oprettet.",
+        )
+        return redirect("storage-settings")
+    plan = connection_plan(connection) if connection else None
+    return render(
+        request,
+        "wagvid/storage_settings.html",
+        {
+            "organization": organization,
+            "connection": connection,
+            "form": form,
+            "plan": plan,
+            "buckets": connection.buckets.order_by("role", "shard") if connection else [],
+            "cost": storage_cost_summary(organization),
+        },
     )
 
 
