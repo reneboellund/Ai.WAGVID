@@ -25,6 +25,7 @@ class S3DataClient(Protocol):
     def upload_part(self, **kwargs: Any) -> dict[str, Any]: ...
     def complete_multipart_upload(self, **kwargs: Any) -> dict[str, Any]: ...
     def abort_multipart_upload(self, **kwargs: Any) -> dict[str, Any]: ...
+    def list_parts(self, **kwargs: Any) -> dict[str, Any]: ...
     def get_object(self, **kwargs: Any) -> dict[str, Any]: ...
     def generate_presigned_url(self, *args: Any, **kwargs: Any) -> str: ...
     def delete_object(self, **kwargs: Any) -> dict[str, Any]: ...
@@ -53,6 +54,14 @@ class S3StoredObject(StoredObject):
     bucket: str
     version_id: str = ""
     etag: str = ""
+
+
+@dataclass(frozen=True)
+class MultipartSession:
+    bucket: str
+    key: str
+    upload_id: str
+    sha256: str
 
 
 class S3ObjectStore:
@@ -149,45 +158,92 @@ class S3ObjectStore:
     def _multipart_put(
         self, key: str, staged: BinaryIO, sha256: str, content_type: str
     ) -> dict[str, Any]:
-        started = self.client.create_multipart_upload(
-            Bucket=self.bucket,
-            Key=key,
-            ContentType=content_type,
-            Metadata={"sha256": sha256},
-            ServerSideEncryption="AES256",
-            ChecksumAlgorithm="SHA256",
-        )
-        upload_id = started["UploadId"]
+        session = self.start_multipart(key, sha256=sha256, content_type=content_type)
         parts = []
         try:
             number = 1
             while chunk := staged.read(self.part_size):
-                checksum = base64.b64encode(hashlib.sha256(chunk).digest()).decode("ascii")
-                result = self.client.upload_part(
-                    Bucket=self.bucket,
-                    Key=key,
-                    UploadId=upload_id,
-                    PartNumber=number,
-                    Body=chunk,
-                    ContentLength=len(chunk),
-                    ChecksumSHA256=checksum,
-                )
-                part = {"PartNumber": number, "ETag": result["ETag"]}
-                if result.get("ChecksumSHA256"):
-                    part["ChecksumSHA256"] = result["ChecksumSHA256"]
-                parts.append(part)
+                parts.append(self.upload_part(session, number=number, payload=chunk))
                 number += 1
-            return self.client.complete_multipart_upload(
-                Bucket=self.bucket,
-                Key=key,
-                UploadId=upload_id,
-                MultipartUpload={"Parts": parts},
-            )
+            return self.complete_multipart(session, parts=parts)
         except Exception:
-            self.client.abort_multipart_upload(
-                Bucket=self.bucket, Key=key, UploadId=upload_id
-            )
+            self.abort_multipart(session)
             raise
+
+    def start_multipart(
+        self, key: str, *, sha256: str, content_type: str = "application/octet-stream"
+    ) -> MultipartSession:
+        _validate_key(key)
+        if len(sha256) != 64:
+            raise ValueError("valid object SHA-256 is required")
+        started = self.client.create_multipart_upload(
+            Bucket=self.bucket,
+            Key=key,
+            ContentType=content_type,
+            Metadata={"sha256": sha256.lower()},
+            ServerSideEncryption="AES256",
+            ChecksumAlgorithm="SHA256",
+        )
+        return MultipartSession(self.bucket, key, started["UploadId"], sha256.lower())
+
+    def upload_part(
+        self, session: MultipartSession, *, number: int, payload: bytes
+    ) -> dict[str, Any]:
+        self._validate_session(session)
+        if number < 1 or number > 10_000 or not payload:
+            raise ValueError("multipart part number and payload are invalid")
+        checksum = base64.b64encode(hashlib.sha256(payload).digest()).decode("ascii")
+        result = self.client.upload_part(
+            Bucket=self.bucket,
+            Key=session.key,
+            UploadId=session.upload_id,
+            PartNumber=number,
+            Body=payload,
+            ContentLength=len(payload),
+            ChecksumSHA256=checksum,
+        )
+        part = {"PartNumber": number, "ETag": result["ETag"]}
+        if result.get("ChecksumSHA256"):
+            part["ChecksumSHA256"] = result["ChecksumSHA256"]
+        return part
+
+    def list_uploaded_parts(self, session: MultipartSession) -> tuple[dict[str, Any], ...]:
+        self._validate_session(session)
+        result = self.client.list_parts(
+            Bucket=self.bucket, Key=session.key, UploadId=session.upload_id
+        )
+        return tuple(
+            {
+                "PartNumber": int(part["PartNumber"]),
+                "ETag": part["ETag"],
+                **({"ChecksumSHA256": part["ChecksumSHA256"]} if part.get("ChecksumSHA256") else {}),
+            }
+            for part in result.get("Parts", [])
+        )
+
+    def complete_multipart(
+        self, session: MultipartSession, *, parts: list[dict[str, Any]]
+    ) -> dict[str, Any]:
+        self._validate_session(session)
+        if not parts:
+            raise ValueError("multipart completion requires uploaded parts")
+        return self.client.complete_multipart_upload(
+            Bucket=self.bucket,
+            Key=session.key,
+            UploadId=session.upload_id,
+            MultipartUpload={"Parts": parts},
+        )
+
+    def abort_multipart(self, session: MultipartSession) -> None:
+        self._validate_session(session)
+        self.client.abort_multipart_upload(
+            Bucket=self.bucket, Key=session.key, UploadId=session.upload_id
+        )
+
+    def _validate_session(self, session: MultipartSession) -> None:
+        if session.bucket != self.bucket or not session.upload_id:
+            raise ValueError("multipart session belongs to another storage target")
+        _validate_key(session.key)
 
     def open_read(self, key: str, *, version_id: str = "") -> BinaryIO:
         _validate_key(key)
@@ -196,6 +252,21 @@ class S3ObjectStore:
             kwargs["VersionId"] = version_id
         response = self.client.get_object(**kwargs)
         return response["Body"]
+
+    def open_range(
+        self, key: str, *, start: int, end: int | None = None, version_id: str = ""
+    ) -> BinaryIO:
+        _validate_key(key)
+        if start < 0 or (end is not None and end < start):
+            raise ValueError("invalid object byte range")
+        kwargs = {
+            "Bucket": self.bucket,
+            "Key": key,
+            "Range": f"bytes={start}-{'' if end is None else end}",
+        }
+        if version_id:
+            kwargs["VersionId"] = version_id
+        return self.client.get_object(**kwargs)["Body"]
 
     def presigned_download(
         self, key: str, *, expires_seconds: int = 300, version_id: str = ""

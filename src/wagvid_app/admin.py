@@ -19,6 +19,8 @@ from .models import (
     Routine,
     StorageBucket,
     StorageConnection,
+    StorageRoleAssignment,
+    StorageTransfer,
     StoredObjectRecord,
     SystemAlert,
     UploadSession,
@@ -49,6 +51,8 @@ for model in (
     WorkerNode,
     SystemAlert,
     StorageConnection,
+    StorageRoleAssignment,
+    StorageTransfer,
     StorageBucket,
     StoredObjectRecord,
 ):

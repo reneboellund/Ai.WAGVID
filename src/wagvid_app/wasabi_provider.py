@@ -77,6 +77,28 @@ def run_preflight(
         except Exception as error:  # noqa: BLE001 - provider SDK exceptions are optional imports
             errors.append(f"cannot inspect {name}: {type(error).__name__}")
     actions = reconcile_plan(plan, discovered)
+    if not getattr(plan, "provisioning_enabled", True):
+        restricted = []
+        for action in actions:
+            if action.action == "create-private-bucket":
+                restricted.append(
+                    ReconcileAction(
+                        "block-missing-existing-bucket",
+                        action.bucket,
+                        {"reason": "provisioning-disabled"},
+                        True,
+                    )
+                )
+            elif action.bucket in discovered:
+                restricted.append(
+                    ReconcileAction(
+                        "block-provider-policy-drift",
+                        action.bucket,
+                        {"required_action": action.action},
+                        True,
+                    )
+                )
+        actions = tuple(restricted)
     return WasabiPreflight(
         plan.endpoint, plan.region, fingerprint, True, discovered, actions,
         tuple(errors), plan.digest,
@@ -92,8 +114,8 @@ class SetupApproval:
     confirmation: str
 
     def __post_init__(self) -> None:
-        if not self.administrator_id or self.confirmation != "CREATE PRIVATE WASABI BUCKETS":
-            raise ValueError("explicit Wasabi setup confirmation is required")
+        if not self.administrator_id or self.confirmation != "CREATE PRIVATE STORAGE BUCKETS":
+            raise ValueError("explicit object-storage setup confirmation is required")
         if any(value.tzinfo is None or value.utcoffset() is None for value in (self.approved_at, self.expires_at)):
             raise ValueError("approval timestamps must be timezone-aware")
         if self.expires_at <= self.approved_at:

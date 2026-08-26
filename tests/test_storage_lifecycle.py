@@ -38,6 +38,7 @@ def connection(organization, name="Primary"):
         account_fingerprint="a1b2c3d4",
         access_key_secret_ref="env:WASABI_ACCESS_KEY",
         secret_key_secret_ref="env:WASABI_SECRET_KEY",
+        provisioning_enabled=True,
     )
 
 
@@ -128,10 +129,15 @@ def test_storage_settings_is_admin_scoped_and_saves_only_secret_references(clien
         reverse("storage-settings"),
         {
             "name": "Wasabi EU",
+            "provider": "wasabi",
             "project_slug": "wagvid",
             "environment": "production",
             "region": "eu-central-1",
             "endpoint": "https://s3.eu-central-1.wasabisys.com",
+            "tls_verify": "on",
+            "addressing_style": "virtual",
+            "auth_mode": "access-key",
+            "governance_profile": "standard",
             "account_fingerprint": "a1b2c3d4",
             "access_key_secret_ref": "env:WAGVID_WASABI_ACCESS_KEY",
             "secret_key_secret_ref": "env:WAGVID_WASABI_SECRET_KEY",
@@ -145,12 +151,12 @@ def test_storage_settings_is_admin_scoped_and_saves_only_secret_references(clien
         follow=True,
     )
     assert response.status_code == 200
-    assert "Ingen cloud-buckets blev oprettet" in response.content.decode()
+    assert "Ingen buckets blev oprettet" in response.content.decode()
     profile = organization.storage_connections.get()
     assert profile.secret_key_secret_ref == "env:WAGVID_WASABI_SECRET_KEY"
     assert profile.status == StorageConnection.Status.CONFIGURED
     assert profile.buckets.count() == 7
-    assert organization.audit_events.filter(action="storage.wasabi-plan-saved").exists()
+    assert organization.audit_events.filter(action="storage.provider-plan-saved").exists()
 
 
 @pytest.mark.django_db
@@ -206,7 +212,7 @@ def test_preflight_resolves_credentials_at_runtime_and_persists_only_redacted_re
     persisted = str(profile.last_preflight)
     assert "ACCESS-1234" not in persisted
     assert "never-persist-me" not in persisted
-    assert organization.audit_events.filter(action="storage.wasabi-preflight").exists()
+    assert organization.audit_events.filter(action="storage.provider-preflight").exists()
 
 
 @pytest.mark.django_db
@@ -236,7 +242,7 @@ def test_disconnect_preserves_bucket_and_object_registry():
     assert disconnected.status == StorageConnection.Status.DISCONNECTED
     assert StorageBucket.objects.filter(connection=profile).count() == bucket_count
     assert StoredObjectRecord.objects.filter(connection=profile).count() == 1
-    event = organization.audit_events.get(action="storage.wasabi-disconnected")
+    event = organization.audit_events.get(action="storage.provider-disconnected")
     assert event.metadata == {"buckets_deleted": False, "objects_deleted": False}
 
 
@@ -248,6 +254,8 @@ def test_apply_repreflights_requires_typed_approval_and_marks_buckets_ready():
         organization=organization, user=admin, role=Membership.Role.ORGANIZATION_ADMIN
     )
     profile = connection(organization)
+    profile.provisioning_enabled = True
+    profile.save(update_fields=["provisioning_enabled"])
     reconcile_desired_buckets(profile.id)
 
     class ProvisioningClient:
@@ -281,7 +289,7 @@ def test_apply_repreflights_requires_typed_approval_and_marks_buckets_ready():
     completed = apply_storage_connection(
         profile.id,
         actor=admin,
-        confirmation="CREATE PRIVATE WASABI BUCKETS",
+            confirmation="CREATE PRIVATE STORAGE BUCKETS",
         resolver=resolver,
         client_factory=lambda **kwargs: provider,
     )
@@ -290,4 +298,4 @@ def test_apply_repreflights_requires_typed_approval_and_marks_buckets_ready():
     assert provider.names == set(profile.buckets.values_list("bucket_name", flat=True))
     assert profile.buckets.exclude(state=StorageBucket.State.READY).count() == 0
     assert profile.status == StorageConnection.Status.VERIFIED
-    assert organization.audit_events.filter(action="storage.wasabi-applied").exists()
+    assert organization.audit_events.filter(action="storage.provider-applied").exists()

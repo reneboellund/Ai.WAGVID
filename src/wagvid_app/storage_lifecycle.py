@@ -1,4 +1,4 @@
-"""Persisted Wasabi desired state, routing and cost-aware deletion workflow."""
+"""Persisted provider-neutral desired state, routing and cost-aware deletion workflow."""
 
 from __future__ import annotations
 
@@ -10,15 +10,17 @@ from django.db import models, transaction
 from django.db.models import Sum
 from django.utils import timezone
 
-from .models import Organization, StorageBucket, StorageConnection, StoredObjectRecord
-from .secret_refs import EnvironmentSecretResolver
-from .wasabi import (
-    BucketRole,
-    WasabiCostPolicy,
-    WasabiLayoutConfig,
-    build_setup_plan,
-    route_object,
+from .models import (
+    Organization,
+    StorageBucket,
+    StorageConnection,
+    StorageRoleAssignment,
+    StoredObjectRecord,
 )
+from .secret_refs import EnvironmentSecretResolver
+from .storage_layout import StorageCostPolicy, build_storage_layout
+from .storage_providers import evaluate_capabilities, provider_definition
+from .storage_types import BucketRole, route_object
 from .wasabi_provider import (
     SetupApproval,
     WasabiSetupError,
@@ -29,19 +31,7 @@ from .wasabi_provider import (
 
 
 def connection_plan(connection: StorageConnection):
-    config = WasabiLayoutConfig(
-        project_slug=connection.project_slug,
-        environment=connection.environment,
-        account_fingerprint=connection.account_fingerprint,
-        region=connection.region,
-        originals_shards=connection.originals_shards,
-        derivatives_shards=connection.derivatives_shards,
-        include_audit_bucket=connection.include_audit_bucket,
-        enable_versioning=connection.enable_versioning,
-        endpoint_override=connection.endpoint,
-    )
-    policy = WasabiCostPolicy(connection.pricing_model, connection.minimum_storage_days)
-    return build_setup_plan(config, policy)
+    return build_storage_layout(connection, provider_definition(connection.provider))
 
 
 @transaction.atomic
@@ -98,6 +88,53 @@ def select_storage_bucket(
 
 
 @transaction.atomic
+def assign_storage_role(
+    *, organization: Organization, role: BucketRole, connection: StorageConnection, actor
+) -> StorageRoleAssignment:
+    if connection.organization_id != organization.id or not connection.active:
+        raise ValueError("storage role requires an active organization connection")
+    if not actor.wagvid_memberships.filter(
+        organization=organization,
+        active=True,
+        role__in=["organization-admin", "system-admin"],
+    ).exists():
+        raise PermissionError("administrator role is required")
+    if not connection.buckets.filter(
+        role=role.value,
+        routing_revision=connection.routing_revision,
+    ).exists():
+        raise ValueError(f"connection has no bucket mapping for role {role.value}")
+    assignment, _ = StorageRoleAssignment.objects.update_or_create(
+        organization=organization,
+        role=role.value,
+        defaults={"connection": connection, "active": True},
+    )
+    organization.audit_events.create(
+        actor=actor,
+        action="storage.role-assigned",
+        object_type="storage-role-assignment",
+        object_id=str(assignment.id),
+        metadata={"role": role.value, "connection_id": str(connection.id)},
+    )
+    return assignment
+
+
+def resolve_storage_connection(
+    organization: Organization, *, role: BucketRole
+) -> StorageConnection:
+    assignment = (
+        organization.storage_role_assignments.filter(
+            role=role.value, active=True, connection__active=True
+        )
+        .select_related("connection")
+        .first()
+    )
+    if not assignment:
+        raise LookupError(f"no active storage provider assigned for role {role.value}")
+    return assignment.connection
+
+
+@transaction.atomic
 def register_stored_object(
     *, organization: Organization, connection: StorageConnection, role: BucketRole,
     routing_key: str, object_key: str, content_sha256: str, size_bytes: int,
@@ -114,7 +151,7 @@ def register_stored_object(
     if retention_until and retention_until < uploaded_at:
         raise ValueError("retention cannot end before upload")
     bucket = select_storage_bucket(connection, role=role, routing_key=routing_key)
-    policy = WasabiCostPolicy(connection.pricing_model, connection.minimum_storage_days)
+    policy = StorageCostPolicy(connection.pricing_model, connection.minimum_storage_days)
     return StoredObjectRecord.objects.create(
         organization=organization,
         connection=connection,
@@ -145,7 +182,7 @@ def preview_deletion(record: StoredObjectRecord, *, requested_at: datetime) -> D
         blockers.append("legal-hold")
     if record.retention_until and requested_at < record.retention_until:
         blockers.append("retention-active")
-    policy = WasabiCostPolicy(
+    policy = StorageCostPolicy(
         record.connection.pricing_model, record.connection.minimum_storage_days
     )
     exposure = Decimal(str(policy.early_delete_exposure_gb_days(
@@ -212,7 +249,7 @@ def storage_cost_summary(organization: Organization) -> dict[str, int | str]:
     now = timezone.now()
     exposure = Decimal(0)
     for record in records.filter(billable_until__gt=now).select_related("connection"):
-        exposure += Decimal(str(WasabiCostPolicy(
+        exposure += Decimal(str(StorageCostPolicy(
             record.connection.pricing_model, record.connection.minimum_storage_days
         ).early_delete_exposure_gb_days(
             size_bytes=record.size_bytes,
@@ -261,6 +298,11 @@ def preflight_storage_connection(
         endpoint=connection.endpoint,
     )
     result = run_preflight(client, plan=plan, access_key_id=access_key)
+    support_state, capability_issues = evaluate_capabilities(
+        connection.provider,
+        connection.governance_profile,
+        connection.capability_snapshot.get("verified", {}),
+    )
     connection.last_preflight = {
         "endpoint": result.endpoint,
         "region": result.region,
@@ -278,19 +320,25 @@ def preflight_storage_connection(
             }
             for item in result.actions
         ],
+        "provider": connection.provider,
+        "support_state": support_state,
+        "capability_issues": list(capability_issues),
     }
     connection.last_preflight_at = timezone.now()
+    connection.support_state = support_state
     connection.status = (
         StorageConnection.Status.VERIFIED
-        if result.applicable
+        if result.applicable and support_state == "validated"
         else StorageConnection.Status.DEGRADED
     )
     connection.save(
-        update_fields=["last_preflight", "last_preflight_at", "status", "updated_at"]
+        update_fields=[
+            "last_preflight", "last_preflight_at", "support_state", "status", "updated_at"
+        ]
     )
     connection.organization.audit_events.create(
         actor=actor,
-        action="storage.wasabi-preflight",
+        action="storage.provider-preflight",
         object_type="storage-connection",
         object_id=str(connection.id),
         metadata={
@@ -315,8 +363,8 @@ def apply_storage_connection(
 
     connection = StorageConnection.objects.select_related("organization").get(pk=connection_id)
     _require_storage_admin(connection, actor)
-    if confirmation != "CREATE PRIVATE WASABI BUCKETS":
-        raise ValueError("explicit Wasabi setup confirmation is required")
+    if confirmation != "CREATE PRIVATE STORAGE BUCKETS":
+        raise ValueError("explicit object-storage setup confirmation is required")
     resolver = resolver or EnvironmentSecretResolver()
     access_key = resolver.resolve(connection.access_key_secret_ref)
     client = client_factory(
@@ -326,6 +374,8 @@ def apply_storage_connection(
         endpoint=connection.endpoint,
     )
     plan = connection_plan(connection)
+    if not plan.provisioning_enabled:
+        raise WasabiSetupError("bucket provisioning is disabled for this connection")
     preflight = run_preflight(client, plan=plan, access_key_id=access_key)
     now = timezone.now()
     approval = SetupApproval(
@@ -346,7 +396,7 @@ def apply_storage_connection(
             locked.save(update_fields=["status", "updated_at"])
             locked.organization.audit_events.create(
                 actor=actor,
-                action="storage.wasabi-apply-failed",
+                action="storage.provider-apply-failed",
                 object_type="storage-connection",
                 object_id=str(locked.id),
                 metadata={"error_code": type(error).__name__[:80], "plan_digest": plan.digest},
@@ -363,7 +413,7 @@ def apply_storage_connection(
         locked.save(update_fields=["status", "updated_at"])
         locked.organization.audit_events.create(
             actor=actor,
-            action="storage.wasabi-applied",
+            action="storage.provider-applied",
             object_type="storage-connection",
             object_id=str(locked.id),
             metadata={
@@ -392,7 +442,7 @@ def disconnect_storage_connection(connection_id, *, actor, reason: str) -> Stora
     connection.save(update_fields=["active", "status", "updated_at"])
     connection.organization.audit_events.create(
         actor=actor,
-        action="storage.wasabi-disconnected",
+        action="storage.provider-disconnected",
         object_type="storage-connection",
         object_id=str(connection.id),
         reason=reason.strip(),

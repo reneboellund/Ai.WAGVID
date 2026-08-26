@@ -25,12 +25,17 @@ Date: 2026-08-16
 - checksum-first S3/Wasabi single and multipart data plane with versioned object
   registration, bounded signed-download generation and retry-safe deletion claims;
 - typed, plan-digest-bound Wasabi apply flow with fresh preflight and failure audit.
+- provider-neutral S3 capability/governance framework with AWS, ONTAP, VAST and
+  conditional Ootbi profiles, per-role provider assignment and multi-provider admin UI;
+- resumable multipart/Range contract and non-destructive checksum-verified provider transfer.
 
 ## Must be completed before an internal alpha
 
 - PostgreSQL environment settings and production-safe secret configuration;
 - integrate the S3 data plane with Android/browser resumable upload finalization and media delivery;
 - Wasabi sandbox contract tests, vault adapter, scheduled deletion worker and IAM templates;
+- opt-in real-system certification for AWS, ONTAP, VAST and Ootbi plus provider-specific
+  permission, throughput, orphan-multipart and credential-rotation exercises;
 - external queue transport and continuously running worker process;
 - Android build/emulator/device validation of the implemented CameraX/Room/WorkManager skeleton;
 - foreground-service hardening and real-device validation of authenticated remote recording;

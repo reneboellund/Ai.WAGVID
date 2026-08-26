@@ -5,6 +5,7 @@ import pytest
 
 from wagvid_app.s3_storage import MIB, S3ObjectStore
 from wagvid_app.storage import ObjectIntegrityError
+from wagvid_app.storage_contract import run_storage_contract_probe
 
 
 class MissingObject(Exception):
@@ -58,8 +59,22 @@ class FakeS3Data:
     def abort_multipart_upload(self, **kwargs):
         self.calls.append(("abort", kwargs["Key"]))
 
+    def list_parts(self, **kwargs):
+        return {
+            "Parts": [
+                {"PartNumber": number, "ETag": f'"part-{number}"'}
+                for number, _ in enumerate(self.pending["parts"], start=1)
+            ]
+        }
+
     def get_object(self, **kwargs):
-        return {"Body": io.BytesIO(self.objects[(kwargs["Bucket"], kwargs["Key"])]["body"])}
+        body = self.objects[(kwargs["Bucket"], kwargs["Key"])]["body"]
+        if value := kwargs.get("Range"):
+            bounds = value.removeprefix("bytes=").split("-")
+            start = int(bounds[0])
+            end = int(bounds[1]) if bounds[1] else len(body) - 1
+            body = body[start : end + 1]
+        return {"Body": io.BytesIO(body)}
 
     def generate_presigned_url(self, operation, **kwargs):
         return f"https://signed.invalid/{kwargs['Params']['Key']}?ttl={kwargs['ExpiresIn']}"
@@ -84,6 +99,7 @@ def test_small_verified_write_is_immutable_idempotent_and_readable():
     assert first == repeated
     assert client.calls == [("put", "org/video.mp4")]
     assert store.open_read("org/video.mp4").read() == payload
+    assert store.open_range("org/video.mp4", start=2, end=7).read() == payload[2:8]
     assert store.presigned_download("org/video.mp4", expires_seconds=60).endswith("ttl=60")
 
 
@@ -144,3 +160,37 @@ def test_physical_delete_requires_an_explicit_version():
         store.delete_version("video.mp4", version_id="")
     store.delete_version("video.mp4", version_id="version-7")
     assert client.calls[-1][1]["VersionId"] == "version-7"
+
+
+def test_multipart_session_can_list_and_resume_before_completion():
+    client = FakeS3Data()
+    store = S3ObjectStore(client, bucket="wagvid-originals")
+    payload = b"x" * (5 * MIB)
+    session = store.start_multipart("resume.mp4", sha256=hashlib.sha256(payload).hexdigest())
+    first = store.upload_part(session, number=1, payload=payload)
+    assert store.list_uploaded_parts(session)[0]["PartNumber"] == 1
+    response = store.complete_multipart(session, parts=[first])
+    assert response["VersionId"] == "v2"
+
+
+def test_opt_in_provider_contract_validates_object_range_and_multipart_operations():
+    client = FakeS3Data()
+    with pytest.raises(PermissionError, match="explicit mutation"):
+        run_storage_contract_probe(
+            client,
+            provider_id="aws-s3",
+            governance_profile="standard",
+            bucket="contract-bucket",
+            test_prefix="wagvid-tests",
+            allow_mutation=False,
+        )
+    report = run_storage_contract_probe(
+        client,
+        provider_id="aws-s3",
+        governance_profile="standard",
+        bucket="contract-bucket",
+        test_prefix="wagvid-tests",
+        allow_mutation=True,
+    )
+    assert report.support_state == "validated"
+    assert {"put", "head", "get", "range-get", "multipart-list"} <= set(report.checks)

@@ -7,8 +7,11 @@ import json
 import re
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from enum import StrEnum
 from typing import Any
+
+from .storage_types import BucketRole, DesiredBucket, route_object
+
+__all__ = ["BucketRole", "DesiredBucket", "route_object"]
 
 WASABI_REGION_ENDPOINTS = {
     "eu-central-1": "https://s3.eu-central-1.wasabisys.com",
@@ -28,14 +31,6 @@ WASABI_REGION_ENDPOINTS = {
     "ap-southeast-1": "https://s3.ap-southeast-1.wasabisys.com",
     "ap-southeast-2": "https://s3.ap-southeast-2.wasabisys.com",
 }
-
-
-class BucketRole(StrEnum):
-    ORIGINALS = "originals"
-    DERIVATIVES = "derivatives"
-    METADATA = "metadata"
-    RESULTS = "results"
-    AUDIT = "audit"
 
 
 @dataclass(frozen=True)
@@ -94,17 +89,6 @@ class WasabiLayoutConfig:
     @property
     def endpoint(self) -> str:
         return self.endpoint_override or WASABI_REGION_ENDPOINTS[self.region]
-
-
-@dataclass(frozen=True)
-class DesiredBucket:
-    name: str
-    role: BucketRole
-    shard: int
-    region: str
-    private: bool
-    versioning: bool
-    object_lock: bool
 
 
 @dataclass(frozen=True)
@@ -170,19 +154,6 @@ def build_setup_plan(
             "Transient frames and cache must not use minimum-duration Wasabi storage",
             "Bucket creation and policy changes require explicit administrator approval",
         ),
-    )
-
-
-def route_object(
-    *, role: BucketRole, routing_key: str, buckets: tuple[DesiredBucket, ...],
-) -> DesiredBucket:
-    candidates = [bucket for bucket in buckets if bucket.role is role]
-    if not candidates or not routing_key:
-        raise ValueError("routing requires a key and at least one bucket for the role")
-    # Rendezvous hashing minimizes movement when the versioned pool is expanded.
-    return max(
-        candidates,
-        key=lambda bucket: hashlib.sha256(f"{routing_key}|{bucket.name}".encode()).digest(),
     )
 
 

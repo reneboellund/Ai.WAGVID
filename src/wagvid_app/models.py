@@ -368,6 +368,13 @@ class MediaAsset(TimestampedModel):
 
 
 class StorageConnection(TimestampedModel):
+    class Provider(models.TextChoices):
+        WASABI = "wasabi", "Wasabi"
+        AWS_S3 = "aws-s3", "Amazon S3"
+        ONTAP_S3 = "ontap-s3", "NetApp ONTAP S3"
+        VAST_S3 = "vast-s3", "VAST Data S3"
+        OOTBI_S3 = "ootbi-s3", "Object First Ootbi"
+
     class Status(models.TextChoices):
         DISCONNECTED = "disconnected", "Ikke forbundet"
         CONFIGURED = "configured", "Konfigureret"
@@ -375,6 +382,7 @@ class StorageConnection(TimestampedModel):
         DEGRADED = "degraded", "Kræver opmærksomhed"
 
     class PricingModel(models.TextChoices):
+        NONE = "none", "Ingen minimumsperiode"
         PAY_GO = "pay-go", "Pay-Go (90 dage)"
         RCS = "rcs", "Reserved Capacity (30 dage)"
         CUSTOM = "custom", "Aftalespecifik"
@@ -384,15 +392,49 @@ class StorageConnection(TimestampedModel):
         Organization, on_delete=models.CASCADE, related_name="storage_connections"
     )
     name = models.CharField(max_length=120)
-    provider = models.CharField(max_length=20, default="wasabi")
+    provider = models.CharField(max_length=20, choices=Provider.choices, default=Provider.WASABI)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DISCONNECTED)
     project_slug = models.SlugField(max_length=24, default="wagvid")
     environment = models.SlugField(max_length=16, default="production")
     region = models.CharField(max_length=40, default="eu-central-1")
     endpoint = models.URLField(max_length=300)
+    auth_mode = models.CharField(
+        max_length=20,
+        choices=[("access-key", "Access key"), ("workload-identity", "Workload identity")],
+        default="access-key",
+    )
+    role_arn = models.CharField(max_length=300, blank=True)
+    tls_verify = models.BooleanField(default=True)
+    custom_ca_secret_ref = models.CharField(max_length=200, blank=True)
+    addressing_style = models.CharField(
+        max_length=12, choices=[("virtual", "Virtual host"), ("path", "Path style")],
+        default="virtual",
+    )
+    governance_profile = models.CharField(
+        max_length=24,
+        choices=[
+            ("standard", "Standard"),
+            ("evidence-immutable", "Immutable evidence"),
+            ("backup-target", "Backup target"),
+        ],
+        default="standard",
+    )
+    provisioning_enabled = models.BooleanField(default=False)
+    existing_bucket_map = models.JSONField(default=dict, blank=True)
+    capability_snapshot = models.JSONField(default=dict)
+    support_state = models.CharField(
+        max_length=16,
+        choices=[
+            ("unvalidated", "Ikke valideret"),
+            ("validated", "Valideret"),
+            ("limited", "Begrænset"),
+            ("incompatible", "Inkompatibel"),
+        ],
+        default="unvalidated",
+    )
     account_fingerprint = models.CharField(max_length=16)
-    access_key_secret_ref = models.CharField(max_length=200)
-    secret_key_secret_ref = models.CharField(max_length=200)
+    access_key_secret_ref = models.CharField(max_length=200, blank=True)
+    secret_key_secret_ref = models.CharField(max_length=200, blank=True)
     originals_shards = models.PositiveSmallIntegerField(default=2)
     derivatives_shards = models.PositiveSmallIntegerField(default=2)
     include_audit_bucket = models.BooleanField(default=True)
@@ -458,6 +500,25 @@ class StorageBucket(TimestampedModel):
         ]
 
 
+class StorageRoleAssignment(TimestampedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="storage_role_assignments"
+    )
+    role = models.CharField(max_length=20)
+    connection = models.ForeignKey(
+        StorageConnection, on_delete=models.PROTECT, related_name="role_assignments"
+    )
+    active = models.BooleanField(default=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "role"], name="unique_storage_provider_per_role"
+            )
+        ]
+
+
 class StoredObjectRecord(TimestampedModel):
     class State(models.TextChoices):
         ACTIVE = "active", "Aktiv"
@@ -506,6 +567,51 @@ class StoredObjectRecord(TimestampedModel):
             ),
             models.Index(
                 fields=["billable_until", "state"], name="wagvid_app__billabl_bba1bb_idx"
+            ),
+        ]
+
+
+class StorageTransfer(TimestampedModel):
+    class State(models.TextChoices):
+        PLANNED = "planned", "Planlagt"
+        COPYING = "copying", "Kopierer"
+        VERIFYING = "verifying", "Verificerer"
+        COMPLETED = "completed", "Færdig"
+        FAILED = "failed", "Fejlet"
+        CANCELLED = "cancelled", "Annulleret"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.PROTECT, related_name="storage_transfers"
+    )
+    source_object = models.ForeignKey(
+        StoredObjectRecord, on_delete=models.PROTECT, related_name="outgoing_transfers"
+    )
+    target_connection = models.ForeignKey(
+        StorageConnection, on_delete=models.PROTECT, related_name="incoming_transfers"
+    )
+    target_bucket = models.ForeignKey(
+        StorageBucket, on_delete=models.PROTECT, related_name="incoming_transfers"
+    )
+    target_key = models.CharField(max_length=700)
+    target_version_id = models.CharField(max_length=240, blank=True)
+    expected_sha256 = models.CharField(max_length=64)
+    expected_size_bytes = models.BigIntegerField(validators=[MinValueValidator(0)])
+    bytes_copied = models.BigIntegerField(default=0, validators=[MinValueValidator(0)])
+    state = models.CharField(max_length=16, choices=State.choices, default=State.PLANNED)
+    client_request_id = models.CharField(max_length=160)
+    delete_source_approved = models.BooleanField(default=False)
+    error_code = models.CharField(max_length=80, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "client_request_id"],
+                name="unique_storage_transfer_request_per_org",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(bytes_copied__lte=models.F("expected_size_bytes")),
+                name="storage_transfer_progress_not_above_size",
             ),
         ]
 

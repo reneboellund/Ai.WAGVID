@@ -7,6 +7,7 @@ from django.db import DatabaseError
 from django.db.models import Case, IntegerField, Q, Value, When
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 
 from .device_operations import DeviceOperationError, create_pairing_offer, enqueue_device_command
 from .forms import (
@@ -15,7 +16,8 @@ from .forms import (
     KigaImportForm,
     ReviewDecisionForm,
     ScoreComparisonReviewForm,
-    WasabiConnectionForm,
+    StorageConnectionForm,
+    StorageRoleAssignmentForm,
 )
 from .imports import commit_gymnast_import, preview_gymnast_csv
 from .kiga import commit_kiga_record, preview_kiga_record
@@ -38,12 +40,14 @@ from .secret_refs import SecretReferenceError
 from .services import dashboard_status
 from .storage_lifecycle import (
     apply_storage_connection,
+    assign_storage_role,
     connection_plan,
     disconnect_storage_connection,
     preflight_storage_connection,
     reconcile_desired_buckets,
     storage_cost_summary,
 )
+from .storage_types import BucketRole
 from .wasabi_provider import WasabiSetupError
 
 
@@ -81,7 +85,24 @@ def storage_settings(request):
     organization = active_organization(request)
     if not organization or not can_manage_master_data(request, organization):
         return HttpResponseForbidden()
-    connection = organization.storage_connections.filter(active=True, provider="wasabi").first()
+    connections = organization.storage_connections.filter(active=True).order_by("name")
+    selected_id = request.POST.get("connection_id") or request.GET.get("connection")
+    connection = connections.filter(pk=selected_id).first() if selected_id else connections.first()
+    if request.GET.get("new") == "1":
+        connection = None
+    if request.method == "POST" and request.POST.get("action") == "assign-role":
+        assignment_form = StorageRoleAssignmentForm(request.POST, organization=organization)
+        if assignment_form.is_valid():
+            assign_storage_role(
+                organization=organization,
+                role=BucketRole(assignment_form.cleaned_data["role"]),
+                connection=assignment_form.cleaned_data["connection"],
+                actor=request.user,
+            )
+            messages.success(request, "Storage-rollen er tildelt den valgte provider.")
+        else:
+            messages.error(request, "Storage-rollen kunne ikke tildeles.")
+        return redirect("storage-settings")
     if request.method == "POST" and request.POST.get("action") == "preflight" and connection:
         try:
             result = preflight_storage_connection(connection.id, actor=request.user)
@@ -90,7 +111,7 @@ def storage_settings(request):
         else:
             message = "Preflight er klar til apply." if result.applicable else "Preflight fandt blockers."
             messages.success(request, message)
-        return redirect("storage-settings")
+        return redirect(f"{reverse('storage-settings')}?connection={connection.id}")
     if request.method == "POST" and request.POST.get("action") == "disconnect" and connection:
         try:
             disconnect_storage_connection(
@@ -116,30 +137,30 @@ def storage_settings(request):
             messages.success(
                 request, f"Wasabi-opsætningen er anvendt ({len(completed)} handlinger)."
             )
-        return redirect("storage-settings")
-    form = WasabiConnectionForm(request.POST or None, instance=connection)
+        return redirect(f"{reverse('storage-settings')}?connection={connection.id}")
+    form = StorageConnectionForm(request.POST or None, instance=connection)
     if request.method == "POST" and form.is_valid():
         connection = form.save(commit=False)
         connection.organization = organization
-        connection.provider = "wasabi"
         connection.save()
         buckets = reconcile_desired_buckets(connection.id)
         organization.audit_events.create(
             actor=request.user,
-            action="storage.wasabi-plan-saved",
+            action="storage.provider-plan-saved",
             object_type="storage-connection",
             object_id=str(connection.id),
             metadata={
                 "plan_digest": connection.desired_plan_digest,
                 "bucket_count": len(buckets),
                 "region": connection.region,
+                "provider": connection.provider,
             },
         )
         messages.success(
             request,
-            "Wasabi dry-run planen er gemt lokalt. Ingen cloud-buckets blev oprettet.",
+            "Storage dry-run planen er gemt lokalt. Ingen buckets blev oprettet.",
         )
-        return redirect("storage-settings")
+        return redirect(f"{reverse('storage-settings')}?connection={connection.id}")
     plan = connection_plan(connection) if connection else None
     return render(
         request,
@@ -147,6 +168,11 @@ def storage_settings(request):
         {
             "organization": organization,
             "connection": connection,
+            "connections": connections,
+            "assignments": organization.storage_role_assignments.filter(active=True).select_related(
+                "connection"
+            ),
+            "assignment_form": StorageRoleAssignmentForm(organization=organization),
             "form": form,
             "plan": plan,
             "buckets": connection.buckets.order_by("role", "shard") if connection else [],

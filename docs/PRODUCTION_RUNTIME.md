@@ -97,6 +97,16 @@ success marks the ledger record deleted and appends an audit event. Neither path
 stores provider exception text or credentials. Provider calls still require the
 optional Boto3 dependency and runtime secret references; tests use contract fakes.
 
+### Multi-provider S3 framework
+
+Issues #60-#64 generalize the same data plane to Wasabi, Amazon S3, NetApp ONTAP
+S3, VAST Data and conditionally validated Object First Ootbi. The connection model
+persists provider, TLS/custom-CA, addressing, authentication, governance, explicit
+bucket mappings and a verified capability snapshot. `StorageRoleAssignment` selects
+the provider independently for each logical data role. `StorageTransfer` supplies an
+idempotent, audited, checksum-verified cross-provider copy workflow without implicit
+source deletion. Setup and validation guidance lives in `docs/S3_PROVIDERS.md`.
+
 ## Upload sessions
 
 `UploadSession` persists capture ID, organization-scoped idempotency key, expected size/checksum,

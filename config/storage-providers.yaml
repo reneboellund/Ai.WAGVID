@@ -1,0 +1,34 @@
+schema_version: wagvid-storage-providers/v1
+providers:
+  wasabi:
+    addressing_style: virtual
+    provisioning: optional
+    tls_required: true
+    pricing_default: {model: pay-go, minimum_storage_days: 90}
+  aws-s3:
+    addressing_style: virtual
+    provisioning: optional
+    tls_required: true
+    authentication: [workload-identity, sts-role, secret-reference]
+    pricing_default: {model: none, minimum_storage_days: 0}
+  ontap-s3:
+    addressing_style: path
+    provisioning: optional
+    tls_required: true
+    custom_ca: supported
+    capability_validation: required
+  vast-s3:
+    addressing_style: path
+    provisioning: optional
+    tls_required: true
+    custom_ca: supported
+    capability_validation: required
+    multiprotocol_identity: s3-provider-bucket-key
+  ootbi-s3:
+    addressing_style: path
+    provisioning: disabled
+    existing_bucket_only: true
+    capability_validation: required
+    conditional_support: true
+    default_roles: [originals, audit]
+    disabled_default_roles: [derivatives]
