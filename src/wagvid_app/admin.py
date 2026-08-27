@@ -11,6 +11,7 @@ from .models import (
     ExternalMediaReference,
     Gymnast,
     Level,
+    MaintenanceState,
     MediaAsset,
     Membership,
     OfficialResultSnapshot,
@@ -23,6 +24,8 @@ from .models import (
     StorageTransfer,
     StoredObjectRecord,
     SystemAlert,
+    SystemBackup,
+    UpgradeJournal,
     UploadSession,
     WorkerNode,
 )
@@ -55,5 +58,8 @@ for model in (
     StorageTransfer,
     StorageBucket,
     StoredObjectRecord,
+    SystemBackup,
+    MaintenanceState,
+    UpgradeJournal,
 ):
     admin.site.register(model)

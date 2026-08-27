@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import Gymnast, ReviewDecision, ScoreComparisonReview, StorageConnection
+from .models import Gymnast, Level, ReviewDecision, ScoreComparisonReview, StorageConnection
 from .storage_providers import StorageCapability, provider_definition
 from .storage_types import BucketRole
 from .wasabi import WASABI_REGION_ENDPOINTS
@@ -15,6 +15,12 @@ class GymnastForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if organization:
             self.fields["level"].queryset = organization.levels.filter(active=True)
+
+
+class LevelForm(forms.ModelForm):
+    class Meta:
+        model = Level
+        fields = ["name", "active"]
 
 
 class GymnastImportForm(forms.Form):
@@ -58,6 +64,12 @@ class ReviewDecisionForm(forms.ModelForm):
             "accepted_amount"
         ) is None:
             self.add_error("accepted_amount", "Angiv det korrigerede fradrag.")
+        if cleaned.get("decision") in {
+            ReviewDecision.Decision.CORRECT_AI,
+            ReviewDecision.Decision.OFFICIAL_ERROR,
+            ReviewDecision.Decision.INCONCLUSIVE,
+        } and not cleaned.get("notes", "").strip():
+            self.add_error("notes", "En begrundelse er påkrævet for denne afgørelse.")
         return cleaned
 
 

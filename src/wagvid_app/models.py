@@ -652,6 +652,15 @@ class AnalysisJob(TimestampedModel):
     )
     lease_expires_at = models.DateTimeField(null=True, blank=True, db_index=True)
     attempts = models.PositiveIntegerField(default=0)
+    review_reason = models.CharField(max_length=80, blank=True)
+    review_assignee = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="assigned_wagvid_reviews",
+    )
+    review_priority = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
         constraints = [
@@ -952,3 +961,78 @@ class SystemAlert(TimestampedModel):
 
     class Meta:
         indexes = [models.Index(fields=["active", "severity"])]
+
+
+class SystemBackup(TimestampedModel):
+    class State(models.TextChoices):
+        CREATED = "created", "Oprettet"
+        VERIFYING = "verifying", "Verificerer"
+        VERIFIED = "verified", "Verificeret"
+        FAILED = "failed", "Fejlet"
+        EXPIRED = "expired", "Udløbet"
+
+    class Purpose(models.TextChoices):
+        MANUAL = "manual", "Manuel"
+        SCHEDULED = "scheduled", "Planlagt"
+        PRE_UPGRADE = "pre-upgrade", "Før opgradering"
+        PRE_MIGRATION = "pre-migration", "Før migrering"
+        PRE_DESTRUCTIVE = "pre-destructive", "Før destruktiv handling"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    state = models.CharField(max_length=16, choices=State.choices, default=State.CREATED)
+    purpose = models.CharField(max_length=24, choices=Purpose.choices)
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    destination = models.CharField(max_length=300)
+    retention_class = models.CharField(max_length=40, default="daily")
+    application_release = models.CharField(max_length=80)
+    git_sha = models.CharField(max_length=64)
+    migration_heads = models.JSONField(default=list)
+    manifest = models.JSONField(default=dict)
+    manifest_sha256 = models.CharField(max_length=64, blank=True)
+    verification = models.JSONField(default=dict)
+    verified_at = models.DateTimeField(null=True, blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+
+
+class MaintenanceState(TimestampedModel):
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
+    active = models.BooleanField(default=False)
+    read_only = models.BooleanField(default=True)
+    reason = models.CharField(max_length=300, blank=True)
+    entered_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True
+    )
+    entered_at = models.DateTimeField(null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        return super().save(*args, **kwargs)
+
+
+class UpgradeJournal(TimestampedModel):
+    class State(models.TextChoices):
+        PLANNED = "planned", "Planlagt"
+        BLOCKED = "blocked", "Blokeret"
+        APPROVED = "approved", "Godkendt"
+        RUNNING = "running", "Kører"
+        VERIFYING = "verifying", "Verificerer"
+        COMPLETED = "completed", "Færdig"
+        FAILED = "failed", "Fejlet"
+        ROLLBACK_STAGED = "rollback-staged", "Rollback klargjort"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    initiated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    source_release = models.CharField(max_length=80)
+    target_release = models.CharField(max_length=80)
+    target_manifest = models.JSONField(default=dict)
+    backup = models.ForeignKey(
+        SystemBackup, on_delete=models.PROTECT, null=True, blank=True, related_name="upgrades"
+    )
+    state = models.CharField(max_length=24, choices=State.choices, default=State.PLANNED)
+    preflight = models.JSONField(default=dict)
+    migrations_planned = models.JSONField(default=list)
+    config_migrations = models.JSONField(default=list)
+    verification = models.JSONField(default=dict)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    failure_code = models.CharField(max_length=100, blank=True)
