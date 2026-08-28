@@ -16,7 +16,6 @@ from ai_wagvid.competition_batch import (
 )
 from ai_wagvid.domain import Apparatus
 
-
 T0 = datetime(2026, 8, 17, 14, 0, tzinfo=UTC)
 PROFILE_A = "a" * 64
 PROFILE_B = "b" * 64

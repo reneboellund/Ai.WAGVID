@@ -15,10 +15,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Iterable, Mapping
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any, Iterable, Mapping
+from typing import Any
 
 from .domain import Apparatus
 
@@ -273,12 +274,12 @@ class CompetitionBatchPlan:
             (item.task.competition_external_id, item.task.routine_external_id)
             for item in self.routines
         ]
+        if len(routine_keys) != len(set(routine_keys)):
+            raise CompetitionBatchError("batch cannot plan the same competition routine twice")
         if len(task_ids) != len(set(task_ids)):
             raise CompetitionBatchError("batch task IDs must be unique")
         if len(idempotency_keys) != len(set(idempotency_keys)):
             raise CompetitionBatchError("batch idempotency keys must be unique")
-        if len(routine_keys) != len(set(routine_keys)):
-            raise CompetitionBatchError("batch cannot plan the same competition routine twice")
 
     @property
     def digest(self) -> str:

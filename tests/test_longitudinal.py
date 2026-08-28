@@ -19,7 +19,6 @@ from ai_wagvid.performance_analysis import (
     PerformanceObservation,
 )
 
-
 T0 = datetime(2026, 8, 1, 10, 0, tzinfo=UTC)
 
 

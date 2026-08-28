@@ -5,7 +5,7 @@
 {% block content %}
 <section class="page-head">
   <div><p class="eyebrow">Human-in-the-loop evidence review</p><h1>Review: <span class="text-gradient">{{ job.media.gymnast.display_name }}</span></h1><p>{% if job.media.routine %}{{ job.media.routine.event.name }} · {{ job.media.routine.get_apparatus_display }} · {% endif %}analyse revision {{ job.revision }}. AI-forslag, officiel bedømmelse og menneskelig afgørelse holdes eksplicit adskilt.</p></div>
-  <div class="page-actions"><a class="button" href="{% url 'analyses' %}"><svg><use href="#i-arrow"/></svg>Til analysekø</a><span class="status-badge {% if job.state == 'needs-review' %}warning{% elif job.state == 'completed' %}{% else %}info{% endif %}">{{ job.get_state_display }}</span></div>
+  <div class="page-actions"><a class="button" href="{% url 'analyses' %}"><svg><use href="#i-arrow"/></svg>Til analysekø</a>{% if result.state == 'frozen' %}<form method="post" action="{% url 'score-report-generate' job.id %}">{% csrf_token %}<button class="button button-primary">Generér scoreverifikation</button></form>{% endif %}<span class="status-badge {% if job.state == 'needs-review' %}warning{% elif job.state == 'completed' %}{% else %}info{% endif %}">{{ job.get_state_display }}</span></div>
 </section>
 
 <section class="surface surface-pad" data-evidence-workspace data-timeline-url="{% url 'media-timeline' job.media.id %}">

@@ -5,9 +5,9 @@ import pytest
 
 from ai_wagvid.domain import Apparatus
 from ai_wagvid.performance_analysis import (
-    CoachPriorityInput,
     CoachingHypothesis,
     CoachingHypothesisState,
+    CoachPriorityInput,
     ObservationPolarity,
     ObservationReviewState,
     PerformanceAnalysisError,
@@ -20,7 +20,6 @@ from ai_wagvid.performance_analysis import (
     build_performance_report,
     rank_priorities,
 )
-
 
 T0 = datetime(2026, 8, 17, 13, 0, tzinfo=UTC)
 

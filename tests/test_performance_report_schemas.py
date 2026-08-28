@@ -8,8 +8,8 @@ from jsonschema import Draft202012Validator
 from ai_wagvid.domain import Apparatus
 from ai_wagvid.longitudinal import RoutinePerformanceSnapshot, build_longitudinal_report
 from ai_wagvid.performance_analysis import (
-    CoachPriorityInput,
     CoachingHypothesis,
+    CoachPriorityInput,
     ObservationPolarity,
     ObservationReviewState,
     PerformanceEvidenceRef,
@@ -20,7 +20,6 @@ from ai_wagvid.performance_analysis import (
     rank_priorities,
 )
 from wagvid_rules.validation import load_schema
-
 
 ROOT = Path(__file__).parents[1]
 PERFORMANCE_SCHEMA = load_schema(ROOT / "schemas" / "performance-report-v1.schema.json")

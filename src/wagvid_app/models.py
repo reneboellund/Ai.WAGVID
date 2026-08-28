@@ -1126,3 +1126,62 @@ class EvidenceShareGrant(TimestampedModel):
     revoked_at = models.DateTimeField(null=True, blank=True)
     revoked_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name="revoked_evidence_grants")
     revoke_reason = models.TextField(blank=True)
+
+
+class AnalysisDeliverable(models.Model):
+    class Kind(models.TextChoices):
+        SCORE_VERIFICATION = "score-verification", "Scoreverifikation"
+        PERFORMANCE = "performance", "Performance"
+        LONGITUDINAL = "longitudinal", "Longitudinal"
+        EVENT_SUMMARY = "event-summary", "Konkurrencesammendrag"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.PROTECT, related_name="analysis_deliverables")
+    kind = models.CharField(max_length=24, choices=Kind.choices)
+    schema_id = models.CharField(max_length=120)
+    analysis_job = models.ForeignKey(AnalysisJob, on_delete=models.PROTECT, null=True, blank=True, related_name="deliverables")
+    gymnast = models.ForeignKey(Gymnast, on_delete=models.PROTECT, null=True, blank=True, related_name="deliverables")
+    event = models.ForeignKey(Event, on_delete=models.PROTECT, null=True, blank=True, related_name="deliverables")
+    revision = models.PositiveIntegerField(default=1)
+    payload = models.JSONField(default=dict)
+    payload_digest = models.CharField(max_length=64)
+    provenance = models.JSONField(default=dict)
+    generated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    generated_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["analysis_job", "kind", "revision"], condition=models.Q(analysis_job__isnull=False), name="unique_job_deliverable_revision")
+        ]
+        ordering = ["-generated_at"]
+
+    def save(self, *args, **kwargs):
+        if self.pk and AnalysisDeliverable.objects.filter(pk=self.pk).exists():
+            raise ValueError("Analysis deliverables are immutable")
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("Analysis deliverables are immutable")
+
+
+class CompetitionBatchRun(TimestampedModel):
+    class State(models.TextChoices):
+        PLANNED = "planned", "Planlagt"
+        QUEUED = "queued", "I kø"
+        RUNNING = "running", "Kører"
+        FROZEN = "frozen", "AI frosset"
+        OFFICIAL_REVEALED = "official-revealed", "Officielt resultat frigivet"
+        COMPLETED = "completed", "Færdig"
+        FAILED = "failed", "Fejlet"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.PROTECT, related_name="competition_batches")
+    event = models.ForeignKey(Event, on_delete=models.PROTECT, related_name="analysis_batches")
+    state = models.CharField(max_length=24, choices=State.choices, default=State.PLANNED)
+    analysis_profile_digest = models.CharField(max_length=64)
+    plan_digest = models.CharField(max_length=64, unique=True)
+    task_count = models.PositiveIntegerField()
+    excluded_count = models.PositiveIntegerField()
+    control_plan = models.JSONField(default=dict)
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    failure_code = models.CharField(max_length=100, blank=True)

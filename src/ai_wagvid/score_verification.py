@@ -9,11 +9,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Iterable, Mapping
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
 from enum import StrEnum
-from typing import Iterable, Mapping
 
 from .domain import Apparatus
 from .score_comparison import ScoreComparison, ScoreLine, compare_scores
@@ -262,13 +262,12 @@ class DiscrepancyCase:
         ):
             if not value.is_finite():
                 raise ScoreVerificationError(f"{label} must be finite")
-        if self.confidence_milli is not None:
-            if (
-                isinstance(self.confidence_milli, bool)
-                or not isinstance(self.confidence_milli, int)
-                or not 0 <= self.confidence_milli <= 1000
-            ):
-                raise ScoreVerificationError("confidence_milli must be integer [0, 1000]")
+        if self.confidence_milli is not None and (
+            isinstance(self.confidence_milli, bool)
+            or not isinstance(self.confidence_milli, int)
+            or not 0 <= self.confidence_milli <= 1000
+        ):
+            raise ScoreVerificationError("confidence_milli must be integer [0, 1000]")
         if self.delta != self.reconstructed_value - self.official_value:
             raise ScoreVerificationError("discrepancy delta arithmetic is inconsistent")
         if len({item.digest for item in self.evidence}) != len(self.evidence):

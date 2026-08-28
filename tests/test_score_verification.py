@@ -22,7 +22,6 @@ from ai_wagvid.score_verification import (
     discrepancy_cases_from_comparison,
 )
 
-
 T0 = datetime(2026, 8, 17, 12, 0, tzinfo=UTC)
 RULEPACK_DIGEST = "a" * 64
 

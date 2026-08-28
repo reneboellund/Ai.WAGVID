@@ -9,11 +9,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
 from statistics import median
-from typing import Iterable
 
 from .domain import Apparatus
 from .performance_analysis import (
@@ -244,8 +244,9 @@ class LongitudinalReport:
 def build_category_trends(
     snapshots: Iterable[RoutinePerformanceSnapshot],
     *,
-    policy: TrendPolicy = TrendPolicy(),
+    policy: TrendPolicy | None = None,
 ) -> tuple[CategoryTrend, ...]:
+    policy = policy or TrendPolicy()
     items = _validate_snapshot_series(tuple(snapshots))
     if not items:
         return ()
@@ -331,8 +332,9 @@ def build_longitudinal_report(
     report_id: str,
     generated_at: datetime,
     snapshots: Iterable[RoutinePerformanceSnapshot],
-    policy: TrendPolicy = TrendPolicy(),
+    policy: TrendPolicy | None = None,
 ) -> LongitudinalReport:
+    policy = policy or TrendPolicy()
     items = _validate_snapshot_series(tuple(snapshots))
     if not items:
         raise PerformanceAnalysisError("longitudinal report requires at least one snapshot")

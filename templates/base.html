@@ -71,6 +71,7 @@
         <a href="{% url 'devices' %}" {% if request.resolver_match.url_name == 'devices' %}class="active" aria-current="page"{% endif %}><svg><use href="#i-device"/></svg><span>Enheder</span></a>
         <a href="{% url 'analyses' %}" {% if request.resolver_match.url_name == 'analyses' %}class="active" aria-current="page"{% endif %}><svg><use href="#i-analysis"/></svg><span>Analyser</span>{% if status.review_backlog %}<em>{{ status.review_backlog }}</em>{% endif %}</a>
         <a href="{% url 'review-inbox' %}" {% if request.resolver_match.url_name == 'review-inbox' %}class="active" aria-current="page"{% endif %}><svg><use href="#i-check"/></svg><span>Review-kø</span></a>
+        <a href="{% url 'reports' %}" {% if request.resolver_match.url_name == 'reports' or request.resolver_match.url_name == 'report-detail' %}class="active" aria-current="page"{% endif %}><svg><use href="#i-analysis"/></svg><span>Rapporter</span></a>
         <p class="nav-label nav-label-spaced">Data & drift</p>
         <a href="{% url 'exchange' %}" {% if request.resolver_match.url_name == 'exchange' %}class="active" aria-current="page"{% endif %}><svg><use href="#i-exchange"/></svg><span>Import/eksport</span></a>
         <a href="{% url 'system-status' %}" {% if request.resolver_match.url_name == 'system-status' %}class="active" aria-current="page"{% endif %}><svg><use href="#i-health"/></svg><span>Systemstatus</span><i class="status-dot status-dot-good" title="System online"></i></a>

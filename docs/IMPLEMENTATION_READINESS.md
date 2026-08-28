@@ -29,6 +29,9 @@ See `docs/CURRENT_STATUS.md` for the compact source-of-truth implementation summ
 - system backup manifests, checksum verification, restore preflight and upgrade maintenance controls.
 - multi-organization workspace selection, hashed single-use invitations, expanded domain roles and audited role administration;
 - immutable configuration revisions, explicit dataset rights/pseudonymous groups, revocable evidence sharing and scoped audit export.
+- frozen score-verification and discrepancy-adjudication core with immutable Django report artifacts and JSON export;
+- evidence-backed performance patterns/priorities, longitudinal trend contracts and schema-validated coach-report publishing;
+- identity-minimized competition batch planning with official results withheld from worker payloads until AI freeze.
 
 ## Must still be completed before an internal alpha
 

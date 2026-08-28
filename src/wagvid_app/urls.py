@@ -7,6 +7,7 @@ from . import (
     master_data_views,
     media_access,
     media_timeline_api,
+    report_views,
     views,
 )
 
@@ -136,4 +137,11 @@ urlpatterns = [
     path("evidence-shares/redeem/", governance_views.evidence_share_redeem, name="evidence-share-redeem"),
     path("administration/audit.csv", governance_views.audit_export, name="audit-export"),
     path("administration/datasets.json", governance_views.dataset_governance_export, name="dataset-governance-export"),
+    path("reports/", report_views.reports, name="reports"),
+    path("reports/<uuid:report_id>/", report_views.report_detail, name="report-detail"),
+    path("reports/<uuid:report_id>/report.json", report_views.report_json, name="report-json"),
+    path("reports/score/<uuid:job_id>/generate/", report_views.score_report_generate, name="score-report-generate"),
+    path("reports/structured/publish/", report_views.structured_report_publish, name="structured-report-publish"),
+    path("reports/competitions/<uuid:event_id>/plan/", report_views.competition_batch_plan, name="competition-batch-plan"),
+    path("reports/competition-batches/<uuid:batch_id>/batch.json", report_views.competition_batch_json, name="competition-batch-json"),
 ]

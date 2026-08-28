@@ -2,6 +2,8 @@
 
 Governance control-plane milestone: organization switching, hashed invitations, audited role changes, immutable configuration revisions, explicit dataset permissions with pseudonymous grouping, revocable evidence shares and scoped audit export are implemented locally and covered by Django tests. External identity-provider/email delivery and formal deployment threat-model review remain future integration work.
 
+Reporting milestone: frozen score-verification/discrepancy primitives, evidence-backed performance patterns and coach priorities, longitudinal trends, and identity-minimized competition batching are integrated. Django now persists immutable report artifacts and leakage-safe event batch plans, exposes organization-scoped UI/JSON exports, and generates score-verification reports only from frozen AI results. Empirical model output and qualified judge/coach validation remain separate release gates.
+
 Date: 2026-08-17
 
 This file is the compact implementation-status source of truth for the active development baseline. Detailed product intent remains in the roadmap and issue tracker; this file records what is actually present in `main` versus what still requires implementation or empirical validation.

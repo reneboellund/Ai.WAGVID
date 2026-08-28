@@ -9,10 +9,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Iterable, Mapping
 
 from .domain import Apparatus
 
@@ -403,8 +403,9 @@ def rank_priorities(
     patterns: Iterable[TechnicalPattern],
     coach_inputs: Iterable[CoachPriorityInput],
     *,
-    policy: PriorityPolicy = PriorityPolicy(),
+    policy: PriorityPolicy | None = None,
 ) -> tuple[PriorityEntry, ...]:
+    policy = policy or PriorityPolicy()
     pattern_items = tuple(patterns)
     inputs = tuple(coach_inputs)
     input_map = {item.pattern_digest: item for item in inputs}
