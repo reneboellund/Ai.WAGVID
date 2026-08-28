@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import asdict, dataclass
 from datetime import datetime
-from statistics import fmean
+from statistics import fmean, median
 from typing import Any
 
 
@@ -67,6 +67,36 @@ class BenchmarkRun:
             raise ValueError("benchmark run provenance is incomplete")
         if self.split not in {"validation", "test"}:
             raise ValueError("benchmark reports are restricted to validation or test splits")
+
+
+@dataclass(frozen=True)
+class TimingDetectionCase:
+    case_id: str
+    reference_ms: int
+    predicted_ms: int | None
+
+    def __post_init__(self) -> None:
+        if not self.case_id:
+            raise ValueError("timing case_id is required")
+        if isinstance(self.reference_ms, bool) or not isinstance(self.reference_ms, int) or self.reference_ms < 0:
+            raise ValueError("reference_ms must be a non-negative integer")
+        if self.predicted_ms is not None and (
+            isinstance(self.predicted_ms, bool)
+            or not isinstance(self.predicted_ms, int)
+            or self.predicted_ms < 0
+        ):
+            raise ValueError("predicted_ms must be a non-negative integer or None")
+
+
+@dataclass(frozen=True)
+class StateAgreementCase:
+    case_id: str
+    expected_state: str
+    predicted_state: str
+
+    def __post_init__(self) -> None:
+        if not self.case_id or not self.expected_state or not self.predicted_state:
+            raise ValueError("state case requires id, expected_state and predicted_state")
 
 
 def _metrics(cases: tuple[BenchmarkCase, ...], *, top_k: int, unknown_threshold: float) -> dict:
@@ -138,4 +168,46 @@ def evaluate_benchmark(
             name: _metrics(tuple(items), top_k=top_k, unknown_threshold=unknown_threshold)
             for name, items in sorted(slices.items())
         },
+    }
+
+
+def evaluate_timing_detection(cases: tuple[TimingDetectionCase, ...]) -> dict[str, Any]:
+    """Evaluate event timing without hiding missed events inside timing error averages."""
+    if not cases or len({case.case_id for case in cases}) != len(cases):
+        raise ValueError("timing cases must be non-empty with unique IDs")
+    detected = tuple(case for case in cases if case.predicted_ms is not None)
+    errors = tuple(
+        abs(case.predicted_ms - case.reference_ms)
+        for case in detected
+        if case.predicted_ms is not None
+    )
+    return {
+        "case_count": len(cases),
+        "detected_count": len(detected),
+        "missed_count": len(cases) - len(detected),
+        "detection_recall": len(detected) / len(cases),
+        "mean_absolute_error_ms": fmean(errors) if errors else None,
+        "median_absolute_error_ms": median(errors) if errors else None,
+        "max_absolute_error_ms": max(errors) if errors else None,
+    }
+
+
+def evaluate_state_agreement(cases: tuple[StateAgreementCase, ...]) -> dict[str, Any]:
+    """Evaluate categorical apparatus states such as continuity/capability decisions."""
+    if not cases or len({case.case_id for case in cases}) != len(cases):
+        raise ValueError("state cases must be non-empty with unique IDs")
+    mismatches = tuple(
+        {
+            "case_id": case.case_id,
+            "expected_state": case.expected_state,
+            "predicted_state": case.predicted_state,
+        }
+        for case in cases
+        if case.expected_state != case.predicted_state
+    )
+    return {
+        "case_count": len(cases),
+        "exact_agreement": (len(cases) - len(mismatches)) / len(cases),
+        "mismatch_count": len(mismatches),
+        "mismatches": list(mismatches),
     }
