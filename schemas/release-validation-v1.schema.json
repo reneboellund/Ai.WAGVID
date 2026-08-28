@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/reneboellund/Ai.WAGVID/schemas/release-validation-v1.schema.json",
+  "title": "Ai.WAGVID post-event release validation manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "manifest_id", "release_digest", "model_bundle_digest", "rulepack_digest",
+    "software_digest", "promotion", "known_limitations", "created_at"
+  ],
+  "properties": {
+    "schema": {"const": "ai.wagvid.release-validation.v1"},
+    "manifest_id": {"type": "string", "minLength": 1},
+    "release_digest": {"$ref": "#/$defs/sha256"},
+    "model_bundle_digest": {"$ref": "#/$defs/sha256"},
+    "rulepack_digest": {"$ref": "#/$defs/sha256"},
+    "software_digest": {"$ref": "#/$defs/sha256"},
+    "promotion": {"$ref": "#/$defs/promotion"},
+    "known_limitations": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "created_at": {"type": "string", "format": "date-time"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requirement_id", "layer", "run_digest", "apparatus", "camera_condition",
+        "skill_family", "challenge_tags", "dataset_digest", "sample_count"
+      ],
+      "properties": {
+        "requirement_id": {"type": "string", "minLength": 1},
+        "layer": {
+          "enum": [
+            "media-integrity", "perception", "segmentation", "d-score", "deduction",
+            "score-verification", "performance", "review-workflow", "runtime", "governance"
+          ]
+        },
+        "run_digest": {"$ref": "#/$defs/sha256"},
+        "apparatus": {"type": ["string", "null"], "enum": ["VT", "UB", "BB", "FX", null]},
+        "camera_condition": {"type": ["string", "null"]},
+        "skill_family": {"type": ["string", "null"]},
+        "challenge_tags": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "dataset_digest": {"$ref": "#/$defs/sha256"},
+        "sample_count": {"type": "integer", "minimum": 1}
+      }
+    },
+    "promotion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "decision_digest", "policy_id", "policy_digest", "gate", "status",
+        "validated_scopes", "active_waiver_digests", "blockers"
+      ],
+      "properties": {
+        "decision_digest": {"$ref": "#/$defs/sha256"},
+        "policy_id": {"type": "string", "minLength": 1},
+        "policy_digest": {"$ref": "#/$defs/sha256"},
+        "gate": {
+          "enum": [
+            "research-fixture", "offline-component", "integrated-post-routine",
+            "qualified-user-pilot", "production-post-event"
+          ]
+        },
+        "status": {"enum": ["passed", "blocked"]},
+        "validated_scopes": {"type": "array", "items": {"$ref": "#/$defs/scope"}},
+        "active_waiver_digests": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/sha256"}
+        },
+        "blockers": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  }
+}
