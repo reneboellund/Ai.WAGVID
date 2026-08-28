@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/reneboellund/Ai.WAGVID/schemas/deduction-policy-v1.schema.json",
+  "title": "Ai.WAGVID deduction ontology policy v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "rulepack_id", "rulepack_digest", "apparatus", "units_per_point", "rules"],
+  "properties": {
+    "schema": {"const": "ai.wagvid.deduction-policy.v1"},
+    "rulepack_id": {"type": "string", "minLength": 1},
+    "rulepack_digest": {"$ref": "#/$defs/sha256"},
+    "apparatus": {"enum": ["VT", "UB", "BB", "FX"]},
+    "units_per_point": {"type": "integer", "minimum": 1},
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/rule"}
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "stringSet": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "severity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["severity_id", "deduction_units"],
+      "properties": {
+        "severity_id": {"type": "string", "minLength": 1},
+        "deduction_units": {"type": "integer", "minimum": 0},
+        "source_rule_id": {"type": ["string", "null"], "minLength": 1}
+      }
+    },
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rule_id", "channel", "criterion_id", "scope", "severities"],
+      "properties": {
+        "rule_id": {"type": "string", "minLength": 1},
+        "channel": {"enum": ["execution", "artistry", "neutral"]},
+        "criterion_id": {"type": "string", "minLength": 1},
+        "scope": {"enum": ["element", "phase", "routine", "procedural"]},
+        "severities": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/severity"}
+        },
+        "required_camera_capabilities": {"$ref": "#/$defs/stringSet"},
+        "minimum_evidence_quality_milli": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "minimum_model_confidence_milli": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "human_judgement_required": {"type": "boolean"},
+        "source_rule_id": {"type": ["string", "null"], "minLength": 1}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"channel": {"const": "artistry"}}, "required": ["channel"]},
+          "then": {
+            "required": ["human_judgement_required"],
+            "properties": {"human_judgement_required": {"const": true}}
+          }
+        }
+      ]
+    }
+  }
+}
