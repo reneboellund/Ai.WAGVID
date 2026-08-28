@@ -31,6 +31,8 @@ class Membership(TimestampedModel):
         OPERATOR = "operator", "Operatør"
         COACH = "coach", "Træner"
         REVIEWER = "reviewer", "Reviewer"
+        DOMAIN_REVIEWER = "domain-reviewer", "Fagkyndig reviewer"
+        ANNOTATOR = "annotator", "Annotator"
         RESEARCHER = "researcher", "Forsker"
         VIEWER = "viewer", "Læser"
 
@@ -1036,3 +1038,91 @@ class UpgradeJournal(TimestampedModel):
     started_at = models.DateTimeField(null=True, blank=True)
     finished_at = models.DateTimeField(null=True, blank=True)
     failure_code = models.CharField(max_length=100, blank=True)
+
+
+class OrganizationInvitation(TimestampedModel):
+    class State(models.TextChoices):
+        PENDING = "pending", "Afventer"
+        ACCEPTED = "accepted", "Accepteret"
+        REVOKED = "revoked", "Tilbagekaldt"
+        EXPIRED = "expired", "Udløbet"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="invitations")
+    email = models.EmailField()
+    role = models.CharField(max_length=32, choices=Membership.Role.choices)
+    token_hash = models.CharField(max_length=64, unique=True)
+    state = models.CharField(max_length=16, choices=State.choices, default=State.PENDING)
+    invited_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="sent_wagvid_invitations")
+    expires_at = models.DateTimeField(db_index=True)
+    accepted_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name="accepted_wagvid_invitations")
+    accepted_at = models.DateTimeField(null=True, blank=True)
+
+
+class ConfigurationRevision(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.PROTECT, related_name="configuration_revisions")
+    namespace = models.CharField(max_length=100)
+    revision = models.PositiveIntegerField()
+    state = models.CharField(max_length=16, choices=[("draft", "Kladde"), ("frozen", "Frosset"), ("superseded", "Erstattet")], default="draft")
+    values = models.JSONField(default=dict)
+    digest = models.CharField(max_length=64)
+    reason = models.TextField()
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    created_at = models.DateTimeField(auto_now_add=True)
+    frozen_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["organization", "namespace", "revision"], name="unique_configuration_revision")]
+        ordering = ["namespace", "-revision"]
+
+    def save(self, *args, **kwargs):
+        if self.pk and ConfigurationRevision.objects.filter(pk=self.pk, state="frozen").exists():
+            raise ValueError("Frozen configuration revisions are immutable")
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("Configuration revisions are append-only")
+
+
+class DatasetGovernanceRecord(TimestampedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="dataset_governance_records")
+    source_reference = models.CharField(max_length=500)
+    immutable_digest = models.CharField(max_length=64)
+    rights_reference = models.CharField(max_length=500)
+    consent_reference = models.CharField(max_length=500, blank=True)
+    analysis_allowed = models.BooleanField(default=False)
+    retention_allowed = models.BooleanField(default=False)
+    training_allowed = models.BooleanField(default=False)
+    export_allowed = models.BooleanField(default=False)
+    pseudonymous_athlete_key = models.CharField(max_length=64)
+    pseudonymous_event_key = models.CharField(max_length=64)
+    split_manifest_digest = models.CharField(max_length=64, blank=True)
+    label_provenance = models.JSONField(default=dict)
+    approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["organization", "immutable_digest"], name="unique_dataset_digest_per_org")]
+
+    def save(self, *args, **kwargs):
+        if self.pk and DatasetGovernanceRecord.objects.filter(pk=self.pk).exists():
+            raise ValueError("Dataset governance records are append-only")
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("Dataset governance records are append-only")
+
+
+class EvidenceShareGrant(TimestampedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="evidence_share_grants")
+    media = models.ForeignKey(MediaAsset, on_delete=models.PROTECT, related_name="share_grants")
+    recipient = models.CharField(max_length=320)
+    actions = models.JSONField(default=list)
+    token_hash = models.CharField(max_length=64, unique=True)
+    expires_at = models.DateTimeField(db_index=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="created_evidence_grants")
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    revoked_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name="revoked_evidence_grants")
+    revoke_reason = models.TextField(blank=True)

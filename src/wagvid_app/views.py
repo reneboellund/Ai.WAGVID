@@ -65,11 +65,12 @@ from .wasabi_provider import WasabiSetupError
 
 
 def active_organization(request):
-    membership = (
-        request.user.wagvid_memberships.filter(active=True, organization__active=True)
-        .select_related("organization")
-        .first()
-    )
+    memberships = request.user.wagvid_memberships.filter(
+        active=True, organization__active=True
+    ).select_related("organization")
+    selected = request.session.get("wagvid_organization_id")
+    membership = memberships.filter(organization_id=selected).first() if selected else None
+    membership = membership or memberships.first()
     return membership.organization if membership else None
 
 

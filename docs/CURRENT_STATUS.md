@@ -1,5 +1,7 @@
 # Current implementation status
 
+Governance control-plane milestone: organization switching, hashed invitations, audited role changes, immutable configuration revisions, explicit dataset permissions with pseudonymous grouping, revocable evidence shares and scoped audit export are implemented locally and covered by Django tests. External identity-provider/email delivery and formal deployment threat-model review remain future integration work.
+
 Date: 2026-08-17
 
 This file is the compact implementation-status source of truth for the active development baseline. Detailed product intent remains in the roadmap and issue tracker; this file records what is actually present in `main` versus what still requires implementation or empirical validation.

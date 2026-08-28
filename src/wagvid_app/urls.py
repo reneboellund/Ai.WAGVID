@@ -1,6 +1,14 @@
 from django.urls import path
 
-from . import analysis_api, device_api, master_data_views, media_access, media_timeline_api, views
+from . import (
+    analysis_api,
+    device_api,
+    governance_views,
+    master_data_views,
+    media_access,
+    media_timeline_api,
+    views,
+)
 
 urlpatterns = [
     path("health/", views.health, name="health"),
@@ -116,4 +124,16 @@ urlpatterns = [
     path("system/backups/<uuid:backup_id>/manifest/", views.backup_manifest, name="backup-manifest"),
     path("system/backups/<uuid:backup_id>/restore-preflight/", views.backup_restore_preflight, name="backup-restore-preflight"),
     path("system/updates/", views.system_updates, name="system-updates"),
+    path("organization/select/", governance_views.organization_select, name="organization-select"),
+    path("organization/invitations/accept/", governance_views.invitation_accept, name="invitation-accept"),
+    path("administration/governance/", governance_views.governance_admin, name="governance-admin"),
+    path("administration/members/invite/", governance_views.member_invite, name="member-invite"),
+    path("administration/members/<int:membership_id>/change/", governance_views.member_change, name="member-change"),
+    path("administration/configuration/create/", governance_views.configuration_create, name="configuration-create"),
+    path("administration/datasets/register/", governance_views.dataset_register, name="dataset-register"),
+    path("administration/evidence-shares/create/", governance_views.evidence_share_create, name="evidence-share-create"),
+    path("administration/evidence-shares/<uuid:grant_id>/revoke/", governance_views.evidence_share_revoke, name="evidence-share-revoke"),
+    path("evidence-shares/redeem/", governance_views.evidence_share_redeem, name="evidence-share-redeem"),
+    path("administration/audit.csv", governance_views.audit_export, name="audit-export"),
+    path("administration/datasets.json", governance_views.dataset_governance_export, name="dataset-governance-export"),
 ]

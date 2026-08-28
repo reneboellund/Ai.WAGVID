@@ -27,6 +27,8 @@ See `docs/CURRENT_STATUS.md` for the compact source-of-truth implementation summ
 - provider-neutral S3 capability/governance framework with AWS, ONTAP, VAST and conditional Ootbi profiles;
 - checksum-first S3/Wasabi data plane, cost/retention ledger, legal hold and soft-delete quarantine;
 - system backup manifests, checksum verification, restore preflight and upgrade maintenance controls.
+- multi-organization workspace selection, hashed single-use invitations, expanded domain roles and audited role administration;
+- immutable configuration revisions, explicit dataset rights/pseudonymous groups, revocable evidence sharing and scoped audit export.
 
 ## Must still be completed before an internal alpha
 
@@ -36,7 +38,6 @@ See `docs/CURRENT_STATUS.md` for the compact source-of-truth implementation summ
 - Android production UI wiring for pairing, gymnast/capture context, archive/queue/device health and command reconciliation;
 - Android SDK/Gradle plus emulator/physical-device validation, including network-loss recovery;
 - audited gymnast duplicate merge and richer import field mapping/profiles;
-- user invitations, role administration and multi-organization selector;
 - persisted canonical frame timeline/index and exact frame stepping in review;
 - full annotation authoring/revision comparison UX;
 - structured error pages, deployment security checks and rate limiting;

@@ -61,6 +61,7 @@
         <span><small>Aktivt workspace</small><strong>{{ organization.name|default:"WAGVID Lab" }}</strong></span>
         <svg class="icon"><use href="#i-chevron"/></svg>
       </div>
+      <a class="text-button" href="{% url 'organization-select' %}">Skift workspace</a>
 
       <nav class="primary-nav" aria-label="Primær navigation">
         <p class="nav-label">Workspace</p>
@@ -76,6 +77,7 @@
         <a href="{% url 'storage-settings' %}"><svg><use href="#i-cloud"/></svg><span>Storage</span></a>
         <a href="{% url 'system-backups' %}"><svg><use href="#i-database"/></svg><span>Backup</span></a>
         <a href="{% url 'system-updates' %}"><svg><use href="#i-settings"/></svg><span>Opdatering</span></a>
+        <a href="{% url 'governance-admin' %}"><svg><use href="#i-shield"/></svg><span>Governance</span></a>
         {% if user.is_staff %}<a href="/admin/"><svg><use href="#i-settings"/></svg><span>Administration</span></a>{% endif %}
       </nav>
 
