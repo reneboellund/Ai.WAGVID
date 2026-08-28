@@ -4,7 +4,6 @@ import yaml
 
 from ai_wagvid.model_readiness import evaluate_profile_readiness
 
-
 ROOT = Path(__file__).parents[1]
 CATALOG = yaml.safe_load((ROOT / "config" / "model-bundles.yaml").read_text(encoding="utf-8"))
 ARTIFACTS = yaml.safe_load((ROOT / "research" / "artifacts.yaml").read_text(encoding="utf-8"))

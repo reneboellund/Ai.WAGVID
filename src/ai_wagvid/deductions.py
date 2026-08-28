@@ -12,10 +12,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Iterable, Mapping
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Iterable, Mapping
 
 from .domain import Apparatus
 
@@ -424,10 +424,7 @@ def evaluate_deduction_candidate(
     elif (
         candidate.evidence_quality_milli is not None
         and candidate.evidence_quality_milli < rule.minimum_evidence_quality_milli
-    ):
-        state = ProposalState.NEEDS_REVIEW
-        applicability = RuleApplicability.CONDITIONAL
-    elif rule.human_judgement_required:
+    ) or rule.human_judgement_required:
         state = ProposalState.NEEDS_REVIEW
         applicability = RuleApplicability.CONDITIONAL
     else:

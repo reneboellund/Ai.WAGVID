@@ -21,7 +21,6 @@ from ai_wagvid.validation_governance import (
 )
 from wagvid_rules.validation import load_schema
 
-
 ROOT = Path(__file__).parents[1]
 SCHEMA = load_schema(ROOT / "schemas" / "release-validation-v1.schema.json")
 T0 = datetime(2026, 8, 17, 17, 30, tzinfo=UTC)

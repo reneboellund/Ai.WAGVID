@@ -19,7 +19,6 @@ from ai_wagvid.vault import (
 from ai_wagvid.vault_exports import vault_analysis_payload
 from ai_wagvid.vault_factory import build_vault_analysis_bundle
 
-
 ROOT = Path(__file__).parents[1]
 SCHEMA = json.loads((ROOT / "schemas" / "vault-analysis-v1.schema.json").read_text(encoding="utf-8"))
 VALIDATOR = Draft202012Validator(SCHEMA, format_checker=FormatChecker())

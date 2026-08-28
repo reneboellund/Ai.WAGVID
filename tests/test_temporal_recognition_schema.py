@@ -16,7 +16,6 @@ from ai_wagvid.temporal_recognition import (
     TemporalRecognitionBundle,
 )
 
-
 ROOT = Path(__file__).parents[1]
 SCHEMA = json.loads(
     (ROOT / "schemas" / "temporal-recognition-v1.schema.json").read_text(encoding="utf-8")

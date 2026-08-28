@@ -14,7 +14,6 @@ from ai_wagvid.floor_exercise import (
 )
 from ai_wagvid.floor_exercise_exports import floor_exercise_payload
 
-
 ROOT = Path(__file__).parents[1]
 SCHEMA = json.loads((ROOT / "schemas" / "floor-exercise-analysis-v1.schema.json").read_text(encoding="utf-8"))
 VALIDATOR = Draft202012Validator(SCHEMA, format_checker=FormatChecker())

@@ -14,11 +14,11 @@ from __future__ import annotations
 import hashlib
 import itertools
 import json
+from collections.abc import Iterable, Mapping
 from dataclasses import asdict, dataclass
 from decimal import Decimal
 from enum import StrEnum
 from math import prod
-from typing import Iterable, Mapping
 
 from .domain import Apparatus
 
@@ -73,9 +73,10 @@ class CountingQuota:
     def __post_init__(self) -> None:
         if not self.group or self.minimum_counted < 0:
             raise DScoreError("counting quota group/minimum is invalid")
-        if self.maximum_counted is not None:
-            if self.maximum_counted < 0 or self.maximum_counted < self.minimum_counted:
-                raise DScoreError("counting quota maximum is invalid")
+        if self.maximum_counted is not None and (
+            self.maximum_counted < 0 or self.maximum_counted < self.minimum_counted
+        ):
+            raise DScoreError("counting quota maximum is invalid")
 
 
 @dataclass(frozen=True)
@@ -829,9 +830,7 @@ def _connection_rule_matches(
         return False
     if rule.left_groups_any and not (left.groups & rule.left_groups_any):
         return False
-    if rule.right_groups_any and not (right.groups & rule.right_groups_any):
-        return False
-    return True
+    return not rule.right_groups_any or bool(right.groups & rule.right_groups_any)
 
 
 def _build_ambiguity_records(

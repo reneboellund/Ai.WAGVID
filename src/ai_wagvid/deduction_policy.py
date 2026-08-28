@@ -20,7 +20,6 @@ from .deductions import (
 )
 from .domain import Apparatus
 
-
 DEDUCTION_POLICY_SCHEMA_VERSION = "ai.wagvid.deduction-policy.v1"
 
 

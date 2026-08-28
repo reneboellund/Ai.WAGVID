@@ -10,11 +10,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Iterable, Mapping
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
 from enum import StrEnum
-from typing import Iterable, Mapping
 
 from .domain import Apparatus
 
@@ -82,11 +82,12 @@ class DatasetEvidence:
             raise ValidationGovernanceError("dataset_id is required")
         _require_sha256("dataset_digest", self.dataset_digest)
         _require_sha256("split_manifest_digest", self.split_manifest_digest)
-        if self.rights_status is DatasetRightsStatus.CLEARED:
-            if not self.rights_reference or not self.rights_digest:
-                raise ValidationGovernanceError(
-                    "cleared dataset requires rights reference and immutable rights digest"
-                )
+        if self.rights_status is DatasetRightsStatus.CLEARED and (
+            not self.rights_reference or not self.rights_digest
+        ):
+            raise ValidationGovernanceError(
+                "cleared dataset requires rights reference and immutable rights digest"
+            )
         if self.rights_digest is not None:
             _require_sha256("rights_digest", self.rights_digest)
         if self.rights_status is DatasetRightsStatus.UNCLEARED and (
@@ -135,7 +136,7 @@ class BenchmarkSlice:
                 "apparatus": self.apparatus.value if self.apparatus else None,
                 "camera_condition": self.camera_condition,
                 "skill_family": self.skill_family,
-                "challenge_tags": list(sorted(self.challenge_tags)),
+                "challenge_tags": sorted(self.challenge_tags),
             }
         )
 
@@ -297,9 +298,7 @@ class ValidationRequirement:
             return False
         if self.skill_family is not None and slice_.skill_family != self.skill_family:
             return False
-        if not set(self.required_challenge_tags).issubset(slice_.challenge_tags):
-            return False
-        return True
+        return set(self.required_challenge_tags).issubset(slice_.challenge_tags)
 
 
 @dataclass(frozen=True)
@@ -564,7 +563,7 @@ def evaluate_promotion(
                 else:
                     run_waivers.append(waiver)
             if not reasons:
-                accepted_candidates.append((run, tuple(), tuple(run_waivers)))
+                accepted_candidates.append((run, (), tuple(run_waivers)))
             else:
                 candidate_reasons.append(
                     f"run:{run.run_id}:" + "|".join(sorted(set(reasons)))

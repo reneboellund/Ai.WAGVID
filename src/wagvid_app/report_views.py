@@ -9,6 +9,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from .models import AnalysisDeliverable, AnalysisJob, CompetitionBatchRun, Event
+from .pipeline_artifacts import publish_pipeline_artifact
 from .reporting import generate_score_verification, plan_event_analysis, publish_structured_report
 from .views import active_organization
 
@@ -81,6 +82,33 @@ def structured_report_publish(request):
         messages.error(request, str(error))
         return redirect("reports")
     messages.success(request, "Den validerede rapport er publiceret som immutable artifact.")
+    return redirect("report-detail", report_id=report.id)
+
+
+@login_required
+@require_POST
+def pipeline_artifact_publish(request, job_id):
+    organization = active_organization(request)
+    if not organization:
+        return HttpResponseForbidden()
+    job = get_object_or_404(AnalysisJob, pk=job_id, organization=organization)
+    try:
+        payload = json.loads(request.POST.get("payload", "{}"))
+        upstream = tuple(
+            item.strip()
+            for item in request.POST.get("upstream_digests", "").splitlines()
+            if item.strip()
+        )
+        report = publish_pipeline_artifact(
+            job=job,
+            actor=request.user,
+            payload=payload,
+            upstream_digests=upstream,
+        )
+    except (TypeError, json.JSONDecodeError, PermissionError, ValueError) as error:
+        messages.error(request, str(error))
+        return redirect("analysis-review", job_id=job.id)
+    messages.success(request, "Pipeline-artifactet er valideret, bundet til kilden og frosset.")
     return redirect("report-detail", report_id=report.id)
 
 

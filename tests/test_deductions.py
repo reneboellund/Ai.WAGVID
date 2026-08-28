@@ -21,7 +21,6 @@ from ai_wagvid.deductions import (
 )
 from ai_wagvid.domain import Apparatus
 
-
 T0 = datetime(2026, 8, 17, 11, 0, tzinfo=UTC)
 MODEL_DIGEST = "a" * 64
 RULEPACK_DIGEST = "b" * 64

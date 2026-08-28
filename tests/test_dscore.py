@@ -12,16 +12,15 @@ from ai_wagvid.dscore import (
     CompositionStatus,
     ConnectionRule,
     ConnectionStatus,
-    CountReason,
     CountingPolicy,
     CountingQuota,
+    CountReason,
+    DeterministicDScoreEngine,
     DScoreError,
     DScorePolicy,
-    DeterministicDScoreEngine,
     ElementRule,
     format_score_units,
 )
-
 
 RULEPACK_DIGEST = "a" * 64
 

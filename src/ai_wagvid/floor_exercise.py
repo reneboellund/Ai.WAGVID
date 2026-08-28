@@ -294,9 +294,12 @@ class FloorExerciseBundle:
         boundary = [item for item in self.observations if item.kind is FloorObservationKind.BOUNDARY_CANDIDATE]
         if self.geometry.state is FloorCapabilityState.UNAVAILABLE and boundary:
             raise FloorExerciseError("unavailable floor geometry cannot emit boundary candidates")
-        if self.geometry.state is FloorCapabilityState.AVAILABLE:
-            if any(item.floor_polygon_digest is not None and item.floor_polygon_digest != self.geometry.floor_polygon_digest for item in self.observations):
-                raise FloorExerciseError("floor observation polygon must match bundle geometry")
+        if self.geometry.state is FloorCapabilityState.AVAILABLE and any(
+            item.floor_polygon_digest is not None
+            and item.floor_polygon_digest != self.geometry.floor_polygon_digest
+            for item in self.observations
+        ):
+            raise FloorExerciseError("floor observation polygon must match bundle geometry")
         if len(self.limitations) != len(set(self.limitations)):
             raise FloorExerciseError("floor bundle limitations must be unique")
 

@@ -9,12 +9,11 @@ from ai_wagvid.dscore import (
     CompositionRequirement,
     ConnectionRule,
     CountingPolicy,
-    DScorePolicy,
     DeterministicDScoreEngine,
+    DScorePolicy,
     ElementRule,
 )
 from wagvid_rules.validation import load_schema
-
 
 ROOT = Path(__file__).parents[1]
 SCHEMA = load_schema(ROOT / "schemas" / "dscore-ledger-v1.schema.json")

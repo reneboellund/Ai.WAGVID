@@ -57,6 +57,14 @@
 
 {% if job.state == "needs-review" %}<section class="surface surface-pad" style="margin-top:18px"><header class="section-head"><div><h2>Afslut samlet score-review</h2><p>Den samlede afgørelse er separat fra de enkelte deduction-beslutninger og bliver append-only.</p></div><span class="status-badge warning">Kræver reviewer</span></header><form method="post" action="{% url 'score-comparison-review' job.id %}" class="form-stack">{% csrf_token %}{{ score_review_form.as_p }}<button class="button button-primary" type="submit"><svg><use href="#i-shield"/></svg>Gem og afslut review</button></form></section>{% endif %}
 {% if result.score_reviews.all %}<section class="surface surface-pad" style="margin-top:18px"><header class="section-head"><div><h2>Score-review historik</h2><p>Tidligere afgørelser bevares for audit og reproducerbarhed.</p></div></header><div class="activity-list">{% for review in result.score_reviews.all %}<div class="activity-item"><span class="activity-icon"><svg><use href="#i-shield"/></svg></span><span class="activity-copy"><strong>{{ review.get_decision_display }}</strong><small>{{ review.reviewer }} · {{ review.notes|default:"Ingen note" }}</small></span><time class="activity-time">{{ review.created_at|date:"d.m.Y H:i" }}</time></div>{% endfor %}</div></section>{% endif %}
+<section class="surface surface-pad" style="margin-top:18px">
+  <header class="section-head"><div><h2>Frys pipeline-resultat</h2><p>Importér et schema-valideret resultat fra tidsgenkendelse, D-score, fradrag, apparatanalyse eller releasevalidering. Artifactet bindes til denne video og kan ikke ændres bagefter.</p></div><span class="status-badge info">Provenienskrav</span></header>
+  <form method="post" action="{% url 'pipeline-artifact-publish' job.id %}" class="form-stack">{% csrf_token %}
+    <div class="field-group"><label>Artifact-JSON</label><textarea name="payload" rows="12" required placeholder='{"schema":"ai.wagvid.dscore-ledger.v1", ...}'></textarea></div>
+    <div class="field-group"><label>Upstream SHA-256 (én pr. linje)</label><textarea name="upstream_digests" rows="4" placeholder="Digest fra perception, modelbundle eller tidligere artifact"></textarea></div>
+    <div class="page-actions"><button class="button button-primary" type="submit"><svg><use href="#i-shield"/></svg>Valider og frys</button></div>
+  </form>
+</section>
 {% else %}<section class="surface" style="margin-top:18px"><div class="empty-state"><span class="empty-visual"><svg><use href="#i-analysis"/></svg></span><h3>Resultat ikke klar endnu</h3><p>Analysejobbet har endnu intet reviewbart resultat.</p><a class="button" href="{% url 'analyses' %}">Tilbage til analysekøen</a></div></section>{% endif %}
 <script src="{% static 'wagvid/evidence-review.js' %}" defer></script>
 {% endblock %}

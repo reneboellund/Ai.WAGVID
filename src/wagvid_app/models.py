@@ -1134,6 +1134,11 @@ class AnalysisDeliverable(models.Model):
         PERFORMANCE = "performance", "Performance"
         LONGITUDINAL = "longitudinal", "Longitudinal"
         EVENT_SUMMARY = "event-summary", "Konkurrencesammendrag"
+        TEMPORAL_RECOGNITION = "temporal-recognition", "Tidslig genkendelse"
+        DSCORE_LEDGER = "dscore-ledger", "D-score-ledger"
+        DEDUCTION_LEDGER = "deduction-ledger", "Fradragsledger"
+        APPARATUS_ANALYSIS = "apparatus-analysis", "Apparatusanalyse"
+        VALIDATION_MANIFEST = "validation-manifest", "Valideringsmanifest"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     organization = models.ForeignKey(Organization, on_delete=models.PROTECT, related_name="analysis_deliverables")

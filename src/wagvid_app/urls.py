@@ -142,6 +142,7 @@ urlpatterns = [
     path("reports/<uuid:report_id>/report.json", report_views.report_json, name="report-json"),
     path("reports/score/<uuid:job_id>/generate/", report_views.score_report_generate, name="score-report-generate"),
     path("reports/structured/publish/", report_views.structured_report_publish, name="structured-report-publish"),
+    path("reports/pipeline/<uuid:job_id>/publish/", report_views.pipeline_artifact_publish, name="pipeline-artifact-publish"),
     path("reports/competitions/<uuid:event_id>/plan/", report_views.competition_batch_plan, name="competition-batch-plan"),
     path("reports/competition-batches/<uuid:batch_id>/batch.json", report_views.competition_batch_json, name="competition-batch-json"),
 ]

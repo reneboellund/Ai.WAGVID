@@ -3,7 +3,6 @@ from pathlib import Path
 from ai_wagvid.rulepack_promotion import evaluate_rulepack_readiness
 from wagvid_rules.validation import load_yaml
 
-
 ROOT = Path(__file__).parents[1]
 
 

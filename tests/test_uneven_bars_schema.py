@@ -15,7 +15,6 @@ from ai_wagvid.uneven_bars import (
 )
 from ai_wagvid.uneven_bars_exports import uneven_bars_payload
 
-
 ROOT = Path(__file__).parents[1]
 SCHEMA = json.loads((ROOT / "schemas" / "uneven-bars-topology-v1.schema.json").read_text(encoding="utf-8"))
 VALIDATOR = Draft202012Validator(SCHEMA, format_checker=FormatChecker())

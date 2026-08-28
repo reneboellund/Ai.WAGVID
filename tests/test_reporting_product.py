@@ -19,7 +19,24 @@ from wagvid_app.models import (
     Organization,
     Routine,
 )
+from wagvid_app.pipeline_artifacts import publish_pipeline_artifact
 from wagvid_app.reporting import generate_score_verification, plan_event_analysis
+
+
+def dscore_payload(apparatus="BB"):
+    return {
+        "schema": "ai.wagvid.dscore-ledger.v1",
+        "rulepack_id": "wag-2025",
+        "rulepack_digest": "c" * 64,
+        "policy_digest": "d" * 64,
+        "apparatus": apparatus,
+        "units_per_point": 10,
+        "outcomes": [],
+        "ambiguities": [],
+        "possible_total_units": [],
+        "resolved_score": None,
+        "evaluation_blockers": ["no-accepted-elements"],
+    }
 
 
 def fixture(slug="reports"):
@@ -115,3 +132,49 @@ def test_score_report_web_generation_rejects_unfrozen_result(client):
     response = client.post(reverse("score-report-generate", args=[job.id]), follow=True)
     assert response.status_code == 200
     assert not AnalysisDeliverable.objects.filter(analysis_job=job).exists()
+
+
+@pytest.mark.django_db
+def test_pipeline_artifact_is_schema_validated_provenance_bound_and_idempotent():
+    user, organization, _event, _routine, job = fixture("pipeline")
+    payload = dscore_payload()
+    artifact = publish_pipeline_artifact(
+        job=job,
+        actor=user,
+        payload=payload,
+        upstream_digests=("e" * 64, "e" * 64),
+    )
+    repeated = publish_pipeline_artifact(
+        job=job, actor=user, payload=payload, upstream_digests=("e" * 64,)
+    )
+    assert repeated.id == artifact.id
+    assert artifact.kind == AnalysisDeliverable.Kind.DSCORE_LEDGER
+    assert artifact.provenance["media_sha256"] == job.media.sha256
+    assert artifact.provenance["upstream_digests"] == ["e" * 64]
+    assert organization.audit_events.filter(action="analysis.pipeline-artifact-published").exists()
+
+
+@pytest.mark.django_db
+def test_pipeline_artifact_rejects_apparatus_mismatch_and_cross_org_access(client):
+    user, _organization, _event, _routine, job = fixture("pipeline-scope")
+    with pytest.raises(ValueError, match="routine"):
+        publish_pipeline_artifact(job=job, actor=user, payload=dscore_payload("FX"))
+
+    artifact = publish_pipeline_artifact(job=job, actor=user, payload=dscore_payload())
+    other, _other_org, _event2, _routine2, _job2 = fixture("pipeline-scope-other")
+    client.force_login(other)
+    assert client.get(reverse("report-json", args=[artifact.id])).status_code == 404
+
+
+@pytest.mark.django_db
+def test_pipeline_publish_route_freezes_valid_artifact(client):
+    user, _organization, _event, _routine, job = fixture("pipeline-route")
+    client.force_login(user)
+    response = client.post(
+        reverse("pipeline-artifact-publish", args=[job.id]),
+        {"payload": json.dumps(dscore_payload()), "upstream_digests": "f" * 64},
+    )
+    assert response.status_code == 302
+    artifact = job.deliverables.get(kind=AnalysisDeliverable.Kind.DSCORE_LEDGER)
+    assert response.url == reverse("report-detail", args=[artifact.id])
+    assert artifact.provenance["upstream_digests"] == ["f" * 64]

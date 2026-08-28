@@ -7,8 +7,8 @@ hashes and an acquisition/rights record. Contract-only components remain explici
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Mapping, Sequence
 
 
 class ModelReadinessError(ValueError):

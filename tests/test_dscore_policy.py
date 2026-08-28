@@ -11,7 +11,6 @@ from ai_wagvid.dscore_policy import (
 )
 from wagvid_rules.validation import load_schema
 
-
 ROOT = Path(__file__).parents[1]
 SCHEMA = load_schema(ROOT / "schemas" / "dscore-policy-v1.schema.json")
 

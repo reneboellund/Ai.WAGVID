@@ -231,9 +231,13 @@ class VaultAnalysisBundle:
             missing = set(alternative.evidence_observation_ids) - known
             if missing:
                 raise VaultAnalysisError("vault identity references unknown observations: " + ",".join(sorted(missing)))
-        if self.corridor_boundary_capability.state is CapabilityState.UNAVAILABLE:
-            if any(item.kind is VaultObservationKind.CORRIDOR_OR_BOUNDARY for item in self.observations):
-                raise VaultAnalysisError("unavailable corridor/boundary capability cannot emit boundary observations")
+        if self.corridor_boundary_capability.state is CapabilityState.UNAVAILABLE and any(
+            item.kind is VaultObservationKind.CORRIDOR_OR_BOUNDARY
+            for item in self.observations
+        ):
+            raise VaultAnalysisError(
+                "unavailable corridor/boundary capability cannot emit boundary observations"
+            )
         if len(self.limitations) != len(set(self.limitations)):
             raise VaultAnalysisError("vault analysis limitations must be unique")
 

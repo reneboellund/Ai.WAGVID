@@ -9,18 +9,18 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Mapping
 
 from .domain import Apparatus
 from .dscore import (
     AcceptedConnectionFact,
     AcceptedElementFact,
+    DeterministicDScoreEngine,
     DScoreLedger,
     DScorePolicy,
-    DeterministicDScoreEngine,
 )
 
 
@@ -112,7 +112,7 @@ class ApparatusRulepackBinding:
         reviewed_by: str,
         reviewer_qualification_ref: str,
         reviewed_at: datetime,
-    ) -> "ApparatusRulepackBinding":
+    ) -> ApparatusRulepackBinding:
         return cls(
             apparatus=policy.apparatus,
             rulepack_id=policy.rulepack_id,

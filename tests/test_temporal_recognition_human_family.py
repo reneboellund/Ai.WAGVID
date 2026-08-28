@@ -13,7 +13,6 @@ from ai_wagvid.temporal_recognition import (
     accept_human_element_decision,
 )
 
-
 T0 = datetime(2026, 8, 17, 20, 0, tzinfo=UTC)
 
 

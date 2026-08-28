@@ -17,7 +17,6 @@ from ai_wagvid.dscore import AcceptedElementFact, CountingPolicy, DScorePolicy, 
 from ai_wagvid.rulepack_promotion import RulepackReadiness
 from ai_wagvid.validated_apparatus_promotion import evaluate_validated_apparatus_promotion
 
-
 T0 = datetime(2026, 8, 17, 15, 0, tzinfo=UTC)
 
 

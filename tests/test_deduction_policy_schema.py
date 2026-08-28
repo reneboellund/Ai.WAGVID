@@ -15,7 +15,6 @@ from ai_wagvid.deductions import (
 )
 from wagvid_rules.validation import load_schema
 
-
 ROOT = Path(__file__).parents[1]
 POLICY_SCHEMA = load_schema(ROOT / "schemas" / "deduction-policy-v1.schema.json")
 LEDGER_SCHEMA = load_schema(ROOT / "schemas" / "deduction-ledger-v1.schema.json")

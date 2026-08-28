@@ -22,7 +22,6 @@ from ai_wagvid.validation_governance import (
     evaluate_promotion,
 )
 
-
 T0 = datetime(2026, 8, 17, 17, 0, tzinfo=UTC)
 RELEASE = "a" * 64
 MODEL = "b" * 64

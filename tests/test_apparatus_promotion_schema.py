@@ -18,7 +18,6 @@ from ai_wagvid.apparatus_promotion_exports import (
 )
 from ai_wagvid.domain import Apparatus
 
-
 ROOT = Path(__file__).parents[1]
 MODEL_SCHEMA = json.loads((ROOT / "schemas" / "apparatus-model-bundle-v1.schema.json").read_text(encoding="utf-8"))
 BENCHMARK_SCHEMA = json.loads((ROOT / "schemas" / "apparatus-benchmark-report-v1.schema.json").read_text(encoding="utf-8"))

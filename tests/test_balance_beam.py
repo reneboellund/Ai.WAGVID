@@ -16,7 +16,6 @@ from ai_wagvid.balance_beam import (
     SeriesState,
 )
 
-
 T0 = datetime(2026, 8, 17, 20, 0, tzinfo=UTC)
 GEOMETRY = "4" * 64
 

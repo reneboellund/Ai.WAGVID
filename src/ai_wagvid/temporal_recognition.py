@@ -12,7 +12,6 @@ import json
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Iterable
 
 from .domain import Apparatus
 
@@ -232,8 +231,9 @@ class CandidateResolution:
 def resolve_candidate(
     candidate: TemporalElementCandidate,
     *,
-    policy: ResolutionPolicy = ResolutionPolicy(),
+    policy: ResolutionPolicy | None = None,
 ) -> CandidateResolution:
+    policy = policy or ResolutionPolicy()
     mass = candidate.probability
     if mass.unknown_ood_milli >= policy.unknown_ood_at_least_milli:
         return CandidateResolution(

@@ -24,7 +24,6 @@ from ai_wagvid.dscore import (
     ElementRule,
 )
 
-
 T0 = datetime(2026, 8, 17, 15, 0, tzinfo=UTC)
 
 
@@ -111,7 +110,7 @@ def test_accepted_facts_evaluate_only_against_matching_reviewed_policy():
     assert ledger.apparatus is Apparatus.VT
     assert ledger.rulepack_digest == b.rulepack_digest
     assert ledger.policy_digest == b.dscore_policy_digest
-    assert ledger.resolved_score == "4.0"
+    assert ledger.resolved_score == "4"
 
 
 def test_rulepack_policy_digest_mismatch_fails_closed():

@@ -18,7 +18,6 @@ from ai_wagvid.full_apparatus_promotion import evaluate_full_apparatus_promotion
 from ai_wagvid.model_readiness import ProfileReadiness
 from ai_wagvid.rulepack_promotion import RulepackReadiness
 
-
 T0 = datetime(2026, 8, 17, 15, 0, tzinfo=UTC)
 
 

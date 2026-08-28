@@ -22,7 +22,6 @@ from .dscore import (
     ElementRule,
 )
 
-
 DSCORE_POLICY_SCHEMA_VERSION = "ai.wagvid.dscore-policy.v1"
 
 

@@ -14,7 +14,6 @@ from ai_wagvid.balance_beam import (
 )
 from ai_wagvid.balance_beam_exports import balance_beam_payload
 
-
 ROOT = Path(__file__).parents[1]
 SCHEMA = json.loads((ROOT / "schemas" / "balance-beam-analysis-v1.schema.json").read_text(encoding="utf-8"))
 VALIDATOR = Draft202012Validator(SCHEMA, format_checker=FormatChecker())
