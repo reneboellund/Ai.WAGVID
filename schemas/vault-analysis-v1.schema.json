@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/reneboellund/Ai.WAGVID/schemas/vault-analysis-v1.schema.json",
+  "title": "Ai.WAGVID vault analysis v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "analysis_id", "routine_id", "apparatus", "source_media_sha256",
+    "model_bundle_digest", "perception_bundle_digest", "created_at", "limitations",
+    "analysis_digest", "corridor_boundary_capability", "phases", "observations", "identity"
+  ],
+  "properties": {
+    "schema": {"const": "ai.wagvid.vault-analysis.v1"},
+    "analysis_id": {"type": "string", "minLength": 1},
+    "routine_id": {"type": "string", "minLength": 1},
+    "apparatus": {"const": "VT"},
+    "source_media_sha256": {"$ref": "#/$defs/sha"},
+    "model_bundle_digest": {"$ref": "#/$defs/sha"},
+    "perception_bundle_digest": {"$ref": "#/$defs/sha"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "limitations": {"$ref": "#/$defs/strings"},
+    "analysis_digest": {"$ref": "#/$defs/sha"},
+    "corridor_boundary_capability": {"$ref": "#/$defs/capability"},
+    "phases": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/phase"}},
+    "observations": {"type": "array", "items": {"$ref": "#/$defs/observation"}},
+    "identity": {"$ref": "#/$defs/identity"}
+  },
+  "$defs": {
+    "sha": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "strings": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "evidence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["evidence_id", "evidence_digest", "start_ms", "end_ms", "camera_id", "ref_digest"],
+      "properties": {
+        "evidence_id": {"type": "string", "minLength": 1},
+        "evidence_digest": {"$ref": "#/$defs/sha"},
+        "start_ms": {"type": "integer", "minimum": 0},
+        "end_ms": {"type": "integer", "minimum": 1},
+        "camera_id": {"type": "string", "minLength": 1},
+        "ref_digest": {"$ref": "#/$defs/sha"}
+      }
+    },
+    "phase": {
+      "type": "object", "additionalProperties": false,
+      "required": ["phase", "start_ms", "end_ms", "confidence_milli", "evidence", "phase_digest"],
+      "properties": {
+        "phase": {"enum": ["approach", "hurdle", "springboard-contact", "pre-flight", "table-support", "repulsion", "post-flight", "landing", "stabilization"]},
+        "start_ms": {"type": "integer", "minimum": 0},
+        "end_ms": {"type": "integer", "minimum": 1},
+        "confidence_milli": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "evidence": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/evidence"}},
+        "phase_digest": {"$ref": "#/$defs/sha"}
+      }
+    },
+    "observation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["observation_id", "kind", "phase", "value", "confidence_milli", "calibration_digest", "limitations", "evidence", "observation_digest"],
+      "properties": {
+        "observation_id": {"type": "string", "minLength": 1},
+        "kind": {"enum": ["board-contact", "table-contact", "repulsion", "rotation", "twist", "body-shape", "landing-contact", "landing-displacement", "fall-or-extra-support", "corridor-or-boundary"]},
+        "phase": {"enum": ["approach", "hurdle", "springboard-contact", "pre-flight", "table-support", "repulsion", "post-flight", "landing", "stabilization"]},
+        "value": {"type": "string", "minLength": 1},
+        "confidence_milli": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "calibration_digest": {"anyOf": [{"$ref": "#/$defs/sha"}, {"type": "null"}]},
+        "limitations": {"$ref": "#/$defs/strings"},
+        "evidence": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/evidence"}},
+        "observation_digest": {"$ref": "#/$defs/sha"}
+      }
+    },
+    "alternative": {
+      "type": "object", "additionalProperties": false,
+      "required": ["element_id", "family", "probability_milli", "evidence_observation_ids"],
+      "properties": {
+        "element_id": {"type": "string", "minLength": 1},
+        "family": {"type": "string", "minLength": 1},
+        "probability_milli": {"type": "integer", "minimum": 1, "maximum": 1000},
+        "evidence_observation_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "identity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["alternatives", "unknown_ood_milli", "other_known_milli"],
+      "properties": {
+        "alternatives": {"type": "array", "items": {"$ref": "#/$defs/alternative"}},
+        "unknown_ood_milli": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "other_known_milli": {"type": "integer", "minimum": 0, "maximum": 1000}
+      }
+    },
+    "capability": {
+      "type": "object", "additionalProperties": false,
+      "required": ["state", "calibration_digest", "reason"],
+      "properties": {
+        "state": {"enum": ["available", "unavailable"]},
+        "calibration_digest": {"anyOf": [{"$ref": "#/$defs/sha"}, {"type": "null"}]},
+        "reason": {"type": "string", "minLength": 1}
+      },
+      "allOf": [
+        {"if": {"properties": {"state": {"const": "available"}}}, "then": {"properties": {"calibration_digest": {"$ref": "#/$defs/sha"}}}}
+      ]
+    }
+  }
+}
