@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import analysis_api, device_api, media_access, views
+from . import analysis_api, device_api, master_data_views, media_access, media_timeline_api, views
 
 urlpatterns = [
     path("health/", views.health, name="health"),
@@ -32,6 +32,11 @@ urlpatterns = [
         name="media-object-grant",
     ),
     path(
+        "api/media/<uuid:media_id>/timeline/",
+        media_timeline_api.media_timeline,
+        name="media-timeline",
+    ),
+    path(
         "media/<uuid:media_id>/object/",
         media_access.download_media_object,
         name="media-object-download",
@@ -53,13 +58,17 @@ urlpatterns = [
     ),
     path("", views.dashboard, name="dashboard"),
     path("operate/", views.operate, name="operate"),
-    path("gymnasts/", views.gymnasts, name="gymnasts"),
+    path("gymnasts/", master_data_views.gymnasts, name="gymnasts"),
     path("gymnasts/new/", views.gymnast_create, name="gymnast-create"),
-    path("gymnasts/<uuid:gymnast_id>/edit/", views.gymnast_edit, name="gymnast-edit"),
-    path("gymnasts/<uuid:gymnast_id>/archive/", views.gymnast_archive, name="gymnast-archive"),
+    path("gymnasts/archived/", master_data_views.archived_gymnasts, name="gymnasts-archived"),
+    path("gymnasts/<uuid:gymnast_id>/edit/", master_data_views.gymnast_edit, name="gymnast-edit"),
+    path("gymnasts/<uuid:gymnast_id>/archive/", master_data_views.gymnast_archive, name="gymnast-archive"),
     path("gymnasts/<uuid:gymnast_id>/merge/", views.gymnast_merge, name="gymnast-merge"),
-    path("levels/", views.levels, name="levels"),
-    path("levels/<uuid:level_id>/", views.levels, name="level-edit"),
+    path("gymnasts/<uuid:gymnast_id>/restore/", master_data_views.gymnast_restore, name="gymnast-restore"),
+    path("levels/", master_data_views.levels, name="levels"),
+    path("levels/new/", master_data_views.level_create, name="level-create"),
+    path("levels/<uuid:level_id>/edit/", master_data_views.level_edit, name="level-edit"),
+    path("levels/<uuid:level_id>/archive/", master_data_views.level_archive, name="level-archive"),
     path("devices/", views.devices, name="devices"),
     path("analyses/", views.analyses, name="analyses"),
     path("reviews/", views.review_inbox, name="review-inbox"),

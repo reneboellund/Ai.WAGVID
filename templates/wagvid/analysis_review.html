@@ -1,12 +1,62 @@
 {% extends "base.html" %}
+{% load static %}
+{% block title %}Review · Ai.WAGVID{% endblock %}
+{% block breadcrumb %}Analyse / Review{% endblock %}
 {% block content %}
-<h1>Review: {{ job.media.gymnast.display_name }}</h1>
-{% if job.media.routine %}<p>{{ job.media.routine.event.name }} · {{ job.media.routine.get_apparatus_display }}</p>{% endif %}
+<section class="page-head">
+  <div><p class="eyebrow">Human-in-the-loop evidence review</p><h1>Review: <span class="text-gradient">{{ job.media.gymnast.display_name }}</span></h1><p>{% if job.media.routine %}{{ job.media.routine.event.name }} · {{ job.media.routine.get_apparatus_display }} · {% endif %}analyse revision {{ job.revision }}. AI-forslag, officiel bedømmelse og menneskelig afgørelse holdes eksplicit adskilt.</p></div>
+  <div class="page-actions"><a class="button" href="{% url 'analyses' %}"><svg><use href="#i-arrow"/></svg>Til analysekø</a><span class="status-badge {% if job.state == 'needs-review' %}warning{% elif job.state == 'completed' %}{% else %}info{% endif %}">{{ job.get_state_display }}</span></div>
+</section>
+
+<section class="surface surface-pad" data-evidence-workspace data-timeline-url="{% url 'media-timeline' job.media.id %}">
+  <header class="section-head"><div><h2>Source evidence</h2><p>Immutable original · {{ job.media.original_filename|default:"video" }} · SHA-256 {{ job.media.sha256|slice:":12" }}…</p></div><span class="status-badge {% if job.media.state == 'stored' %}{% else %}warning{% endif %}">{{ job.media.get_state_display }}</span></header>
+  {% if job.media.state == 'stored' and job.media.object_key and job.media.sha256 %}
+    <form hidden data-media-grant-form>{% csrf_token %}</form>
+    <div class="surface" style="overflow:hidden;background:#020605">
+      <video controls preload="metadata" playsinline hidden data-evidence-video style="display:block;width:100%;max-height:68vh;background:#000"></video>
+      <div class="empty-state" data-evidence-placeholder><span class="empty-visual"><svg><use href="#i-play"/></svg></span><h3>Autoriseret source-video</h3><p>Videoen hentes først, når du åbner den. Serveren udsteder et kortlivet, audit-logget grant; seeking bruger HTTP byte ranges.</p><button class="button button-primary" type="button" data-load-media data-grant-url="{% url 'media-object-grant' job.media.id %}"><svg><use href="#i-play"/></svg>Åbn source-video</button></div>
+    </div>
+    <div class="toolbar" style="margin-top:12px">
+      <div class="page-actions">
+        <button class="button" type="button" data-frame-prev>← Forrige frame</button>
+        <button class="button" type="button" data-frame-next>Næste frame →</button>
+        <button class="button" type="button" data-nudge-ms="-100">−100 ms</button>
+        <button class="button" type="button" data-nudge-ms="100">+100 ms</button>
+      </div>
+      <span class="status-badge neutral">Frame <strong data-evidence-frame>—</strong></span>
+      <span class="status-badge neutral">Timecode <strong data-evidence-time>00:00.000</strong></span>
+      <span class="status-badge info" data-evidence-status>Ikke indlæst</span>
+    </div>
+    <p><small>Frame-knapperne bruger kun den canonical PTS/DTS-timeline, når et valideret sidecar-manifest findes for præcis denne source SHA-256. Hvis manifestet ikke er klar, forbliver millisekund-navigationen tilgængelig; systemet opfinder ikke frame-numre.</small></p>
+  {% else %}
+    <div class="empty-state"><span class="empty-visual"><svg><use href="#i-play"/></svg></span><h3>Source-video er ikke tilgængelig som verified stored object</h3><p>Review kan fortsætte på eksisterende evidensmetadata, men originalen kan først afspilles efter færdig ingest og checksum-verifikation.</p></div>
+  {% endif %}
+</section>
+
 {% if result %}
-<div class="cards"><div class="card"><h2>AI-forslag</h2><p>D {{ result.proposed_d_score|default:"-" }} · E {{ result.proposed_e_score|default:"-" }} · Final {{ result.proposed_final_score|default:"-" }}</p></div>{% if job.media.routine %}<div class="card"><h2>Officielt resultat</h2><p>D {{ job.media.routine.official_d_score|default:"-" }} · E {{ job.media.routine.official_e_score|default:"-" }} · Final {{ job.media.routine.official_final_score|default:"-" }}</p></div>{% endif %}</div>
-<h2>Fradrag og evidens</h2>
-{% for candidate in deductions %}<section class="card"><h3>{{ candidate.criterion }} · {{ candidate.proposed_amount }}</h3><p>{{ candidate.start_ms }}–{{ candidate.end_ms }} ms · confidence {{ candidate.model_confidence }} · {{ candidate.rule_reference }}</p><p>Status: {{ candidate.get_review_state_display }}</p><details><summary>Evidens</summary><pre>{{ candidate.evidence }}</pre></details><form method="post" action="{% url 'review-decision' candidate.id %}">{% csrf_token %}<select name="decision" required><option value="">Vælg afgørelse</option><option value="accept-ai">Godkend AI</option><option value="accept-official">Godkend officiel bedømmelse</option><option value="correct-ai">Ret AI</option><option value="official-error">Mulig officiel fejl</option><option value="inconclusive">Utilstrækkelig evidens</option></select><input name="accepted_amount" type="number" min="0" step="0.001" placeholder="Korrigeret fradrag"><textarea name="notes" placeholder="Faglig begrundelse"></textarea><button class="primary">Registrér afgørelse</button></form>{% for decision in candidate.decisions.all %}<p>{{ decision.created_at }} · {{ decision.get_decision_display }} · {{ decision.reviewer }}</p>{% endfor %}</section>{% empty %}<p>Ingen fradragskandidater.</p>{% endfor %}
-{% if job.state == "needs-review" %}<section class="card"><h2>Afslut samlet score-review</h2><p>Vælg om det officielle resultat bekræftes, om AI-afvigelsen bør undersøges, eller om læringsetiketterne skal korrigeres. Ved korrigerede etiketter skal alle scorefelter udfyldes.</p><form method="post" action="{% url 'score-comparison-review' job.id %}">{% csrf_token %}{{ score_review_form.as_p }}<button class="primary">Gem og afslut review</button></form></section>{% endif %}
-{% for review in result.score_reviews.all %}<section class="card"><h3>{{ review.get_decision_display }}</h3><p>{{ review.created_at }} · {{ review.reviewer }}</p><p>{{ review.notes }}</p></section>{% endfor %}
-{% else %}<p>Analysejobbet har endnu intet resultat.</p>{% endif %}
+<section class="metric-grid" aria-label="Score comparison" style="margin-top:18px">
+  <article class="surface metric-card" style="--accent:var(--violet)"><div class="metric-top"><span class="metric-icon"><svg><use href="#i-analysis"/></svg></span><span class="metric-trend">AI proposal</span></div><div class="metric-label"><span>D-score</span><strong>{{ result.proposed_d_score|default:"—" }}</strong></div><div class="metric-label"><span>E-score</span><strong>{{ result.proposed_e_score|default:"—" }}</strong></div><div class="metric-label"><span>Final</span><strong>{{ result.proposed_final_score|default:"—" }}</strong></div></article>
+  {% if job.media.routine %}<article class="surface metric-card" style="--accent:var(--cyan)"><div class="metric-top"><span class="metric-icon"><svg><use href="#i-shield"/></svg></span><span class="metric-trend">Official snapshot</span></div><div class="metric-label"><span>D-score</span><strong>{{ job.media.routine.official_d_score|default:"—" }}</strong></div><div class="metric-label"><span>E-score</span><strong>{{ job.media.routine.official_e_score|default:"—" }}</strong></div><div class="metric-label"><span>Final</span><strong>{{ job.media.routine.official_final_score|default:"—" }}</strong></div></article>{% endif %}
+  <article class="surface metric-card" style="--accent:var(--amber)"><div class="metric-top"><span class="metric-icon"><svg><use href="#i-check"/></svg></span><span class="metric-trend">Review state</span></div><div class="metric-value">{{ deductions|length }}</div><div class="metric-label"><span>Deduction candidates</span><span>evidence-linked</span></div></article>
+</section>
+
+<section class="surface surface-pad" style="margin-top:18px">
+  <header class="section-head"><div><h2>Fradrag og evidens</h2><p>Hver afgørelse bliver knyttet til kandidat, reviewer og faglig begrundelse.</p></div><span class="status-badge neutral">{{ deductions|length }} kandidater</span></header>
+  <div class="activity-list">
+    {% for candidate in deductions %}
+    <article class="surface surface-hover" style="padding:20px">
+      <header class="section-head"><div><h3>{{ candidate.criterion }}</h3><p>{{ candidate.start_ms }}–{{ candidate.end_ms }} ms · {{ candidate.rule_reference|default:"Ingen regelreference" }}</p></div><div class="page-actions">{% if job.media.state == 'stored' %}<button class="button" type="button" data-seek-ms="{{ candidate.start_ms }}"><svg><use href="#i-play"/></svg>Vis evidens</button>{% endif %}<span class="status-badge {% if candidate.review_state == 'pending' %}warning{% endif %}">{{ candidate.get_review_state_display }}</span><span class="status-badge info">{{ candidate.proposed_amount }}</span></div></header>
+      <div class="status-list"><div class="status-row"><span>Model confidence</span><strong>{{ candidate.model_confidence }}</strong></div><div class="status-row"><span>Rule reference</span><strong>{{ candidate.rule_reference|default:"—" }}</strong></div></div>
+      <details class="surface" style="padding:14px;margin:14px 0"><summary>Evidensobjekt</summary><pre style="white-space:pre-wrap;overflow:auto">{{ candidate.evidence }}</pre></details>
+      <form method="post" action="{% url 'review-decision' candidate.id %}" class="form-stack">{% csrf_token %}<div class="filter-grid"><div class="field-group"><label>Afgørelse</label><div class="select-wrap"><select name="decision" required><option value="">Vælg afgørelse</option><option value="accept-ai">Godkend AI</option><option value="accept-official">Godkend officiel bedømmelse</option><option value="correct-ai">Ret AI</option><option value="official-error">Mulig officiel fejl</option><option value="inconclusive">Utilstrækkelig evidens</option></select><svg><use href="#i-chevron"/></svg></div></div><div class="field-group"><label>Korrigeret fradrag</label><input name="accepted_amount" type="number" min="0" step="0.001" placeholder="0.000"></div></div><div class="field-group"><label>Faglig begrundelse</label><textarea name="notes" placeholder="Beskriv hvorfor evidensen støtter afgørelsen"></textarea></div><div class="page-actions"><button class="button button-primary" type="submit"><svg><use href="#i-check"/></svg>Registrér afgørelse</button></div></form>
+      {% if candidate.decisions.all %}<div class="activity-list" style="margin-top:14px">{% for decision in candidate.decisions.all %}<div class="activity-item"><span class="activity-icon"><svg><use href="#i-check"/></svg></span><span class="activity-copy"><strong>{{ decision.get_decision_display }}</strong><small>{{ decision.reviewer }} · {{ decision.notes|default:"Ingen note" }}</small></span><time class="activity-time">{{ decision.created_at|date:"d.m.Y H:i" }}</time></div>{% endfor %}</div>{% endif %}
+    </article>
+    {% empty %}<div class="empty-state"><span class="empty-visual"><svg><use href="#i-analysis"/></svg></span><h3>Ingen fradragskandidater</h3><p>Analysen har ikke produceret evidens, der kræver deduction-review.</p></div>{% endfor %}
+  </div>
+</section>
+
+{% if job.state == "needs-review" %}<section class="surface surface-pad" style="margin-top:18px"><header class="section-head"><div><h2>Afslut samlet score-review</h2><p>Den samlede afgørelse er separat fra de enkelte deduction-beslutninger og bliver append-only.</p></div><span class="status-badge warning">Kræver reviewer</span></header><form method="post" action="{% url 'score-comparison-review' job.id %}" class="form-stack">{% csrf_token %}{{ score_review_form.as_p }}<button class="button button-primary" type="submit"><svg><use href="#i-shield"/></svg>Gem og afslut review</button></form></section>{% endif %}
+{% if result.score_reviews.all %}<section class="surface surface-pad" style="margin-top:18px"><header class="section-head"><div><h2>Score-review historik</h2><p>Tidligere afgørelser bevares for audit og reproducerbarhed.</p></div></header><div class="activity-list">{% for review in result.score_reviews.all %}<div class="activity-item"><span class="activity-icon"><svg><use href="#i-shield"/></svg></span><span class="activity-copy"><strong>{{ review.get_decision_display }}</strong><small>{{ review.reviewer }} · {{ review.notes|default:"Ingen note" }}</small></span><time class="activity-time">{{ review.created_at|date:"d.m.Y H:i" }}</time></div>{% endfor %}</div></section>{% endif %}
+{% else %}<section class="surface" style="margin-top:18px"><div class="empty-state"><span class="empty-visual"><svg><use href="#i-analysis"/></svg></span><h3>Resultat ikke klar endnu</h3><p>Analysejobbet har endnu intet reviewbart resultat.</p><a class="button" href="{% url 'analyses' %}">Tilbage til analysekøen</a></div></section>{% endif %}
+<script src="{% static 'wagvid/evidence-review.js' %}" defer></script>
 {% endblock %}

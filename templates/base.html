@@ -1,5 +1,133 @@
+{% load static %}
 <!doctype html>
-<html lang="da">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{% block title %}Ai.WAGVID{% endblock %}</title>
-<style>body{margin:0;font:16px system-ui;background:#07101e;color:#eaf8f5}a{color:#18d4a3}.shell{display:grid;grid-template-columns:240px 1fr;min-height:100vh}nav{background:#111c31;padding:24px}nav a{display:block;padding:10px 0}main{padding:28px}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px}.card{background:#111c31;border-radius:18px;padding:18px}.danger{color:#ff5d6c}.warning{color:#ffb84d}.primary{background:#18d4a3;color:#07101e;border:0;border-radius:12px;min-height:48px;padding:0 18px;font-weight:700}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px;border-bottom:1px solid #263852}input,select{min-height:44px;width:100%;max-width:520px;margin:4px 0 14px}</style></head>
-<body><div class="shell"><nav><h2>Ai.WAGVID</h2><a href="{% url 'dashboard' %}">Overblik</a><a href="{% url 'operate' %}">Operér</a><a href="{% url 'competitions' %}">Konkurrencer</a><a href="{% url 'gymnasts' %}">Gymnaster</a><a href="{% url 'devices' %}">Enheder</a><a href="{% url 'analyses' %}">Analyser</a><a href="{% url 'review-inbox' %}">Review-kø</a><a href="{% url 'exchange' %}">Import/eksport</a><a href="{% url 'system-status' %}">Systemstatus</a><a href="{% url 'storage-settings' %}">Storage</a><a href="{% url 'system-backups' %}">Backup</a><a href="{% url 'system-updates' %}">Opdatering</a><a href="/admin/">Administration</a></nav><main>{% if messages %}{% for message in messages %}<div class="card">{{ message }}</div>{% endfor %}{% endif %}{% block content %}{% endblock %}</main></div></body></html>
+<html lang="da" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#07110f">
+  <meta name="color-scheme" content="dark">
+  <title>{% block title %}Ai.WAGVID{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'wagvid/app.css' %}">
+  <script defer src="{% static 'wagvid/app.js' %}"></script>
+</head>
+<body class="{% block body_class %}{% endblock %}" data-page="{{ request.resolver_match.url_name|default:'' }}">
+  <svg class="svg-sprite" aria-hidden="true">
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></symbol>
+    <symbol id="i-live" viewBox="0 0 24 24"><path d="M6.3 4.8a10 10 0 0 0 0 14.4M9.1 7.6a6 6 0 0 0 0 8.8M17.7 4.8a10 10 0 0 1 0 14.4M14.9 7.6a6 6 0 0 1 0 8.8"/><circle cx="12" cy="12" r="2.1"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M3 20v-1.7A5.3 5.3 0 0 1 8.3 13h1.4a5.3 5.3 0 0 1 5.3 5.3V20M15.5 5.2a3.5 3.5 0 0 1 0 6.6M17 13.5a5.3 5.3 0 0 1 4 5.1V20"/></symbol>
+    <symbol id="i-device" viewBox="0 0 24 24"><rect x="4" y="2.5" width="16" height="19" rx="3"/><path d="M8 6h8M10 18h4"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-analysis" viewBox="0 0 24 24"><path d="M4 19V9M10 19V4M16 19v-7M22 19V7M2 19h21"/></symbol>
+    <symbol id="i-exchange" viewBox="0 0 24 24"><path d="M4 7h14M14 3l4 4-4 4M20 17H6M10 13l-4 4 4 4"/></symbol>
+    <symbol id="i-health" viewBox="0 0 24 24"><path d="M3 12h4l2-5 4 10 2-5h6"/><path d="M20 5.5A6 6 0 0 0 12 5a6 6 0 0 0-8 .5C1.5 8.4 3 13 12 20c9-7 10.5-11.6 8-14.5Z"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.6v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="m8 5 11 7-11 7Z"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 2 1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8ZM19 17l.7 2.3L22 20l-2.3.7L19 23l-.7-2.3L16 20l2.3-.7Z"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V3M7 8l5-5 5 5M4 15v5h16v-5"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="i-warning" viewBox="0 0 24 24"><path d="m12 3 10 18H2Z"/><path d="M12 9v5M12 18h.01"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></symbol>
+    <symbol id="i-battery" viewBox="0 0 24 24"><rect x="3" y="7" width="17" height="10" rx="2"/><path d="M22 10v4M6 10h8v4H6z"/></symbol>
+    <symbol id="i-wifi" viewBox="0 0 24 24"><path d="M4 9a12 12 0 0 1 16 0M7 13a8 8 0 0 1 10 0M10 17a3 3 0 0 1 4 0"/><circle cx="12" cy="20" r=".8"/></symbol>
+    <symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v7c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12v7c0 1.7 3.6 3 8 3s8-1.3 8-3v-7"/></symbol>
+    <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 19h11a4 4 0 0 0 .6-8A7 7 0 0 0 5.2 9.5 4.8 4.8 0 0 0 7 19Z"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4 6v5c0 5.2 3.3 8.5 8 10 4.7-1.5 8-4.8 8-10V6Z"/><path d="m8.5 12 2.2 2.2 4.8-5"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24"><path d="M10 4H4v16h6M14 8l4 4-4 4M8 12h10"/></symbol>
+    <symbol id="i-filter" viewBox="0 0 24 24"><path d="M3 5h18l-7 8v6l-4 2v-8Z"/></symbol>
+    <symbol id="i-activity" viewBox="0 0 24 24"><path d="M3 12h4l2.5-6 5 12 2.5-6h4"/></symbol>
+  </svg>
+
+  <div class="ambient-layer" aria-hidden="true"><span></span><span></span><span></span></div>
+  <div class="app-shell">
+    <button class="nav-scrim" type="button" data-nav-close aria-label="Luk navigation"></button>
+    <aside class="sidebar" id="app-sidebar">
+      <div class="brand-wrap">
+        <a class="brand" href="{% url 'dashboard' %}" aria-label="Ai.WAGVID overblik">
+          <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+          <span class="brand-copy"><strong>Ai.WAGVID</strong><small>Vision intelligence</small></span>
+        </a>
+        <button class="icon-button sidebar-close" type="button" data-nav-close aria-label="Luk navigation"><svg><use href="#i-x"/></svg></button>
+      </div>
+
+      <div class="workspace-chip">
+        <span class="workspace-avatar">{{ organization.name|default:"W"|slice:":1"|upper }}</span>
+        <span><small>Aktivt workspace</small><strong>{{ organization.name|default:"WAGVID Lab" }}</strong></span>
+        <svg class="icon"><use href="#i-chevron"/></svg>
+      </div>
+
+      <nav class="primary-nav" aria-label="Primær navigation">
+        <p class="nav-label">Workspace</p>
+        <a href="{% url 'dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}class="active" aria-current="page"{% endif %}><svg><use href="#i-grid"/></svg><span>Overblik</span></a>
+        <a href="{% url 'operate' %}" {% if request.resolver_match.url_name == 'operate' %}class="active" aria-current="page"{% endif %}><svg><use href="#i-live"/></svg><span>Operér</span><i class="nav-live" aria-label="Live"></i></a>
+        <a href="{% url 'gymnasts' %}" {% if request.resolver_match.url_name == 'gymnasts' or request.resolver_match.url_name == 'gymnast-create' %}class="active" aria-current="page"{% endif %}><svg><use href="#i-users"/></svg><span>Gymnaster</span></a>
+        <a href="{% url 'devices' %}" {% if request.resolver_match.url_name == 'devices' %}class="active" aria-current="page"{% endif %}><svg><use href="#i-device"/></svg><span>Enheder</span></a>
+        <a href="{% url 'analyses' %}" {% if request.resolver_match.url_name == 'analyses' %}class="active" aria-current="page"{% endif %}><svg><use href="#i-analysis"/></svg><span>Analyser</span>{% if status.review_backlog %}<em>{{ status.review_backlog }}</em>{% endif %}</a>
+        <a href="{% url 'review-inbox' %}" {% if request.resolver_match.url_name == 'review-inbox' %}class="active" aria-current="page"{% endif %}><svg><use href="#i-check"/></svg><span>Review-kø</span></a>
+        <p class="nav-label nav-label-spaced">Data & drift</p>
+        <a href="{% url 'exchange' %}" {% if request.resolver_match.url_name == 'exchange' %}class="active" aria-current="page"{% endif %}><svg><use href="#i-exchange"/></svg><span>Import/eksport</span></a>
+        <a href="{% url 'system-status' %}" {% if request.resolver_match.url_name == 'system-status' %}class="active" aria-current="page"{% endif %}><svg><use href="#i-health"/></svg><span>Systemstatus</span><i class="status-dot status-dot-good" title="System online"></i></a>
+        <a href="{% url 'storage-settings' %}"><svg><use href="#i-cloud"/></svg><span>Storage</span></a>
+        <a href="{% url 'system-backups' %}"><svg><use href="#i-database"/></svg><span>Backup</span></a>
+        <a href="{% url 'system-updates' %}"><svg><use href="#i-settings"/></svg><span>Opdatering</span></a>
+        {% if user.is_staff %}<a href="/admin/"><svg><use href="#i-settings"/></svg><span>Administration</span></a>{% endif %}
+      </nav>
+
+      <div class="sidebar-foot">
+        <div class="system-mini">
+          <span class="system-orbit"><i></i></span>
+          <span><strong>Vision engine</strong><small>Alle systemer online</small></span>
+        </div>
+        <div class="user-mini">
+          <span class="user-avatar">{{ user.get_full_name|default:user.username|slice:":2"|upper }}</span>
+          <span><strong>{{ user.get_full_name|default:user.username }}</strong><small>Ai.WAGVID bruger</small></span>
+          <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="icon-button" aria-label="Log ud" title="Log ud"><svg><use href="#i-logout"/></svg></button></form>
+        </div>
+      </div>
+    </aside>
+
+    <div class="main-column">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="icon-button menu-button" type="button" data-nav-open aria-label="Åbn navigation" aria-controls="app-sidebar"><svg><use href="#i-menu"/></svg></button>
+          <div class="breadcrumb"><span>Ai.WAGVID</span><svg><use href="#i-chevron"/></svg><strong>{% block breadcrumb %}Workspace{% endblock %}</strong></div>
+        </div>
+        <div class="topbar-actions">
+          <button class="search-trigger" type="button" data-command-open><svg><use href="#i-search"/></svg><span>Søg eller gå til…</span><kbd>Ctrl K</kbd></button>
+          <div class="live-clock" aria-label="Lokal tid"><i></i><span data-live-clock>--:--:--</span></div>
+          <button class="icon-button notification-button" type="button" data-notify aria-label="Notifikationer"><svg><use href="#i-bell"/></svg><i></i></button>
+        </div>
+      </header>
+
+      <main class="content" id="main-content">
+        {% if messages %}<div class="message-stack" aria-live="polite">{% for message in messages %}<div class="toast {{ message.tags }}"><svg><use href="#i-check"/></svg><span>{{ message }}</span></div>{% endfor %}</div>{% endif %}
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+
+  <div class="command-palette" data-command-palette hidden>
+    <button class="command-backdrop" type="button" data-command-close aria-label="Luk søgning"></button>
+    <section class="command-dialog" role="dialog" aria-modal="true" aria-label="Hurtig navigation">
+      <div class="command-input"><svg><use href="#i-search"/></svg><input type="search" placeholder="Søg i Ai.WAGVID…" data-command-input autocomplete="off"><kbd>ESC</kbd></div>
+      <div class="command-results" data-command-results>
+        <p class="command-label">Hurtig navigation</p>
+        <a href="{% url 'dashboard' %}" data-command-item><svg><use href="#i-grid"/></svg><span><strong>Overblik</strong><small>Systemets kommandocenter</small></span><kbd>G O</kbd></a>
+        <a href="{% url 'operate' %}" data-command-item><svg><use href="#i-live"/></svg><span><strong>Start operatørflow</strong><small>Optag og armér en enhed</small></span><kbd>G P</kbd></a>
+        <a href="{% url 'gymnasts' %}" data-command-item><svg><use href="#i-users"/></svg><span><strong>Gymnaster</strong><small>Find profiler og niveauer</small></span></a>
+        <a href="{% url 'analyses' %}" data-command-item><svg><use href="#i-analysis"/></svg><span><strong>Analyser</strong><small>Følg pipeline og review</small></span></a>
+        <a href="{% url 'system-status' %}" data-command-item><svg><use href="#i-health"/></svg><span><strong>Systemstatus</strong><small>Drift, database og workers</small></span></a>
+      </div>
+      <footer><span><kbd>↑</kbd><kbd>↓</kbd> navigér</span><span><kbd>↵</kbd> åbn</span></footer>
+    </section>
+  </div>
+
+  <div class="toast-region" data-toast-region aria-live="polite"></div>
+</body>
+</html>

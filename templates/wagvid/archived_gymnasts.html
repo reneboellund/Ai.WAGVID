@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Gymnastarkiv · Ai.WAGVID{% endblock %}
+{% block breadcrumb %}Gymnaster / Arkiv{% endblock %}
+{% block content %}
+<section class="page-head"><div><p class="eyebrow">Retained history</p><h1>Gymnast<span class="text-gradient">arkiv</span></h1><p>Arkiverede profiler er skjult fra aktive workflows, men deres historiske media, routines, analyser og auditspor bevares.</p></div><div class="page-actions"><a class="button" href="{% url 'gymnasts' %}">Til aktive gymnaster</a></div></section>
+<section class="surface table-surface">
+{% if gymnasts %}<table class="data-table"><thead><tr><th>Gymnast</th><th>Niveau</th><th>Licens</th><th>Arkiveret</th>{% if can_manage %}<th>Handling</th>{% endif %}</tr></thead><tbody>{% for gymnast in gymnasts %}<tr><td><div class="entity-cell"><span class="entity-avatar">{{ gymnast.display_name|slice:":2"|upper }}</span><span><strong>{{ gymnast.display_name }}</strong><small>{{ gymnast.get_discipline_display }}</small></span></div></td><td>{{ gymnast.level.name }}</td><td>{{ gymnast.license_number }}</td><td>{{ gymnast.archived_at|date:"d.m.Y H:i" }}</td>{% if can_manage %}<td><form method="post" action="{% url 'gymnast-restore' gymnast.id %}">{% csrf_token %}<button class="button" type="submit"><svg><use href="#i-check"/></svg>Gendan</button></form></td>{% endif %}</tr>{% endfor %}</tbody></table>{% else %}<div class="empty-state"><span class="empty-visual"><svg><use href="#i-users"/></svg></span><h3>Arkivet er tomt</h3><p>Ingen gymnastprofiler er arkiveret i denne organisation.</p><a class="button" href="{% url 'gymnasts' %}">Til gymnastkartoteket</a></div>{% endif %}
+</section>
+{% endblock %}

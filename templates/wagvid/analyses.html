@@ -1,24 +1,38 @@
 {% extends "base.html" %}
+{% block title %}Analyser · Ai.WAGVID{% endblock %}
+{% block breadcrumb %}Analyser{% endblock %}
 {% block content %}
-<h1>Analyse- og reviewkø</h1>
-<form method="get" class="card">
-  <label>Søg gymnast, licens eller konkurrence<input name="q" value="{{ filters.q }}" placeholder="Søg"></label>
-  <label>Status<select name="state"><option value="">Alle</option>{% for value,label in state_choices %}<option value="{{ value }}"{% if filters.state == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
-  <label>Apparat<select name="apparatus"><option value="">Alle</option>{% for value,label in apparatus_choices %}<option value="{{ value }}"{% if filters.apparatus == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
-  <label>Videoformål<select name="kind"><option value="">Alle</option>{% for value,label in kind_choices %}<option value="{{ value }}"{% if filters.kind == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
-  <button class="primary">Filtrér</button> <a href="{% url 'analyses' %}">Nulstil</a>
+<section class="page-head">
+  <div><p class="eyebrow">Evidence intelligence</p><h1>Analyse<span class="text-gradient">pipeline</span></h1><p>Filtrér modelkørsler, åbn evidensreview og annullér aktive jobs uden at blande AI-forslag, officielle resultater og menneskelig afgørelse.</p></div>
+  <div class="page-actions"><a class="button button-primary" href="{% url 'operate' %}"><svg><use href="#i-play"/></svg>Ny optagelse</a></div>
+</section>
+
+<form method="get" class="surface surface-pad filter-panel">
+  <div class="toolbar">
+    <label class="field-search"><svg><use href="#i-search"/></svg><input type="search" name="q" value="{{ filters.q }}" placeholder="Søg gymnast, licens eller konkurrence…" aria-label="Søg analyser"></label>
+    <span class="status-badge neutral">{{ jobs|length }} job</span>
+  </div>
+  <div class="filter-grid">
+    <div class="field-group"><label>Status</label><div class="select-wrap"><select name="state"><option value="">Alle</option>{% for value,label in state_choices %}<option value="{{ value }}"{% if filters.state == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select><svg><use href="#i-chevron"/></svg></div></div>
+    <div class="field-group"><label>Apparat</label><div class="select-wrap"><select name="apparatus"><option value="">Alle</option>{% for value,label in apparatus_choices %}<option value="{{ value }}"{% if filters.apparatus == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select><svg><use href="#i-chevron"/></svg></div></div>
+    <div class="field-group"><label>Videoformål</label><div class="select-wrap"><select name="kind"><option value="">Alle</option>{% for value,label in kind_choices %}<option value="{{ value }}"{% if filters.kind == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select><svg><use href="#i-chevron"/></svg></div></div>
+    <div class="page-actions"><button class="button button-primary" type="submit"><svg><use href="#i-filter"/></svg>Filtrér</button><a class="button" href="{% url 'analyses' %}">Nulstil</a></div>
+  </div>
 </form>
-<table>
-  <tr><th>Gymnast</th><th>Video</th><th>Apparat</th><th>Status</th><th>Fremdrift</th><th></th></tr>
-  {% for job in jobs %}
-  <tr>
-    <td>{{ job.media.gymnast.display_name }}<br><small>{{ job.media.gymnast.license_number }}</small></td>
-    <td>{{ job.media.get_kind_display }} · {{ job.scope }}</td>
-    <td>{% if job.media.routine %}{{ job.media.routine.get_apparatus_display }}{% else %}–{% endif %}</td>
-    <td>{{ job.get_state_display }}{% if job.error_code %}<br><span class="danger">{{ job.error_code }}</span>{% endif %}</td>
-    <td>{{ job.progress_percent }}% · {{ job.attempts }} forsøg</td>
-    <td><a href="{% url 'analysis-review' job.id %}">Åbn</a>{% if job.state == "draft" or job.state == "queued" or job.state == "blocked" or job.state == "running" or job.state == "failed-retryable" %}<form method="post" action="{% url 'analysis-cancel' job.id %}" style="display:inline">{% csrf_token %}<input type="hidden" name="reason" value="Annulleret fra analysekøen"><button>Stop</button></form>{% endif %}</td>
-  </tr>
-  {% empty %}<tr><td colspan="6">Ingen analysejob matcher filtrene.</td></tr>{% endfor %}
-</table>
+
+<section class="surface table-surface" style="margin-top:18px">
+  {% if jobs %}
+  <table class="data-table" id="analysis-table">
+    <thead><tr><th>Gymnast</th><th>Video / scope</th><th>Apparat</th><th>Status</th><th>Fremdrift</th><th>Handling</th></tr></thead>
+    <tbody>{% for job in jobs %}<tr data-searchable>
+      <td><div class="entity-cell"><span class="entity-avatar">{{ job.media.gymnast.display_name|slice:":2"|upper }}</span><span><strong>{{ job.media.gymnast.display_name }}</strong><small>{{ job.media.gymnast.license_number }} · rev. {{ job.revision }}</small></span></div></td>
+      <td><strong>{{ job.media.get_kind_display }}</strong><br><small>{{ job.scope }}{% if job.rulepack_id %} · {{ job.rulepack_id|truncatechars:28 }}{% endif %}</small></td>
+      <td>{% if job.media.routine %}{{ job.media.routine.get_apparatus_display }}{% else %}—{% endif %}</td>
+      <td><span class="status-badge {% if job.state == 'blocked' or job.state == 'failed-terminal' or job.state == 'failed-retryable' %}danger{% elif job.state == 'needs-review' %}warning{% elif job.state == 'running' or job.state == 'queued' %}info{% elif job.state == 'draft' or job.state == 'cancelled' %}neutral{% endif %}">{{ job.get_state_display }}</span>{% if job.error_code %}<br><small class="danger">{{ job.error_code }}</small>{% endif %}</td>
+      <td><div class="progress-cell"><div class="progress-track"><span data-progress="{{ job.progress_percent }}"></span></div><strong>{{ job.progress_percent }}%</strong></div><small>{{ job.attempts }} forsøg</small></td>
+      <td><div class="table-actions"><a class="text-button" href="{% url 'analysis-review' job.id %}">Åbn review <svg><use href="#i-arrow"/></svg></a>{% if job.state == 'draft' or job.state == 'queued' or job.state == 'blocked' or job.state == 'running' or job.state == 'failed-retryable' %}<form method="post" action="{% url 'analysis-cancel' job.id %}" class="inline-form">{% csrf_token %}<input type="hidden" name="reason" value="Annulleret fra analysekøen"><button class="text-button danger" type="submit">Stop</button></form>{% endif %}</div></td>
+    </tr>{% endfor %}</tbody>
+  </table>
+  {% else %}<div class="empty-state"><span class="empty-visual"><svg><use href="#i-analysis"/></svg></span><h3>Ingen analysejob matcher filtrene</h3><p>Start en optagelse eller nulstil filtrene.</p><div class="page-actions"><a class="button" href="{% url 'analyses' %}">Nulstil filtre</a><a class="button button-primary" href="{% url 'operate' %}"><svg><use href="#i-play"/></svg>Start optagelse</a></div></div>{% endif %}
+</section>
 {% endblock %}

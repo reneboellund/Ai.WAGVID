@@ -1,28 +1,41 @@
 {% extends "base.html" %}
+{% block title %}Import/eksport · Ai.WAGVID{% endblock %}
+{% block breadcrumb %}Import/eksport{% endblock %}
 {% block content %}
-<h1>Import og eksport</h1>
-<p>Importer gennem preview og validering, før data skrives atomisk.</p>
-<div class="cards">
-  <section class="card">
-    <h2>Gymnaster</h2>
-    <p><a class="primary" href="{% url 'gymnast-export' %}">Download CSV</a></p>
-    {% if can_manage %}
-      <form method="post" enctype="multipart/form-data">{% csrf_token %}{{ form.as_p }}<button class="primary">Kontrollér import</button></form>
-    {% else %}<p>Kun administratorer kan importere.</p>{% endif %}
+<section class="page-head">
+  <div><p class="eyebrow">Controlled data exchange</p><h1>Import & <span class="text-gradient">eksport</span></h1><p>Preview, validering, mapping og audit-logget commit for gymnastdata og KIGA competition/video.</p></div>
+  <div class="page-actions"><a class="button" href="{% url 'gymnast-export' %}"><svg><use href="#i-exchange"/></svg>Download gymnast-CSV</a></div>
+</section>
+
+<section class="surface workflow-card">
+  <header class="section-head"><div><h2>Sikker udvekslingspipeline</h2><p>Ingen import skrives før validering og eksplicit commit</p></div><span class="status-badge">Schema-gated</span></header>
+  <div class="workflow-steps"><div class="workflow-step active"><span>01</span><strong>Preview</strong><small>Læs uden mutation</small></div><div class="workflow-step"><span>02</span><strong>Validering</strong><small>Schema & integritet</small></div><div class="workflow-step"><span>03</span><strong>Mapping</strong><small>Stabile identiteter</small></div><div class="workflow-step"><span>04</span><strong>Dry-run</strong><small>Konsekvenskontrol</small></div><div class="workflow-step"><span>05</span><strong>Commit</strong><small>Audit-logget skrivning</small></div></div>
+</section>
+
+<div class="dashboard-grid" style="margin-top:18px">
+  <section class="surface surface-pad">
+    <header class="section-head"><div><h2>Gymnastdata</h2><p>CSV preview/import og UTF-8 eksport</p></div><span class="status-badge info">Master data</span></header>
+    <p><a class="button" href="{% url 'gymnast-export' %}"><svg><use href="#i-exchange"/></svg>Download CSV</a></p>
+    {% if can_manage %}<form method="post" enctype="multipart/form-data" class="form-stack">{% csrf_token %}{{ form.as_p }}<button class="button button-primary" type="submit"><svg><use href="#i-upload"/></svg>Kontrollér import</button></form>{% else %}<p><span class="status-badge warning">Læs-only</span> Kun administratorer kan importere.</p>{% endif %}
   </section>
-  <section class="card">
-    <h2>KIGA konkurrence/video</h2>
-    <p>Validerer metadata, rettigheder, gymnastmapping og officielle resultater før commit. Video downloades ikke under import.</p>
-    {% if can_manage %}<form method="post" enctype="multipart/form-data" action="{% url 'kiga-import-preview' %}">{% csrf_token %}{{ kiga_form.as_p }}<button class="primary">Kontrollér KIGA-import</button></form>{% else %}<p>Kun administratorer kan importere.</p>{% endif %}
+
+  <section class="surface surface-pad">
+    <header class="section-head"><div><h2>KIGA competition/video</h2><p>Rettigheder, mapping og officielle resultatversioner</p></div><span class="status-badge">competition-video-v1</span></header>
+    <p>Metadata og rettigheder valideres før commit; eksternt videoindhold downloades ikke under import.</p>
+    {% if can_manage %}<form method="post" enctype="multipart/form-data" action="{% url 'kiga-import-preview' %}" class="form-stack">{% csrf_token %}{{ kiga_form.as_p }}<button class="button button-primary" type="submit"><svg><use href="#i-upload"/></svg>Kontrollér KIGA-import</button></form>{% else %}<p><span class="status-badge warning">Læs-only</span> Kun administratorer kan importere.</p>{% endif %}
   </section>
-  {% if preview %}
-  <section class="card">
-    <h2>Preview: {{ preview.valid_rows|length }} gyldige rækker</h2>
-    {% if preview.errors %}<ul class="danger">{% for error in preview.errors %}<li>{{ error }}</li>{% endfor %}</ul><p><a href="{% url 'gymnast-import-errors' %}">Download fejlrapport (CSV)</a></p>{% endif %}
-    {% if preview.can_commit %}<form method="post" action="{% url 'gymnast-import-commit' %}">{% csrf_token %}<button class="primary">Gennemfør import</button></form>{% endif %}
-  </section>
-  {% endif %}
 </div>
-<h2>Historik</h2>
-<table><tr><th>Retning</th><th>Type</th><th>Status</th><th>Schema</th><th>Resultat</th></tr>{% for job in jobs %}<tr><td>{{ job.get_direction_display }}</td><td>{{ job.kind }}</td><td>{{ job.get_state_display }}</td><td>{{ job.schema_version }}</td><td>{{ job.result_summary }}</td></tr>{% empty %}<tr><td colspan="5">Ingen udvekslingsjob.</td></tr>{% endfor %}</table>
+
+{% if preview %}
+<section class="surface surface-pad" style="margin-top:18px">
+  <header class="section-head"><div><h2>Gymnast-import preview</h2><p>{{ preview.valid_rows|length }} gyldige rækker</p></div>{% if preview.can_commit %}<span class="status-badge">Klar til commit</span>{% else %}<span class="status-badge warning">Kræver rettelser</span>{% endif %}</header>
+  {% if preview.errors %}<div class="login-error"><ul>{% for error in preview.errors %}<li>{{ error }}</li>{% endfor %}</ul></div><a class="button" href="{% url 'gymnast-import-errors' %}">Download fejlrapport</a>{% endif %}
+  {% if preview.can_commit %}<form method="post" action="{% url 'gymnast-import-commit' %}" style="margin-top:12px">{% csrf_token %}<button class="button button-primary" type="submit"><svg><use href="#i-check"/></svg>Gennemfør atomisk import</button></form>{% endif %}
+</section>
+{% endif %}
+
+<section class="surface table-surface" style="margin-top:18px">
+  <header class="section-head surface-pad"><div><h2>Udvekslingshistorik</h2><p>Append-only job- og auditspor</p></div><span class="status-badge neutral">{{ jobs|length }} job</span></header>
+  {% if jobs %}<table class="data-table"><thead><tr><th>Retning</th><th>Type</th><th>Status</th><th>Schema</th><th>Oprettet</th><th>Resultat</th></tr></thead><tbody>{% for job in jobs %}<tr><td><div class="entity-cell"><span class="entity-avatar"><svg class="icon"><use href="{% if job.direction == 'import' %}#i-upload{% else %}#i-exchange{% endif %}"/></svg></span><span><strong>{{ job.get_direction_display }}</strong><small>Kontrolleret job</small></span></div></td><td>{{ job.kind }}</td><td><span class="status-badge {% if job.state == 'failed' %}danger{% elif job.state == 'validating' or job.state == 'running' %}info{% elif job.state == 'draft' %}neutral{% endif %}">{{ job.get_state_display }}</span></td><td>{{ job.schema_version|default:"—" }}</td><td>{{ job.created_at|date:"d.m.Y H:i" }}</td><td><small>{{ job.result_summary|default:"—" }}</small></td></tr>{% endfor %}</tbody></table>{% else %}<div class="empty-state"><span class="empty-visual"><svg><use href="#i-exchange"/></svg></span><h3>Ingen udvekslingsjob endnu</h3><p>Brug import- eller eksportfunktionerne ovenfor; jobs vises her med schema og resultat.</p></div>{% endif %}
+</section>
 {% endblock %}

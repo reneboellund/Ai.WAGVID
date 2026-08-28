@@ -1,4 +1,5 @@
 from django import forms
+from django.db.models import Q
 
 from .models import Gymnast, Level, ReviewDecision, ScoreComparisonReview, StorageConnection
 from .storage_providers import StorageCapability, provider_definition
@@ -14,7 +15,10 @@ class GymnastForm(forms.ModelForm):
     def __init__(self, *args, organization=None, **kwargs):
         super().__init__(*args, **kwargs)
         if organization:
-            self.fields["level"].queryset = organization.levels.filter(active=True)
+            allowed = Q(active=True)
+            if self.instance and self.instance.pk and self.instance.level_id:
+                allowed |= Q(pk=self.instance.level_id)
+            self.fields["level"].queryset = organization.levels.filter(allowed).distinct()
 
 
 class LevelForm(forms.ModelForm):
