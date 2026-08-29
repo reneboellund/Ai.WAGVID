@@ -1,7 +1,17 @@
 from django import forms
 from django.db.models import Q
 
-from .models import Gymnast, ReviewDecision, ScoreComparisonReview
+from .models import (
+    Gymnast,
+    Level,
+    NetworkCamera,
+    ReviewDecision,
+    ScoreComparisonReview,
+    StorageConnection,
+)
+from .storage_providers import StorageCapability, provider_definition
+from .storage_types import BucketRole
+from .wasabi import WASABI_REGION_ENDPOINTS
 
 
 class GymnastForm(forms.ModelForm):
@@ -16,6 +26,43 @@ class GymnastForm(forms.ModelForm):
             if self.instance and self.instance.pk and self.instance.level_id:
                 allowed |= Q(pk=self.instance.level_id)
             self.fields["level"].queryset = organization.levels.filter(allowed).distinct()
+
+
+class LevelForm(forms.ModelForm):
+    class Meta:
+        model = Level
+        fields = ["name", "active"]
+
+
+class NetworkCameraForm(forms.ModelForm):
+    capability_json = forms.JSONField(
+        required=False,
+        label="Capability-snapshot",
+        help_text="Valgfrit valideret output fra ONVIF/Dahua-proben. Ingen credentials.",
+        widget=forms.Textarea(attrs={"rows": 8}),
+    )
+
+    class Meta:
+        model = NetworkCamera
+        fields = [
+            "name", "provider", "endpoint", "username_secret_ref", "password_secret_ref",
+            "tls_verify", "apparatus", "canonical_profile_id", "preview_profile_id",
+            "preset_id", "calibration_digest",
+        ]
+
+    def clean(self):
+        cleaned = super().clean()
+        for field in ("username_secret_ref", "password_secret_ref"):
+            value = cleaned.get(field, "")
+            if value and not value.startswith(("env:", "vault:", "secret:")):
+                self.add_error(field, "Brug en secret-reference; credentials må ikke gemmes her.")
+        endpoint = cleaned.get("endpoint", "")
+        if endpoint and not endpoint.startswith("https://") and cleaned.get("tls_verify"):
+            self.add_error("endpoint", "HTTPS er påkrævet, når TLS-verifikation er aktiv.")
+        digest = cleaned.get("calibration_digest", "")
+        if digest and (len(digest) != 64 or any(char not in "0123456789abcdef" for char in digest)):
+            self.add_error("calibration_digest", "Kalibrering skal være en lowercase SHA-256.")
+        return cleaned
 
 
 class GymnastImportForm(forms.Form):
@@ -59,6 +106,12 @@ class ReviewDecisionForm(forms.ModelForm):
             "accepted_amount"
         ) is None:
             self.add_error("accepted_amount", "Angiv det korrigerede fradrag.")
+        if cleaned.get("decision") in {
+            ReviewDecision.Decision.CORRECT_AI,
+            ReviewDecision.Decision.OFFICIAL_ERROR,
+            ReviewDecision.Decision.INCONCLUSIVE,
+        } and not cleaned.get("notes", "").strip():
+            self.add_error("notes", "En begrundelse er påkrævet for denne afgørelse.")
         return cleaned
 
 
@@ -86,3 +139,107 @@ class ScoreComparisonReviewForm(forms.ModelForm):
                 if cleaned.get(field) is None:
                     self.add_error(field, "Alle korrigerede scorefelter skal udfyldes.")
         return cleaned
+
+
+class StorageConnectionForm(forms.ModelForm):
+    class Meta:
+        model = StorageConnection
+        fields = [
+            "name",
+            "provider",
+            "project_slug",
+            "environment",
+            "region",
+            "endpoint",
+            "tls_verify",
+            "custom_ca_secret_ref",
+            "addressing_style",
+            "auth_mode",
+            "role_arn",
+            "account_fingerprint",
+            "access_key_secret_ref",
+            "secret_key_secret_ref",
+            "originals_shards",
+            "derivatives_shards",
+            "include_audit_bucket",
+            "enable_versioning",
+            "governance_profile",
+            "provisioning_enabled",
+            "existing_bucket_map",
+            "pricing_model",
+            "minimum_storage_days",
+        ]
+        help_texts = {
+            "access_key_secret_ref": "Fx env:WAGVID_WASABI_ACCESS_KEY. Selve nøglen gemmes ikke.",
+            "secret_key_secret_ref": "Fx env:WAGVID_WASABI_SECRET_KEY. Selve secret gemmes ikke.",
+            "custom_ca_secret_ref": "Valgfri reference til CA bundle, fx env:WAGVID_STORAGE_CA.",
+            "existing_bucket_map": (
+                'JSON mapping, fx {"originals":["bucket-a"],"results":["bucket-b"]}.'
+            ),
+        }
+
+    def clean(self):
+        cleaned = super().clean()
+        pricing = cleaned.get("pricing_model")
+        days = cleaned.get("minimum_storage_days")
+        provider_id = cleaned.get("provider")
+        definition = provider_definition(provider_id) if provider_id else None
+        expected = {StorageConnection.PricingModel.PAY_GO: 90, StorageConnection.PricingModel.RCS: 30}
+        if pricing in expected and days != expected[pricing]:
+            self.add_error(
+                "minimum_storage_days",
+                f"{pricing} skal bruge den eksplicitte minimumsperiode på {expected[pricing]} dage.",
+            )
+        if pricing == StorageConnection.PricingModel.NONE and days != 0:
+            self.add_error("minimum_storage_days", "Ingen minimumsperiode skal bruge 0 dage.")
+        if provider_id != StorageConnection.Provider.WASABI and pricing in expected:
+            self.add_error("pricing_model", "Wasabi Pay-Go/RCS kan kun vælges for Wasabi.")
+        if provider_id == StorageConnection.Provider.WASABI and pricing == StorageConnection.PricingModel.NONE:
+            self.add_error("pricing_model", "Vælg Wasabis faktiske pris-/minimumsmodel.")
+        for field in (
+            "access_key_secret_ref",
+            "secret_key_secret_ref",
+            "custom_ca_secret_ref",
+        ):
+            value = cleaned.get(field, "")
+            if value and not value.startswith(("env:", "vault:", "secret:")):
+                self.add_error(field, "Brug en secret-reference; credentials må ikke gemmes her.")
+        auth_mode = cleaned.get("auth_mode")
+        if auth_mode == "access-key":
+            for field in ("access_key_secret_ref", "secret_key_secret_ref"):
+                if not cleaned.get(field):
+                    self.add_error(field, "Access-key login kræver begge secret-referencer.")
+        elif definition and definition.capabilities[StorageCapability.WORKLOAD_IDENTITY].value != "supported":
+            self.add_error("auth_mode", f"{definition.label} understøtter ikke workload identity.")
+        environment = cleaned.get("environment")
+        endpoint = cleaned.get("endpoint", "")
+        if endpoint and not endpoint.startswith("https://") and environment not in {
+            "dev", "development", "lab", "test"
+        }:
+            self.add_error("endpoint", "HTTPS er påkrævet uden for et eksplicit labmiljø.")
+        if not cleaned.get("tls_verify") and environment not in {"dev", "development", "lab", "test"}:
+            self.add_error("tls_verify", "TLS-verifikation kan kun slås fra i lab/test.")
+        if definition and definition.existing_bucket_only and cleaned.get("provisioning_enabled"):
+            self.add_error("provisioning_enabled", f"{definition.label} bruger existing-bucket mode.")
+        region = cleaned.get("region")
+        endpoint = cleaned.get("endpoint")
+        if (
+            provider_id == StorageConnection.Provider.WASABI
+            and region in WASABI_REGION_ENDPOINTS
+            and endpoint != WASABI_REGION_ENDPOINTS[region]
+        ):
+            self.add_error("endpoint", "Endpoint matcher ikke den valgte officielle Wasabi-region.")
+        return cleaned
+
+
+# Compatibility import for code using the milestone-1 Wasabi-specific name.
+WasabiConnectionForm = StorageConnectionForm
+
+
+class StorageRoleAssignmentForm(forms.Form):
+    role = forms.ChoiceField(choices=[(role.value, role.value.title()) for role in BucketRole])
+    connection = forms.ModelChoiceField(queryset=StorageConnection.objects.none())
+
+    def __init__(self, *args, organization, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["connection"].queryset = organization.storage_connections.filter(active=True)

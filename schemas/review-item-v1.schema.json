@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/reneboellund/Ai.WAGVID/schemas/review-item-v1.schema.json",
+  "title": "Ai.WAGVID review item v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "review_id", "organization_id", "analysis_id", "analysis_revision_id",
+    "analysis_revision_digest", "apparatus", "reason", "material", "created_at",
+    "confidence_milli", "assignee_id", "evidence", "ai_proposal", "deterministic_result",
+    "official_result", "rule_sources", "review_item_digest"
+  ],
+  "properties": {
+    "schema": {"const": "ai.wagvid.review-item.v1"},
+    "review_id": {"type": "string", "minLength": 1},
+    "organization_id": {"type": "string", "minLength": 1},
+    "analysis_id": {"type": "string", "minLength": 1},
+    "analysis_revision_id": {"type": "string", "minLength": 1},
+    "analysis_revision_digest": {"$ref": "#/$defs/sha256"},
+    "apparatus": {"enum": ["VT", "UB", "BB", "FX"]},
+    "reason": {
+      "enum": [
+        "unknown-element", "low-confidence", "poor-quality", "rule-mismatch",
+        "score-discrepancy", "deduction-review", "ood-or-unavailable", "human-requested"
+      ]
+    },
+    "material": {"type": "boolean"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "confidence_milli": {"type": ["integer", "null"], "minimum": 0, "maximum": 1000},
+    "assignee_id": {"type": ["string", "null"]},
+    "evidence": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/evidence"}},
+    "ai_proposal": {"anyOf": [{"$ref": "#/$defs/aiProposal"}, {"type": "null"}]},
+    "deterministic_result": {"anyOf": [{"$ref": "#/$defs/deterministic"}, {"type": "null"}]},
+    "official_result": {"anyOf": [{"$ref": "#/$defs/official"}, {"type": "null"}]},
+    "rule_sources": {"type": "array", "items": {"$ref": "#/$defs/ruleSource"}},
+    "review_item_digest": {"$ref": "#/$defs/sha256"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"reason": {"const": "score-discrepancy"}}, "required": ["reason"]},
+      "then": {
+        "required": ["deterministic_result", "official_result"],
+        "properties": {
+          "deterministic_result": {"$ref": "#/$defs/deterministic"},
+          "official_result": {"$ref": "#/$defs/official"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"reason": {"const": "rule-mismatch"}}, "required": ["reason"]},
+      "then": {"properties": {"rule_sources": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/ruleSource"}}}}
+    }
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_id", "artifact_digest", "kind", "schema"],
+      "properties": {
+        "artifact_id": {"type": "string", "minLength": 1},
+        "artifact_digest": {"$ref": "#/$defs/sha256"},
+        "kind": {
+          "enum": [
+            "ai-proposal", "deterministic-rule-result", "official-result", "evidence",
+            "rule-source", "human-revision"
+          ]
+        },
+        "schema": {"type": ["string", "null"]}
+      }
+    },
+    "evidence": {"allOf": [{"$ref": "#/$defs/artifact"}, {"properties": {"kind": {"const": "evidence"}}}]},
+    "aiProposal": {"allOf": [{"$ref": "#/$defs/artifact"}, {"properties": {"kind": {"const": "ai-proposal"}}}]},
+    "deterministic": {"allOf": [{"$ref": "#/$defs/artifact"}, {"properties": {"kind": {"const": "deterministic-rule-result"}}}]},
+    "official": {"allOf": [{"$ref": "#/$defs/artifact"}, {"properties": {"kind": {"const": "official-result"}}}]},
+    "ruleSource": {"allOf": [{"$ref": "#/$defs/artifact"}, {"properties": {"kind": {"const": "rule-source"}}}]}
+  }
+}

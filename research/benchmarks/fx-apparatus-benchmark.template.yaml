@@ -1,0 +1,49 @@
+schema: ai.wagvid.apparatus-benchmark-manifest.v1
+apparatus: FX
+scope: post-routine-offline-validation
+status: template
+model_bundle_digest: REQUIRED
+rulepack_digest: REQUIRED
+validation_dataset_manifest_sha256: REQUIRED
+split_manifest_sha256: REQUIRED
+rights_ref: REQUIRED
+hardware_runtime_manifest_sha256: REQUIRED
+parameters:
+  top_k: REQUIRED_BEFORE_EXECUTION
+  ood_threshold_milli: REQUIRED_BEFORE_EXECUTION
+required_slices:
+  - fx-fixed-corner
+  - fx-broadcast-camera
+  - fx-partial-floor-visible
+  - fx-motion-blur
+  - fx-dance-acro-turn-confusion
+  - fx-connection-borderline
+  - fx-boundary-calibrated
+  - fx-boundary-unavailable
+  - fx-audio-timing
+promotion_metrics:
+  - id: routine-start-end-error-ms
+    direction: lower
+    threshold: REQUIRED_BEFORE_EXECUTION
+  - id: tumbling-pass-segmentation-milli
+    direction: higher
+    threshold: REQUIRED_BEFORE_EXECUTION
+  - id: topk-element-recall-milli
+    direction: higher
+    threshold: REQUIRED_BEFORE_EXECUTION
+  - id: connection-state-agreement-milli
+    direction: higher
+    threshold: REQUIRED_BEFORE_EXECUTION
+  - id: boundary-capability-correctness-milli
+    direction: higher
+    threshold: REQUIRED_BEFORE_EXECUTION
+  - id: landing-event-timing-error-ms
+    direction: lower
+    threshold: REQUIRED_BEFORE_EXECUTION
+  - id: unknown-ood-detection-milli
+    direction: higher
+    threshold: REQUIRED_BEFORE_EXECUTION
+notes:
+  - Threshold values must be frozen before execution.
+  - Audio is timing/synchronization evidence only; music semantics are never model/scoring benchmark features.
+  - Boundary-unavailable must be validated as explicit unavailable behavior, not treated as no violation.

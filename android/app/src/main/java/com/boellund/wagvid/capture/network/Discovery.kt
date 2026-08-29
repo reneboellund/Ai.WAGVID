@@ -3,6 +3,7 @@ package com.boellund.wagvid.capture.network
 import android.content.Context
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
+import com.boellund.wagvid.capture.BuildConfig
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -23,7 +24,14 @@ class BackendDiscovery(context: Context) {
                 nsd.resolveService(service, object : NsdManager.ResolveListener {
                     override fun onResolveFailed(info: NsdServiceInfo, code: Int) = Unit
                     override fun onServiceResolved(info: NsdServiceInfo) {
-                        trySend(DiscoveredBackend(info.serviceName, "https://${info.host.hostAddress}:${info.port}/"))
+                        val address = info.host.hostAddress ?: return
+                        val host = if (':' in address && !address.startsWith("[")) "[$address]" else address
+                        trySend(
+                            DiscoveredBackend(
+                                info.serviceName,
+                                "https://$host:${info.port}/",
+                            ),
+                        )
                     }
                 })
             }
@@ -33,8 +41,14 @@ class BackendDiscovery(context: Context) {
     }
 
     fun validateManualUrl(value: String): String {
-        val normalized = if (value.endsWith('/')) value else "$value/"
-        require(normalized.startsWith("https://")) { "Backend URL must use HTTPS" }
+        val normalized = value.trim().let { if (it.endsWith('/')) it else "$it/" }
+        require(normalized.startsWith("https://") || (BuildConfig.DEBUG && normalized.startsWith("http://"))) {
+            if (BuildConfig.DEBUG) {
+                "Backend URL must use http:// or https://"
+            } else {
+                "Backend URL must use HTTPS"
+            }
+        }
         return normalized
     }
 }

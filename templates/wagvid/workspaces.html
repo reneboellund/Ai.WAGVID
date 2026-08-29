@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Vælg workspace · Ai.WAGVID{% endblock %}
+{% block breadcrumb %}Workspace{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="eyebrow">Organisation</p>
+    <h1>Vælg <span class="text-gradient">workspace</span></h1>
+    <p>Du ser kun organisationer, hvor din bruger har et aktivt membership. Valget gemmes i din session og ændrer ikke dine øvrige adgange.</p>
+  </div>
+  <div class="page-actions"><a class="button" href="{% url 'dashboard' %}">Tilbage til overblik</a></div>
+</section>
+<section class="metric-grid" aria-label="Tilgængelige workspaces">
+  {% for membership in memberships %}
+  <article class="surface surface-hover surface-pad">
+    <p class="eyebrow">{{ membership.get_role_display }}</p>
+    <h2>{{ membership.organization.name }}</h2>
+    <p>{% if current_organization.id == membership.organization.id %}Dette er dit aktive workspace.{% else %}Skift alle organisationsafgrænsede views til dette workspace.{% endif %}</p>
+    {% if current_organization.id == membership.organization.id %}
+      <span class="status-badge">Aktivt</span>
+    {% else %}
+      <form method="post" action="{% url 'workspace-switch' membership.organization.id %}">
+        {% csrf_token %}
+        <button class="button button-primary" type="submit">Skift til {{ membership.organization.name }}</button>
+      </form>
+    {% endif %}
+  </article>
+  {% endfor %}
+</section>
+{% endblock %}

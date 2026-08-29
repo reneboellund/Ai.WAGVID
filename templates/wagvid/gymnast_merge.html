@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Flet gymnastprofiler · Ai.WAGVID{% endblock %}
+{% block breadcrumb %}Gymnaster / Flet dublet{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="eyebrow">Masterdata · kontrolleret merge</p>
+    <h1>Flet <span class="text-gradient">dubletprofil</span></h1>
+    <p>Dubletten slettes ikke. Historik bevares, relationer flyttes atomisk, og hele operationen audit-logges.</p>
+  </div>
+  <div class="page-actions"><a class="button" href="{% url 'gymnasts' %}">Tilbage til gymnaster</a></div>
+</section>
+<section class="surface" style="padding: 24px; max-width: 900px;">
+  <div class="entity-cell" style="margin-bottom: 20px;">
+    <span class="entity-avatar">{{ duplicate.display_name|slice:":2"|upper }}</span>
+    <span>
+      <strong>Dublet: {{ duplicate.display_name }}</strong>
+      <small>Licens {{ duplicate.license_number }} · {{ duplicate.level.name }} · KIGA {{ duplicate.kiga_id|default:"—" }}</small>
+    </span>
+  </div>
+  <div class="notice warning" style="margin-bottom: 20px;">
+    <strong>Kontrollér survivor før du fortsætter.</strong>
+    <p>Survivorens navn, licens og niveau bevares. Rutiner og media fra dubletten flyttes til survivor. Hvis begge profiler har forskellige KIGA-ID'er, bliver merge afvist.</p>
+  </div>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {% for field in form %}
+      <div class="form-field">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+        {{ field.errors }}
+      </div>
+    {% endfor %}
+    <div class="page-actions" style="margin-top: 20px;">
+      <a class="button" href="{% url 'gymnasts' %}">Annullér</a>
+      <button class="button button-primary" type="submit">Flet og arkivér dublet</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

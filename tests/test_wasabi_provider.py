@@ -72,14 +72,14 @@ def test_apply_requires_matching_unexpired_explicit_approval():
     now = datetime(2026, 1, 1, tzinfo=UTC)
     approval = SetupApproval(
         desired.digest, "admin", now, now + timedelta(minutes=5),
-        "CREATE PRIVATE WASABI BUCKETS",
+        "CREATE PRIVATE STORAGE BUCKETS",
     )
     completed = apply_setup(client, plan=desired, preflight=preflight, approval=approval, now=now)
     assert completed
     assert len(client.calls) == len(preflight.actions)
     expired = SetupApproval(
         desired.digest, "admin", now, now + timedelta(seconds=1),
-        "CREATE PRIVATE WASABI BUCKETS",
+        "CREATE PRIVATE STORAGE BUCKETS",
     )
     with pytest.raises(WasabiSetupError, match="expired"):
         apply_setup(

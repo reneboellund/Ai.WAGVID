@@ -13,6 +13,7 @@
   let loadPromise = null;
   let timelinePromise = null;
   let frames = null;
+  let currentFrameIndex = null;
 
   const formatTime = (seconds) => {
     const safe = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
@@ -113,6 +114,7 @@
     if (!frameLabel || !frames?.length || !video) return;
     const index = frameAtOrBefore(video.currentTime);
     if (index === null) return;
+    currentFrameIndex = frames[index].frame_index;
     frameLabel.textContent = `${frames[index].frame_index + 1}/${frames.length}`;
   };
 
@@ -127,6 +129,7 @@
     player.currentTime = target.timestamp_s;
     player.focus();
     if (frameLabel) frameLabel.textContent = `${target.frame_index + 1}/${frames.length}`;
+    currentFrameIndex = target.frame_index;
     setStatus(`Frame ${target.frame_index + 1} @ ${formatTime(target.timestamp_s)}`, "info");
   };
 
@@ -167,6 +170,38 @@
   });
   root.querySelector("[data-frame-next]")?.addEventListener("click", () => {
     stepFrame(1).catch(() => {});
+  });
+
+  root.querySelector("[data-playback-rate]")?.addEventListener("change", (event) => {
+    if (video) video.playbackRate = Number(event.target.value) || 1;
+  });
+
+  const markFrame = async (selector) => {
+    await loadMedia();
+    await loadTimeline();
+    updateFrameLabel();
+    const input = document.querySelector(selector);
+    if (input && currentFrameIndex !== null) input.value = currentFrameIndex;
+  };
+  document.querySelector("[data-mark-start]")?.addEventListener("click", () => markFrame("[data-annotation-start]").catch(() => {}));
+  document.querySelector("[data-mark-end]")?.addEventListener("click", () => markFrame("[data-annotation-end]").catch(() => {}));
+
+  document.addEventListener("keydown", (event) => {
+    if (event.target.closest("input, textarea, select, button, [contenteditable='true']")) return;
+    const key = event.key.toLowerCase();
+    if (key === " ") {
+      event.preventDefault();
+      loadMedia().then((player) => (player.paused ? player.play() : player.pause())).catch(() => {});
+    } else if (key === "arrowleft" || key === "arrowright") {
+      event.preventDefault();
+      stepFrame(key === "arrowleft" ? -1 : 1).catch(() => {});
+    } else if (key === "j" || key === "l") {
+      event.preventDefault();
+      loadMedia().then((player) => { player.currentTime = Math.max(0, player.currentTime + (key === "j" ? -0.1 : 0.1)); }).catch(() => {});
+    } else if (key === "[" || key === "]") {
+      event.preventDefault();
+      markFrame(key === "[" ? "[data-annotation-start]" : "[data-annotation-end]").catch(() => {});
+    }
   });
 
   video?.addEventListener("timeupdate", () => {

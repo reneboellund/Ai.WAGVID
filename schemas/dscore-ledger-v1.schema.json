@@ -1,0 +1,191 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/reneboellund/Ai.WAGVID/schemas/dscore-ledger-v1.schema.json",
+  "title": "Ai.WAGVID deterministic D-score ledger v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "rulepack_id",
+    "rulepack_digest",
+    "policy_digest",
+    "apparatus",
+    "units_per_point",
+    "outcomes",
+    "ambiguities",
+    "possible_total_units",
+    "resolved_score",
+    "evaluation_blockers"
+  ],
+  "properties": {
+    "schema": {"const": "ai.wagvid.dscore-ledger.v1"},
+    "rulepack_id": {"type": "string", "minLength": 1},
+    "rulepack_digest": {"$ref": "#/$defs/sha256"},
+    "policy_digest": {"$ref": "#/$defs/sha256"},
+    "apparatus": {"enum": ["VT", "UB", "BB", "FX"]},
+    "units_per_point": {"type": "integer", "minimum": 1},
+    "outcomes": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/outcome"}
+    },
+    "ambiguities": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/ambiguity"}
+    },
+    "possible_total_units": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "integer"}
+    },
+    "resolved_score": {
+      "type": ["string", "null"],
+      "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$"
+    },
+    "evaluation_blockers": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "stringArray": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "resolutionPair": {
+      "type": "array",
+      "prefixItems": [
+        {"type": "string", "minLength": 1},
+        {"type": "string", "minLength": 1}
+      ],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "elementEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fact_id", "sequence_index", "element_id", "value_units", "counted",
+        "reason", "repetition_key", "groups", "evidence_ids"
+      ],
+      "properties": {
+        "fact_id": {"type": "string", "minLength": 1},
+        "sequence_index": {"type": "integer", "minimum": 0},
+        "element_id": {"type": "string", "minLength": 1},
+        "value_units": {"type": "integer", "minimum": 0},
+        "counted": {"type": "boolean"},
+        "reason": {
+          "enum": [
+            "counted", "repetition", "count-limit", "group-quota", "lower-value-selection"
+          ]
+        },
+        "repetition_key": {"type": "string", "minLength": 1},
+        "groups": {"$ref": "#/$defs/stringArray"},
+        "evidence_ids": {"$ref": "#/$defs/stringArray"}
+      }
+    },
+    "compositionEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requirement_id", "status", "observed_count", "minimum_count", "award_units",
+        "scope", "source_rule_id"
+      ],
+      "properties": {
+        "requirement_id": {"type": "string", "minLength": 1},
+        "status": {"enum": ["satisfied", "unsatisfied"]},
+        "observed_count": {"type": "integer", "minimum": 0},
+        "minimum_count": {"type": "integer", "minimum": 1},
+        "award_units": {"type": "integer", "minimum": 0},
+        "scope": {"enum": ["performed", "counted"]},
+        "source_rule_id": {"type": ["string", "null"]}
+      }
+    },
+    "connectionEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "connection_id", "left_fact_id", "right_fact_id", "rule_id", "status",
+        "award_units", "evidence_ids", "source_rule_id"
+      ],
+      "properties": {
+        "connection_id": {"type": "string", "minLength": 1},
+        "left_fact_id": {"type": "string", "minLength": 1},
+        "right_fact_id": {"type": "string", "minLength": 1},
+        "rule_id": {"type": ["string", "null"]},
+        "status": {
+          "enum": ["awarded", "interrupted", "not-adjacent", "no-matching-rule"]
+        },
+        "award_units": {"type": "integer", "minimum": 0},
+        "evidence_ids": {"$ref": "#/$defs/stringArray"},
+        "source_rule_id": {"type": ["string", "null"]}
+      }
+    },
+    "adjustmentEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "adjustment_id", "rule_id", "value_units", "evidence_ids", "source_rule_id"
+      ],
+      "properties": {
+        "adjustment_id": {"type": "string", "minLength": 1},
+        "rule_id": {"type": "string", "minLength": 1},
+        "value_units": {"type": "integer"},
+        "evidence_ids": {"$ref": "#/$defs/stringArray"},
+        "source_rule_id": {"type": ["string", "null"]}
+      }
+    },
+    "outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resolution", "elements", "composition", "connections", "adjustments",
+        "element_total_units", "composition_total_units", "connection_total_units",
+        "adjustment_total_units", "total_units", "warnings"
+      ],
+      "properties": {
+        "resolution": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/resolutionPair"}
+        },
+        "elements": {"type": "array", "items": {"$ref": "#/$defs/elementEntry"}},
+        "composition": {"type": "array", "items": {"$ref": "#/$defs/compositionEntry"}},
+        "connections": {"type": "array", "items": {"$ref": "#/$defs/connectionEntry"}},
+        "adjustments": {"type": "array", "items": {"$ref": "#/$defs/adjustmentEntry"}},
+        "element_total_units": {"type": "integer"},
+        "composition_total_units": {"type": "integer"},
+        "connection_total_units": {"type": "integer"},
+        "adjustment_total_units": {"type": "integer"},
+        "total_units": {"type": "integer"},
+        "warnings": {"$ref": "#/$defs/stringArray"}
+      }
+    },
+    "alternativeImpact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["element_id", "possible_total_units"],
+      "properties": {
+        "element_id": {"type": "string", "minLength": 1},
+        "possible_total_units": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "integer"}
+        }
+      }
+    },
+    "ambiguity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fact_id", "alternatives"],
+      "properties": {
+        "fact_id": {"type": "string", "minLength": 1},
+        "alternatives": {
+          "type": "array",
+          "minItems": 2,
+          "items": {"$ref": "#/$defs/alternativeImpact"}
+        }
+      }
+    }
+  }
+}

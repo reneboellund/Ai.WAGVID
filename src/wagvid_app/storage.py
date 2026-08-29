@@ -33,10 +33,17 @@ class LocalObjectStore:
             raise ValueError("Object key escapes storage root")
         return path
 
+    @staticmethod
+    def _io_path(path: Path) -> Path:
+        """Use Win32 extended paths after the key has passed normal-path safety checks."""
+        if os.name == "nt" and not str(path).startswith("\\\\?\\"):
+            return Path(f"\\\\?\\{path}")
+        return path
+
     def put_verified(
         self, key: str, source: BinaryIO, *, expected_size: int, expected_sha256: str
     ) -> StoredObject:
-        destination = self._path(key)
+        destination = self._io_path(self._path(key))
         destination.parent.mkdir(parents=True, exist_ok=True)
         if destination.exists():
             existing = self.inspect(key)
@@ -59,10 +66,10 @@ class LocalObjectStore:
         return StoredObject(key=key, size=size, sha256=actual_sha256)
 
     def exists(self, key: str) -> bool:
-        return self._path(key).is_file()
+        return self._io_path(self._path(key)).is_file()
 
     def inspect(self, key: str) -> StoredObject:
-        path = self._path(key)
+        path = self._io_path(self._path(key))
         if not path.is_file():
             raise FileNotFoundError(key)
         digest, size = hashlib.sha256(), 0
@@ -73,13 +80,13 @@ class LocalObjectStore:
         return StoredObject(key, size, digest.hexdigest())
 
     def open_read(self, key: str) -> BinaryIO:
-        path = self._path(key)
+        path = self._io_path(self._path(key))
         if not path.is_file():
             raise FileNotFoundError(key)
         return path.open("rb")
 
     def append_chunk(self, key: str, source: BinaryIO, *, offset: int, max_bytes: int) -> int:
-        destination = self._path(key)
+        destination = self._io_path(self._path(key))
         destination.parent.mkdir(parents=True, exist_ok=True)
         current_size = destination.stat().st_size if destination.exists() else 0
         if offset != current_size:
@@ -101,7 +108,7 @@ class LocalObjectStore:
         expected_size: int,
         expected_sha256: str,
     ) -> StoredObject:
-        partial = self._path(partial_key)
+        partial = self._io_path(self._path(partial_key))
         if not partial.is_file():
             raise FileNotFoundError(partial_key)
         digest = hashlib.sha256()
@@ -113,7 +120,7 @@ class LocalObjectStore:
         actual_sha256 = digest.hexdigest()
         if size != expected_size or actual_sha256 != expected_sha256:
             raise ObjectIntegrityError("Partial upload does not match size/checksum")
-        final = self._path(final_key)
+        final = self._io_path(self._path(final_key))
         final.parent.mkdir(parents=True, exist_ok=True)
         if final.exists():
             existing = self.inspect(final_key)

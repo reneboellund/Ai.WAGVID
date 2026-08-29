@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/reneboellund/Ai.WAGVID/schemas/review-decision-v1.schema.json",
+  "title": "Ai.WAGVID review decision v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "decision_id", "review_id", "review_item_digest", "action", "reviewer_id",
+    "reviewer_qualification_ref", "reason_code", "notes", "created_at", "revised_artifact",
+    "supersedes_decision_id", "decision_digest"
+  ],
+  "properties": {
+    "schema": {"const": "ai.wagvid.review-decision.v1"},
+    "decision_id": {"type": "string", "minLength": 1},
+    "review_id": {"type": "string", "minLength": 1},
+    "review_item_digest": {"$ref": "#/$defs/sha256"},
+    "action": {"enum": ["accept", "reject", "revise", "escalate"]},
+    "reviewer_id": {"type": "string", "minLength": 1},
+    "reviewer_qualification_ref": {"type": ["string", "null"]},
+    "reason_code": {"type": "string", "minLength": 1},
+    "notes": {"type": "string", "minLength": 1},
+    "created_at": {"type": "string", "format": "date-time"},
+    "revised_artifact": {"anyOf": [{"$ref": "#/$defs/humanRevision"}, {"type": "null"}]},
+    "supersedes_decision_id": {"type": ["string", "null"]},
+    "decision_digest": {"$ref": "#/$defs/sha256"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"action": {"const": "revise"}}, "required": ["action"]},
+      "then": {"properties": {"revised_artifact": {"$ref": "#/$defs/humanRevision"}}},
+      "else": {"properties": {"revised_artifact": {"type": "null"}}}
+    }
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "humanRevision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_id", "artifact_digest", "kind", "schema"],
+      "properties": {
+        "artifact_id": {"type": "string", "minLength": 1},
+        "artifact_digest": {"$ref": "#/$defs/sha256"},
+        "kind": {"const": "human-revision"},
+        "schema": {"type": ["string", "null"]}
+      }
+    }
+  }
+}

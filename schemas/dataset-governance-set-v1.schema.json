@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai.wagvid.local/schemas/dataset-governance-set-v1.schema.json",
+  "title": "Ai.WAGVID dataset governance export",
+  "type": "object",
+  "required": ["schema", "organization_id", "records"],
+  "properties": {
+    "schema": {"const": "ai.wagvid.dataset-governance-set.v1"},
+    "organization_id": {"type": "string", "format": "uuid"},
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "source_reference", "immutable_digest", "rights_reference", "analysis_allowed", "retention_allowed", "training_allowed", "export_allowed", "pseudonymous_athlete_key", "pseudonymous_event_key", "label_provenance"],
+        "properties": {
+          "id": {"type": "string", "format": "uuid"},
+          "source_reference": {"type": "string", "minLength": 1},
+          "immutable_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "rights_reference": {"type": "string", "minLength": 1},
+          "consent_reference": {"type": "string"},
+          "analysis_allowed": {"type": "boolean"},
+          "retention_allowed": {"type": "boolean"},
+          "training_allowed": {"type": "boolean"},
+          "export_allowed": {"type": "boolean"},
+          "pseudonymous_athlete_key": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "pseudonymous_event_key": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "split_manifest_digest": {"type": "string", "pattern": "^$|^[0-9a-f]{64}$"},
+          "label_provenance": {"type": "object"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

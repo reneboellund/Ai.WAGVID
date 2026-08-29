@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/reneboellund/Ai.WAGVID/schemas/camera-capabilities-v1.schema.json",
+  "title": "Ai.WAGVID camera capabilities v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "camera_id", "manufacturer", "model", "firmware", "profiles", "streams", "ptz", "events", "native_tracking", "edge_recording", "https_supported", "capability_digest"],
+  "properties": {
+    "schema": {"const": "ai.wagvid.camera-capabilities.v1"},
+    "camera_id": {"type": "string", "minLength": 1},
+    "manufacturer": {"type": "string", "minLength": 1},
+    "model": {"type": "string", "minLength": 1},
+    "firmware": {"type": "string", "minLength": 1},
+    "profiles": {"type": "array", "uniqueItems": true, "items": {"enum": ["T", "G", "M", "S"]}},
+    "streams": {"type": "array", "minItems": 1, "items": {"type": "object"}},
+    "ptz": {"type": "object"},
+    "events": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+    "native_tracking": {"type": "boolean"},
+    "edge_recording": {"type": "boolean"},
+    "https_supported": {"type": "boolean"},
+    "capability_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

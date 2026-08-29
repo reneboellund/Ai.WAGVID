@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}{% if camera %}Redigér kamera{% else %}Tilføj kamera{% endif %} · Ai.WAGVID{% endblock %}
+{% block breadcrumb %}Enheder / IP-kameraer / Opsætning{% endblock %}
+{% block content %}
+<section class="page-head"><div><p class="eyebrow">Secure camera setup</p><h1>{% if camera %}Redigér {{ camera.name }}{% else %}Tilføj <span class="text-gradient">IP-kamera</span>{% endif %}</h1><p>Brug HTTPS og referencer til secret storage. Indsæt aldrig brugernavn eller password direkte.</p></div><a class="button" href="{% url 'cameras' %}">Annullér</a></section>
+<section class="surface surface-pad"><form method="post" class="form-stack">{% csrf_token %}{{ form.as_p }}<div class="page-actions"><button class="button button-primary" type="submit"><svg><use href="#i-check"/></svg>Gem kameraopsætning</button></div></form></section>
+{% endblock %}

@@ -4,7 +4,7 @@
 {% block content %}
 <section class="page-head">
   <div><p class="eyebrow">Remote capture control</p><h1>Operatør<span class="text-gradient">studie</span></h1><p>Vælg gymnast, enhed og capture-type, og send auditerede ARM/DISARM/START/STOP-kommandoer til Android-klienten.</p></div>
-  <div class="page-actions"><a class="button" href="{% url 'devices' %}"><svg><use href="#i-device"/></svg>Enheder</a></div>
+  <div class="page-actions"><a class="button" href="{% url 'devices' %}"><svg><use href="#i-device"/></svg>Android-enheder</a><a class="button" href="{% url 'cameras' %}"><svg><use href="#i-device"/></svg>IP-kameraer</a></div>
 </section>
 
 <section class="studio-grid">
@@ -40,5 +40,10 @@
 <section class="surface table-surface" style="margin-top:18px">
   <header class="section-head surface-pad"><div><h2>Enhedsstatus</h2><p>Seneste heartbeat og command acknowledgement</p></div><a class="section-action" href="{% url 'devices' %}">Administrér enheder <svg><use href="#i-arrow"/></svg></a></header>
   {% if devices %}<table class="data-table"><thead><tr><th>Enhed</th><th>State</th><th>Batteri</th><th>Netværk</th><th>Uploads</th><th>Seneste kommando</th></tr></thead><tbody>{% for device in devices %}<tr><td><div class="entity-cell"><span class="entity-avatar"><svg class="icon"><use href="#i-device"/></svg></span><span><strong>{{ device.name }}</strong><small>{% if device.last_seen_at %}Set {{ device.last_seen_at|timesince }} siden{% else %}Aldrig set{% endif %}</small></span></div></td><td><span class="status-badge {% if device.state == 'recording' %}info{% elif device.state == 'offline' %}danger{% endif %}">{{ device.get_state_display }}</span></td><td>{{ device.battery_percent|default:"—" }}{% if device.battery_percent != None %}%{% endif %}</td><td>{{ device.network_type|default:"—" }}</td><td>{{ device.queued_uploads }}</td><td>{% with latest=device.commands.last %}{% if latest %}{{ latest.get_command_display }} · {{ latest.get_state_display }}{% else %}—{% endif %}{% endwith %}</td></tr>{% endfor %}</tbody></table>{% else %}<div class="empty-state"><h3>Ingen parrede telefoner</h3><p>Gå til Enheder og opret en pairingkode.</p></div>{% endif %}
+</section>
+
+<section class="surface table-surface" style="margin-top:18px">
+  <header class="section-head surface-pad"><div><h2>IP-kamerastatus</h2><p>Streamrolle, PTZ-ejer, tracking og kalibrering vises før capture.</p></div><a class="section-action" href="{% url 'cameras' %}">Administrér kameraer <svg><use href="#i-arrow"/></svg></a></header>
+  {% if network_cameras %}<table class="data-table"><thead><tr><th>Kamera</th><th>Status</th><th>Canonical</th><th>Preview</th><th>Tracking</th><th>Kalibrering</th><th>Kontrol</th></tr></thead><tbody>{% for camera in network_cameras %}<tr><td><strong>{{ camera.name }}</strong><small>{{ camera.manufacturer|default:camera.get_provider_display }} {{ camera.model }}</small></td><td><span class="status-badge {% if camera.state == 'online' %}success{% elif camera.state == 'degraded' %}warning{% else %}danger{% endif %}">{{ camera.get_state_display }}</span></td><td>{{ camera.canonical_profile_id|default:"—" }}</td><td>{{ camera.preview_profile_id|default:"—" }}</td><td>{{ camera.get_tracking_mode_display }}<small>{{ camera.ptz_owner }}</small></td><td>{% if camera.calibration_valid %}<span class="status-badge success">Gyldig</span>{% else %}<span class="status-badge warning">Ikke gyldig</span>{% endif %}</td><td><a class="button" href="{% url 'camera-detail' camera.id %}">Kontrollér</a></td></tr>{% endfor %}</tbody></table>{% else %}<div class="empty-state"><h3>Ingen IP-kameraer konfigureret</h3><p>Tilføj et ONVIF/Dahua-kamera før netværkscapture.</p><a class="button" href="{% url 'camera-create' %}">Tilføj kamera</a></div>{% endif %}
 </section>
 {% endblock %}

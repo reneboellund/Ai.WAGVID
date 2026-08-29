@@ -1,0 +1,29 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://github.com/reneboellund/Ai.WAGVID/schemas/apparatus-benchmark-report-v1.schema.json",
+  "title":"Ai.WAGVID apparatus benchmark report v1",
+  "type":"object",
+  "additionalProperties":false,
+  "required":["schema","benchmark_id","apparatus","run_state","model_bundle_digest","rulepack_digest","benchmark_manifest_sha256","validation_dataset_manifest_sha256","split_manifest_sha256","rights_ref","hardware_runtime_manifest_sha256","required_slice_ids","executed_at","benchmark_digest","slices"],
+  "properties":{
+    "schema":{"const":"ai.wagvid.apparatus-benchmark-report.v1"},
+    "benchmark_id":{"type":"string","minLength":1},
+    "apparatus":{"enum":["VT","UB","BB","FX"]},
+    "run_state":{"enum":["planned","executed","invalid"]},
+    "model_bundle_digest":{"$ref":"#/$defs/sha"},
+    "rulepack_digest":{"$ref":"#/$defs/sha"},
+    "benchmark_manifest_sha256":{"$ref":"#/$defs/sha"},
+    "validation_dataset_manifest_sha256":{"$ref":"#/$defs/sha"},
+    "split_manifest_sha256":{"$ref":"#/$defs/sha"},
+    "rights_ref":{"type":"string","minLength":1},
+    "hardware_runtime_manifest_sha256":{"$ref":"#/$defs/sha"},
+    "required_slice_ids":{"type":"array","uniqueItems":true,"items":{"type":"string","minLength":1}},
+    "executed_at":{"type":["string","null"],"format":"date-time"},
+    "benchmark_digest":{"$ref":"#/$defs/sha"},
+    "slices":{"type":"array","items":{"$ref":"#/$defs/slice"}}
+  },
+  "$defs":{
+    "sha":{"type":"string","pattern":"^[a-f0-9]{64}$"},
+    "slice":{"type":"object","additionalProperties":false,"required":["slice_id","dimensions","metrics","status","sample_count","failure_reason"],"properties":{"slice_id":{"type":"string","minLength":1},"dimensions":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["name","value"],"properties":{"name":{"type":"string","minLength":1},"value":{"type":"string","minLength":1}}}},"metrics":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["metric_id","value_milli","threshold_milli","higher_is_better","passes"],"properties":{"metric_id":{"type":"string","minLength":1},"value_milli":{"type":"integer"},"threshold_milli":{"type":"integer"},"higher_is_better":{"type":"boolean"},"passes":{"type":"boolean"}}}},"status":{"enum":["pass","fail","unsupported"]},"sample_count":{"type":"integer","minimum":0},"failure_reason":{"type":["string","null"]}}}
+  }
+}

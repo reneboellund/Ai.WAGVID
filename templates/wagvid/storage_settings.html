@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Object storage · {{ organization.name }}</h1>
+<p>Administrér Wasabi, AWS S3, NetApp ONTAP S3, VAST Data og valideret Object First Ootbi gennem samme sikre storagekontrakt. Credentials gemmes kun som secret-referencer.</p>
+<section class="card">
+  <h2>Forbindelser</h2><p><a href="{% url 'storage-settings' %}?new=1">Tilføj storage-provider</a></p>
+  <table><tr><th>Navn</th><th>Provider</th><th>Drift</th><th>Support</th><th>Endpoint</th></tr>
+  {% for item in connections %}<tr><td><a href="{% url 'storage-settings' %}?connection={{ item.id }}">{{ item.name }}</a></td><td>{{ item.get_provider_display }}</td><td>{{ item.get_status_display }}</td><td>{{ item.get_support_state_display }}</td><td>{{ item.endpoint }}</td></tr>
+  {% empty %}<tr><td colspan="5">Ingen storage-provider er konfigureret.</td></tr>{% endfor %}</table>
+</section>
+<section class="card"><h2>Provider pr. datarolle</h2><table><tr><th>Rolle</th><th>Aktiv provider</th></tr>{% for assignment in assignments %}<tr><td>{{ assignment.role }}</td><td>{{ assignment.connection.name }} ({{ assignment.connection.get_provider_display }})</td></tr>{% empty %}<tr><td colspan="2">Ingen roller er tildelt endnu.</td></tr>{% endfor %}</table><form method="post">{% csrf_token %}<input type="hidden" name="action" value="assign-role">{{ assignment_form.as_p }}<button>Tildel rolle</button></form></section>
+<div class="cards">
+  <section class="card"><h2>Status</h2><p>{% if connection %}{{ connection.get_provider_display }} · {{ connection.get_status_display }} · {{ connection.region }}{% else %}Ny forbindelse{% endif %}</p>{% if connection %}<p>Plan: <code>{{ connection.desired_plan_digest }}</code></p><p>Seneste preflight: {{ connection.last_preflight_at|default:"aldrig" }}</p>{% endif %}</section>
+  <section class="card"><h2>Aktiv storage</h2><p>{{ cost.active_bytes }} bytes · {{ cost.object_count }} objekter</p></section>
+  <section class="card"><h2>Afventer sletning</h2><p>{{ cost.pending_delete_bytes }} bytes</p></section>
+  <section class="card"><h2>Tidlig sletning</h2><p>{{ cost.early_delete_exposure_gb_days }} GB-dage eksponering</p></section>
+</div>
+<section class="card"><h2>Forbindelse og dry-run layout</h2><form method="post">{% csrf_token %}{% if connection %}<input type="hidden" name="connection_id" value="{{ connection.id }}">{% endif %}{{ form.as_p }}<button class="primary">Gem og beregn plan</button></form></section>
+{% if connection %}<section class="card"><h2>Kontrollerede handlinger</h2>
+  <form method="post">{% csrf_token %}<input type="hidden" name="connection_id" value="{{ connection.id }}"><input type="hidden" name="action" value="preflight"><button class="primary">Kør read-only capability-preflight</button></form>
+  {% if connection.provisioning_enabled %}<form method="post"><h3>Opret planlagte private buckets</h3><p>En ny preflight køres først. Skriv <code>CREATE PRIVATE STORAGE BUCKETS</code> for at godkende den eksakte plan.</p>{% csrf_token %}<input type="hidden" name="connection_id" value="{{ connection.id }}"><input type="hidden" name="action" value="apply"><input name="confirmation" required autocomplete="off" placeholder="Godkendelsesfrase"><button>Opret/konfigurer buckets</button></form>{% endif %}
+  <form method="post">{% csrf_token %}<input type="hidden" name="connection_id" value="{{ connection.id }}"><input type="hidden" name="action" value="disconnect"><input name="reason" required placeholder="Årsag til afbrydelse"><button>Afbryd uden at slette data</button></form>
+  {% if connection.last_preflight %}<details><summary>Sanitiseret preflight-resultat</summary><pre>{{ connection.last_preflight }}</pre></details>{% endif %}
+</section>{% endif %}
+{% if plan %}<section class="card"><h2>Bucket-plan</h2><p>Provider: {{ plan.provider_id }} · Endpoint: {{ plan.endpoint }} · minimum {{ plan.cost_policy.minimum_storage_days }} dage · provisioning: {{ plan.provisioning_enabled }}</p><table><tr><th>Rolle</th><th>Bucket</th><th>Shard</th><th>Versionering</th><th>Object lock</th><th>Status</th></tr>{% for bucket in buckets %}<tr><td>{{ bucket.role }}</td><td>{{ bucket.bucket_name }}</td><td>{{ bucket.shard }}</td><td>{{ bucket.versioning }}</td><td>{{ bucket.object_lock }}</td><td>{{ bucket.get_state_display }}</td></tr>{% endfor %}</table><h3>Sikkerhed/advarsler</h3><ul>{% for warning in plan.warnings %}<li>{{ warning }}</li>{% empty %}<li>Ingen provider-specifikke advarsler.</li>{% endfor %}</ul></section>{% endif %}
+{% endblock %}

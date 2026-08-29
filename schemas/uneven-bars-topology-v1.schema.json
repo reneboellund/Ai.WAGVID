@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/reneboellund/Ai.WAGVID/schemas/uneven-bars-topology-v1.schema.json",
+  "title": "Ai.WAGVID uneven-bars topology v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "analysis_id", "routine_id", "apparatus", "source_media_sha256", "geometry_digest", "model_bundle_digest", "perception_bundle_digest", "created_at", "limitations", "bundle_digest", "contacts", "events", "elements", "continuity"],
+  "properties": {
+    "schema": {"const": "ai.wagvid.uneven-bars-topology.v1"},
+    "analysis_id": {"type": "string", "minLength": 1},
+    "routine_id": {"type": "string", "minLength": 1},
+    "apparatus": {"const": "UB"},
+    "source_media_sha256": {"$ref": "#/$defs/sha"},
+    "geometry_digest": {"anyOf": [{"$ref": "#/$defs/sha"}, {"type": "null"}]},
+    "model_bundle_digest": {"$ref": "#/$defs/sha"},
+    "perception_bundle_digest": {"$ref": "#/$defs/sha"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "limitations": {"$ref": "#/$defs/strings"},
+    "bundle_digest": {"$ref": "#/$defs/sha"},
+    "contacts": {"type": "array", "items": {"$ref": "#/$defs/contact"}},
+    "events": {"type": "array", "items": {"$ref": "#/$defs/event"}},
+    "elements": {"type": "array", "items": {"$ref": "#/$defs/element"}},
+    "continuity": {"type": "array", "items": {"$ref": "#/$defs/continuity"}}
+  },
+  "$defs": {
+    "sha": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "strings": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "bar": {"enum": ["low-bar", "high-bar", "unknown"]},
+    "contact": {
+      "type": "object", "additionalProperties": false,
+      "required": ["contact_id", "start_ms", "end_ms", "state", "bar", "confidence_milli", "geometry_digest", "limitations", "evidence_digests", "contact_digest"],
+      "properties": {
+        "contact_id": {"type": "string", "minLength": 1},
+        "start_ms": {"type": "integer", "minimum": 0},
+        "end_ms": {"type": "integer", "minimum": 1},
+        "state": {"enum": ["hang", "support", "released", "flight", "regrasp", "fall-or-interruption", "unknown"]},
+        "bar": {"$ref": "#/$defs/bar"},
+        "confidence_milli": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "geometry_digest": {"anyOf": [{"$ref": "#/$defs/sha"}, {"type": "null"}]},
+        "limitations": {"$ref": "#/$defs/strings"},
+        "evidence_digests": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/sha"}},
+        "contact_digest": {"$ref": "#/$defs/sha"}
+      }
+    },
+    "event": {
+      "type": "object", "additionalProperties": false,
+      "required": ["event_id", "kind", "at_ms", "from_bar", "to_bar", "confidence_milli", "geometry_digest", "limitations", "evidence_digests", "event_digest"],
+      "properties": {
+        "event_id": {"type": "string", "minLength": 1},
+        "kind": {"enum": ["contact-start", "contact-end", "release", "regrasp", "bar-change", "handstand-region", "turn-progress", "fall-or-interruption"]},
+        "at_ms": {"type": "integer", "minimum": 0},
+        "from_bar": {"$ref": "#/$defs/bar"},
+        "to_bar": {"$ref": "#/$defs/bar"},
+        "confidence_milli": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "geometry_digest": {"anyOf": [{"$ref": "#/$defs/sha"}, {"type": "null"}]},
+        "limitations": {"$ref": "#/$defs/strings"},
+        "evidence_digests": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/sha"}},
+        "event_digest": {"$ref": "#/$defs/sha"}
+      }
+    },
+    "element": {
+      "type": "object", "additionalProperties": false,
+      "required": ["segment_id", "temporal_candidate_digest", "start_ms", "end_ms", "family", "element_id", "accepted"],
+      "properties": {
+        "segment_id": {"type": "string", "minLength": 1},
+        "temporal_candidate_digest": {"$ref": "#/$defs/sha"},
+        "start_ms": {"type": "integer", "minimum": 0},
+        "end_ms": {"type": "integer", "minimum": 1},
+        "family": {"type": ["string", "null"]},
+        "element_id": {"type": ["string", "null"]},
+        "accepted": {"type": "boolean"}
+      }
+    },
+    "continuity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["continuity_id", "first_segment_id", "second_segment_id", "gap_ms", "evidence_event_ids", "state", "confidence_milli"],
+      "properties": {
+        "continuity_id": {"type": "string", "minLength": 1},
+        "first_segment_id": {"type": "string", "minLength": 1},
+        "second_segment_id": {"type": "string", "minLength": 1},
+        "gap_ms": {"type": "integer", "minimum": 0},
+        "evidence_event_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "state": {"enum": ["continuous", "interrupted", "unresolved"]},
+        "confidence_milli": {"type": "integer", "minimum": 0, "maximum": 1000}
+      }
+    }
+  }
+}

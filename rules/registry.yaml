@@ -2,7 +2,7 @@ schema_version: 1.0.0
 registry_version: 0.1.0
 discipline: WAG
 cycle: 2025-2028
-last_checked_at: "2026-08-16"
+last_checked_at: "2026-08-29"
 sources:
   - id: wag-cop-2025-2028-2026-03
     title: WAG Code of Points 2025-2028
@@ -14,13 +14,13 @@ sources:
     publication_date: "2026-03-13"
     effective_from: "2025-01-01"
     effective_until: null
-    status: current
+    status: superseded
     interpretation_status: unreviewed
     supersedes: []
-    superseded_by: null
+    superseded_by: wag-cop-2025-2028-2026-08
     retention: metadata-only
     content_sha256: null
-    notes: Registry metadata must be rechecked when World Gymnastics republishes the file.
+    notes: Historical March 2026 listing. The same official URL was republished on 2026-08-27; historical metadata is retained.
     review: null
     locators:
       convention: mixed
@@ -39,10 +39,10 @@ sources:
     status: discovered
     interpretation_status: unreviewed
     supersedes: []
-    superseded_by: null
+    superseded_by: wag-cop-appendix-2025-2028-2026-05
     retention: metadata-only
     content_sha256: null
-    notes: Replace landing-page URL with the verified direct WAG appendix URL during source review.
+    notes: Historical discovery record with superseded landing-page metadata; retained for audit.
     review: null
     locators:
       convention: mixed
@@ -63,7 +63,7 @@ sources:
     supersedes: []
     superseded_by: null
     retention: metadata-only
-    content_sha256: null
+    content_sha256: 1ca584ac9b9977bcd91058bb7d84a80821987c5de121cb9c61f81361c1bd7f15
     notes: Clean edition; mark-up edition may be registered separately for change review.
     review: null
     locators:
@@ -83,11 +83,80 @@ sources:
     status: discovered
     interpretation_status: unreviewed
     supersedes: []
-    superseded_by: null
+    superseded_by: wag-help-desk-cycle-16-edition-2-2026-08
     retention: metadata-only
     content_sha256: null
-    notes: Publication is listed by World Gymnastics; direct file URL awaits independent verification.
+    notes: Historical April/May discovery metadata superseded by the official August 2026 second edition.
     review: null
     locators:
       convention: mixed
       example: "apparatus:UB/page:18/topic:handstand"
+
+  - id: wag-cop-2025-2028-2026-08
+    title: WAG Code of Points 2025-2028
+    publisher: World Gymnastics
+    discipline: WAG
+    cycle: 2025-2028
+    language: en
+    source_url: https://www.gymnastics.sport/publicdir/rules/files/en_1.1%20-%20WAG%20COP%202025-2028.pdf
+    publication_date: "2026-08-27"
+    effective_from: "2026-08-27"
+    effective_until: null
+    status: current
+    interpretation_status: unreviewed
+    supersedes:
+      - wag-cop-2025-2028-2026-03
+    superseded_by: null
+    retention: metadata-only
+    content_sha256: cd04978ed860ebb08bf7eb10fee3acb3ba5c52fb94e906fc61ecbcd13129878f
+    notes: Direct official PDF fetched and hashed in memory on 2026-08-29; document bytes are not redistributed.
+    review: null
+    locators:
+      convention: mixed
+      example: "section:8.3/page:44/table:CR"
+
+  - id: wag-cop-appendix-2025-2028-2026-05
+    title: Appendix to the Code of Points 2025-2028, Version 3.0
+    publisher: World Gymnastics
+    discipline: WAG
+    cycle: 2025-2028
+    language: en
+    source_url: https://www.gymnastics.sport/publicdir/rules/files/en_1.2%20-%20Appendix%20to%20the%20Code%20of%20Points%202025-2028.pdf
+    publication_date: "2026-05-25"
+    effective_from: "2026-05-25"
+    effective_until: null
+    status: current
+    interpretation_status: unreviewed
+    supersedes:
+      - wag-cop-appendix-2025-2028-2026-03
+    superseded_by: null
+    retention: metadata-only
+    content_sha256: 6efb8e91e04d327db043b388945150af7db0952a10b6b8b01b1f85055cd9ee35
+    notes: Direct document identifies Version 3.0, May 2026; fetched and hashed in memory on 2026-08-29.
+    review: null
+    locators:
+      convention: mixed
+      example: "page:14/topic:scoring-assistance-system"
+
+  - id: wag-help-desk-cycle-16-edition-2-2026-08
+    title: WAG Help Desk, 2nd Edition, 16th cycle, August 2026
+    publisher: World Gymnastics
+    discipline: WAG
+    cycle: 2025-2028
+    language: en
+    source_url: https://www.gymnastics.sport/publicdir/rules/files/en_WAG%20Help%20Desk%202%C2%BA%20Edition%2016%20th%20cycle%20%E2%80%93%20August%202026.pdf
+    publication_date: "2026-08-10"
+    effective_from: "2026-08-10"
+    effective_until: null
+    status: current
+    interpretation_status: unreviewed
+    supersedes:
+      - wag-help-desk-cycle-16-edition-2-2026-04
+    superseded_by: null
+    retention: metadata-only
+    content_sha256: c45304f8423eef9f21fb95586e24d4ce53a3a6afa26c3e4830847624f9765b06
+    notes: Direct official PDF fetched and hashed in memory on 2026-08-29; qualified interpretation review remains pending.
+    review: null
+    locators:
+      convention: mixed
+      example: "apparatus:UB/topic:handstand"

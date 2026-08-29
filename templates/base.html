@@ -61,6 +61,7 @@
         <span><small>Aktivt workspace</small><strong>{{ organization.name|default:"WAGVID Lab" }}</strong></span>
         <svg class="icon"><use href="#i-chevron"/></svg>
       </div>
+      <a class="text-button" href="{% url 'organization-select' %}">Skift workspace</a>
 
       <nav class="primary-nav" aria-label="Primær navigation">
         <p class="nav-label">Workspace</p>
@@ -69,10 +70,16 @@
         <a href="{% url 'gymnasts' %}" {% if request.resolver_match.url_name == 'gymnasts' or request.resolver_match.url_name == 'gymnast-create' %}class="active" aria-current="page"{% endif %}><svg><use href="#i-users"/></svg><span>Gymnaster</span></a>
         <a href="{% url 'devices' %}" {% if request.resolver_match.url_name == 'devices' %}class="active" aria-current="page"{% endif %}><svg><use href="#i-device"/></svg><span>Enheder</span></a>
         <a href="{% url 'analyses' %}" {% if request.resolver_match.url_name == 'analyses' %}class="active" aria-current="page"{% endif %}><svg><use href="#i-analysis"/></svg><span>Analyser</span>{% if status.review_backlog %}<em>{{ status.review_backlog }}</em>{% endif %}</a>
+        <a href="{% url 'review-inbox' %}" {% if request.resolver_match.url_name == 'review-inbox' %}class="active" aria-current="page"{% endif %}><svg><use href="#i-check"/></svg><span>Review-kø</span></a>
+        <a href="{% url 'reports' %}" {% if request.resolver_match.url_name == 'reports' or request.resolver_match.url_name == 'report-detail' %}class="active" aria-current="page"{% endif %}><svg><use href="#i-analysis"/></svg><span>Rapporter</span></a>
         <p class="nav-label nav-label-spaced">Data & drift</p>
         <a href="{% url 'exchange' %}" {% if request.resolver_match.url_name == 'exchange' %}class="active" aria-current="page"{% endif %}><svg><use href="#i-exchange"/></svg><span>Import/eksport</span></a>
         <a href="{% url 'system-status' %}" {% if request.resolver_match.url_name == 'system-status' %}class="active" aria-current="page"{% endif %}><svg><use href="#i-health"/></svg><span>Systemstatus</span><i class="status-dot status-dot-good" title="System online"></i></a>
-        {% if user.is_staff %}<a href="/admin/maintenance/"><svg><use href="#i-settings"/></svg><span>Administration</span></a>{% endif %}
+        <a href="{% url 'storage-settings' %}"><svg><use href="#i-cloud"/></svg><span>Storage</span></a>
+        <a href="{% url 'system-backups' %}"><svg><use href="#i-database"/></svg><span>Backup</span></a>
+        <a href="{% url 'system-updates' %}"><svg><use href="#i-settings"/></svg><span>Opdatering</span></a>
+        <a href="{% url 'governance-admin' %}"><svg><use href="#i-shield"/></svg><span>Governance</span></a>
+        {% if user.is_staff %}<a href="/admin/"><svg><use href="#i-settings"/></svg><span>Administration</span></a>{% endif %}
       </nav>
 
       <div class="sidebar-foot">

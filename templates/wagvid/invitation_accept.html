@@ -1,0 +1,41 @@
+{% load static %}
+<!doctype html>
+<html lang="da">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#06100f"><title>Invitation · Ai.WAGVID</title><link rel="stylesheet" href="{% static 'wagvid/app.css' %}"></head>
+<body class="login-page">
+  <div class="login-ambient" aria-hidden="true"><span></span><span></span></div>
+  <main class="login-shell">
+    <section class="login-story">
+      <a class="brand" href="/"><span class="brand-mark"><span></span><span></span><span></span></span><span class="brand-copy"><strong>Ai.WAGVID</strong><small>Vision intelligence</small></span></a>
+      <div class="login-copy"><p class="eyebrow">Organisation & adgang</p><h1>Du er inviteret til<br><span class="text-gradient">{{ invitation.organization.name }}</span></h1><p>Invitationen er bundet til {{ invitation.email }} og rollen {{ invitation.get_role_display }}.</p></div>
+      <div class="login-signal"><i></i><span><strong>Single-use adgang</strong><small>Udløber {{ invitation.expires_at|date:"d.m.Y H:i" }}</small></span></div>
+    </section>
+    <section class="surface login-card">
+      <header><span class="workspace-avatar">W</span><div><p class="eyebrow">Invitation</p>
+        {% if not state.pending %}<h2>Invitationen kan ikke længere bruges</h2>
+        {% elif user.is_authenticated %}<h2>Bekræft medlemskab</h2>
+        {% elif existing_account %}<h2>Log ind for at acceptere</h2>
+        {% else %}<h2>Opret din Ai.WAGVID-konto</h2>{% endif %}
+      </div></header>
+
+      {% if not state.pending %}
+        <div class="login-error">Invitationens status er {{ state.reason }}. Bed en administrator om en ny invitation, hvis du stadig skal have adgang.</div>
+      {% elif user.is_authenticated %}
+        <p>Du er logget ind som <strong>{{ user.get_username }}</strong>. Invitationen kan kun accepteres, hvis kontoens e-mail er {{ invitation.email }}.</p>
+        <form method="post">{% csrf_token %}<button class="button button-primary button-lg" type="submit">Acceptér invitation</button></form>
+      {% elif existing_account %}
+        <p>Der findes allerede en Ai.WAGVID-konto med invitationens e-mail. Log ind med den konto for at fortsætte.</p>
+        <a class="button button-primary button-lg" href="{{ login_url }}">Log ind og fortsæt</a>
+      {% else %}
+        <p>E-mailen <strong>{{ invitation.email }}</strong> bindes automatisk til den nye konto.</p>
+        <form method="post">{% csrf_token %}
+          {% if form.non_field_errors %}<div class="login-error">{{ form.non_field_errors }}</div>{% endif %}
+          {% for field in form %}<div class="form-field">{{ field.label_tag }}{{ field }}{{ field.errors }}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}</div>{% endfor %}
+          <button class="button button-primary button-lg" type="submit">Opret konto & acceptér</button>
+        </form>
+      {% endif %}
+      <footer>Invitationstokenet gemmes ikke i klartekst og kan kun bruges én gang.</footer>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai.wagvid.local/schemas/score-verification-report-v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "report_id", "analysis", "source", "scores", "score_ledger", "deductions", "unresolved"],
+  "properties": {
+    "schema": {"const": "ai.wagvid.score-verification-report.v1"},
+    "report_id": {"type": "string", "minLength": 1},
+    "analysis": {"type": "object", "required": ["job_id", "revision", "state", "frozen_at", "rulepack_id", "model_profile", "model_run"]},
+    "source": {"type": "object", "required": ["media_id", "sha256", "recorded_at", "camera", "quality"], "properties": {"media_id": {"type": "string"}, "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "content_type": {"type": "string"}, "size_bytes": {"type": ["integer", "null"]}, "recorded_at": {"type": "string", "format": "date-time"}, "camera": {"type": "object"}, "quality": {"type": "object"}}, "additionalProperties": false},
+    "scores": {"type": "object", "required": ["reconstructed", "official"]},
+    "score_ledger": {"type": "object"},
+    "deductions": {"type": "array", "items": {"type": "object", "required": ["id", "start_ms", "end_ms", "criterion", "rule_reference", "proposed_amount", "confidence", "evidence", "review_state", "latest_decision", "accepted_amount"]}},
+    "unresolved": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}
+  }
+}

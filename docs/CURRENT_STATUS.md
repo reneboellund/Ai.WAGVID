@@ -1,6 +1,22 @@
 # Current implementation status
 
-Date: 2026-08-17
+Integration milestone (2026-08-29): the active draft release now also contains the
+native Android active runtime, durable command receipts and segmented motion capture;
+canonical camera calibration, apparatus geometry and multi-camera synchronization;
+media processing/publication/recovery workers; stable KIGA export and notification
+contracts; evidence-first review workflow; organization workspace, membership,
+invitation and gymnast-merge administration; provider-neutral local/cloud compute
+placement; generalized S3 plus AWS, Wasabi, ONTAP, VAST and Ootbi adapters; NetApp
+management/cloud/protection controls; and full-system backup, restore, retention and
+upgrade safety primitives. These are implemented and locally tested control/data-plane
+contracts. Physical Android acceptance, real cloud credentials, destructive restore
+rehearsal and GPU/model benchmarks remain explicit external validation gates.
+
+Governance control-plane milestone: organization switching, hashed invitations, audited role changes, immutable configuration revisions, explicit dataset permissions with pseudonymous grouping, revocable evidence shares and scoped audit export are implemented locally and covered by Django tests. External identity-provider/email delivery and formal deployment threat-model review remain future integration work.
+
+Reporting milestone: frozen score-verification/discrepancy primitives, evidence-backed performance patterns and coach priorities, longitudinal trends, and identity-minimized competition batching are integrated. Django now persists immutable report artifacts and leakage-safe event batch plans, exposes organization-scoped UI/JSON exports, and generates score-verification reports only from frozen AI results. Empirical model output and qualified judge/coach validation remain separate release gates.
+
+Date: 2026-08-29
 
 This file is the compact implementation-status source of truth for the active development baseline. Detailed product intent remains in the roadmap and issue tracker; this file records what is actually present in `main` versus what still requires implementation or empirical validation.
 

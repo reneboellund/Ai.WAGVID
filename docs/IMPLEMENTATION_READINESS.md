@@ -24,6 +24,14 @@ See `docs/CURRENT_STATUS.md` for the compact source-of-truth implementation summ
 - native Android Kotlin/Compose/CameraX/Room/WorkManager project foundation plus backend pairing, heartbeat and command contracts;
 - Wasabi layout/cost/reconciliation/provider foundation behind the storage abstraction;
 - Python 3.11/3.13 repository validation covering Ruff, pytest, source registry and rule-pack manifest.
+- provider-neutral S3 capability/governance framework with AWS, ONTAP, VAST and conditional Ootbi profiles;
+- checksum-first S3/Wasabi data plane, cost/retention ledger, legal hold and soft-delete quarantine;
+- system backup manifests, checksum verification, restore preflight and upgrade maintenance controls.
+- multi-organization workspace selection, hashed single-use invitations, expanded domain roles and audited role administration;
+- immutable configuration revisions, explicit dataset rights/pseudonymous groups, revocable evidence sharing and scoped audit export.
+- frozen score-verification and discrepancy-adjudication core with immutable Django report artifacts and JSON export;
+- evidence-backed performance patterns/priorities, longitudinal trend contracts and schema-validated coach-report publishing;
+- identity-minimized competition batch planning with official results withheld from worker payloads until AI freeze.
 
 ## Must still be completed before an internal alpha
 
@@ -33,11 +41,13 @@ See `docs/CURRENT_STATUS.md` for the compact source-of-truth implementation summ
 - Android production UI wiring for pairing, gymnast/capture context, archive/queue/device health and command reconciliation;
 - Android SDK/Gradle plus emulator/physical-device validation, including network-loss recovery;
 - audited gymnast duplicate merge and richer import field mapping/profiles;
-- user invitations, role administration and multi-organization selector;
 - persisted canonical frame timeline/index and exact frame stepping in review;
 - full annotation authoring/revision comparison UX;
 - structured error pages, deployment security checks and rate limiting;
 - Docker/on-prem deployment plus backup/restore rehearsal.
+- opt-in real-system certification for AWS, ONTAP, VAST and Ootbi, including credential rotation and orphan multipart cleanup;
+- scheduled storage-retention/deletion runner and real storage/queue/backup probes;
+- production restore rehearsal and deployment-runner integration for the existing recovery/upgrade control plane.
 
 ## Must still be completed before research evaluation
 

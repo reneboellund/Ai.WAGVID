@@ -1,0 +1,23 @@
+schema_version: 1.0.0
+rulepack_id: FIG-WAG-2025-2028@2026-08-27+candidate.1
+discipline: WAG
+cycle: 2025-2028
+release_date: "2026-08-29"
+effective_from: "2026-08-27"
+effective_until: null
+status: draft
+interpretation_revision: 1
+supersedes: FIG-WAG-2025-2028@2026-05-04+draft.1
+superseded_by: null
+source_ids:
+  - wag-cop-2025-2028-2026-08
+  - wag-cop-appendix-2025-2028-2026-05
+  - wag-specific-judges-rules-2025-2028-2026-03
+  - wag-help-desk-cycle-16-edition-2-2026-08
+artifacts: []
+review: null
+manifest_sha256: null
+compatibility_notes: >-
+  Current official source bytes and supersession history were verified on 2026-08-29.
+  This candidate remains deliberately blocked until qualified WAG interpretation review and
+  reviewed VT/UB/BB/FX policy artifacts/test vectors are frozen. It makes no official judging claim.

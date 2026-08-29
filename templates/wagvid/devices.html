@@ -3,9 +3,9 @@
 {% block breadcrumb %}Enheder{% endblock %}
 {% block content %}
 <section class="page-head">
-  <div><p class="eyebrow">Capture network</p><h1>Android-<span class="text-gradient">enheder</span></h1><p>Pairing, forbindelse, lager, uploadkø og capture-state fra den rigtige device-backend.</p></div>
+  <div><p class="eyebrow">Capture network</p><h1>Capture-<span class="text-gradient">enheder</span></h1><p>Android-telefoner, IP-kameraer, pairing, lager, uploadkø og capture-state.</p></div>
   <div class="page-actions">
-    <button class="button" type="button" data-refresh><svg><use href="#i-activity"/></svg>Opdatér</button>
+    <a class="button" href="{% url 'cameras' %}"><svg><use href="#i-device"/></svg>IP-kameraer</a><button class="button" type="button" data-refresh><svg><use href="#i-activity"/></svg>Opdatér</button>
     {% if can_manage %}<form method="post" class="inline-form">{% csrf_token %}<button class="button button-primary" type="submit"><svg><use href="#i-plus"/></svg>Opret pairingkode</button></form>{% endif %}
   </div>
 </section>

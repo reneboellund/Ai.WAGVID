@@ -31,6 +31,8 @@ class Membership(TimestampedModel):
         OPERATOR = "operator", "Operatør"
         COACH = "coach", "Træner"
         REVIEWER = "reviewer", "Reviewer"
+        DOMAIN_REVIEWER = "domain-reviewer", "Fagkyndig reviewer"
+        ANNOTATOR = "annotator", "Annotator"
         RESEARCHER = "researcher", "Forsker"
         VIEWER = "viewer", "Læser"
 
@@ -279,6 +281,88 @@ class Device(TimestampedModel):
         return bool(self.api_token_hash) and check_password(raw_token, self.api_token_hash)
 
 
+class NetworkCamera(TimestampedModel):
+    class Provider(models.TextChoices):
+        DAHUA = "dahua", "Dahua"
+        ONVIF = "onvif", "Generisk ONVIF"
+
+    class State(models.TextChoices):
+        CONFIGURED = "configured", "Konfigureret"
+        ONLINE = "online", "Online"
+        DEGRADED = "degraded", "Begrænset"
+        OFFLINE = "offline", "Offline"
+        DISABLED = "disabled", "Deaktiveret"
+
+    class TrackingMode(models.TextChoices):
+        OFF = "off", "Fra"
+        MANUAL = "manual", "Manuel PTZ"
+        NATIVE = "native", "Kameraets auto-tracking"
+        WAGVID = "wagvid-assisted", "Ai.WAGVID-assisteret"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="network_cameras"
+    )
+    name = models.CharField(max_length=120)
+    provider = models.CharField(max_length=16, choices=Provider.choices)
+    endpoint = models.URLField(max_length=300)
+    username_secret_ref = models.CharField(max_length=200)
+    password_secret_ref = models.CharField(max_length=200)
+    tls_verify = models.BooleanField(default=True)
+    state = models.CharField(max_length=16, choices=State.choices, default=State.CONFIGURED)
+    stable_device_id = models.CharField(max_length=160, blank=True)
+    manufacturer = models.CharField(max_length=120, blank=True)
+    model = models.CharField(max_length=120, blank=True)
+    firmware = models.CharField(max_length=120, blank=True)
+    capability_snapshot = models.JSONField(default=dict)
+    capability_digest = models.CharField(max_length=64, blank=True)
+    canonical_profile_id = models.CharField(max_length=120, blank=True)
+    preview_profile_id = models.CharField(max_length=120, blank=True)
+    apparatus = models.CharField(max_length=8, choices=Routine.Apparatus.choices, blank=True)
+    preset_id = models.CharField(max_length=120, blank=True)
+    calibration_digest = models.CharField(max_length=64, blank=True)
+    calibration_valid = models.BooleanField(default=False)
+    tracking_mode = models.CharField(
+        max_length=20, choices=TrackingMode.choices, default=TrackingMode.OFF
+    )
+    ptz_owner = models.CharField(max_length=24, default="none")
+    ptz_generation = models.PositiveIntegerField(default=0)
+    last_probe_at = models.DateTimeField(null=True, blank=True)
+    last_error = models.CharField(max_length=300, blank=True)
+    enabled = models.BooleanField(default=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "name"], name="unique_network_camera_name_per_org"
+            ),
+            models.UniqueConstraint(
+                fields=["organization", "stable_device_id"],
+                condition=~models.Q(stable_device_id=""),
+                name="unique_network_camera_device_id_per_org",
+            ),
+        ]
+
+
+class NetworkCameraAction(TimestampedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="network_camera_actions"
+    )
+    camera = models.ForeignKey(NetworkCamera, on_delete=models.CASCADE, related_name="actions")
+    action = models.CharField(max_length=40)
+    payload = models.JSONField(default=dict)
+    result = models.CharField(
+        max_length=16,
+        choices=[("accepted", "Accepteret"), ("rejected", "Afvist"), ("failed", "Fejlet")],
+    )
+    message = models.CharField(max_length=300, blank=True)
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
 class DevicePairingSession(TimestampedModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     organization = models.ForeignKey(
@@ -367,6 +451,255 @@ class MediaAsset(TimestampedModel):
     recorded_at = models.DateTimeField()
 
 
+class StorageConnection(TimestampedModel):
+    class Provider(models.TextChoices):
+        WASABI = "wasabi", "Wasabi"
+        AWS_S3 = "aws-s3", "Amazon S3"
+        ONTAP_S3 = "ontap-s3", "NetApp ONTAP S3"
+        VAST_S3 = "vast-s3", "VAST Data S3"
+        OOTBI_S3 = "ootbi-s3", "Object First Ootbi"
+
+    class Status(models.TextChoices):
+        DISCONNECTED = "disconnected", "Ikke forbundet"
+        CONFIGURED = "configured", "Konfigureret"
+        VERIFIED = "verified", "Verificeret"
+        DEGRADED = "degraded", "Kræver opmærksomhed"
+
+    class PricingModel(models.TextChoices):
+        NONE = "none", "Ingen minimumsperiode"
+        PAY_GO = "pay-go", "Pay-Go (90 dage)"
+        RCS = "rcs", "Reserved Capacity (30 dage)"
+        CUSTOM = "custom", "Aftalespecifik"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="storage_connections"
+    )
+    name = models.CharField(max_length=120)
+    provider = models.CharField(max_length=20, choices=Provider.choices, default=Provider.WASABI)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.DISCONNECTED)
+    project_slug = models.SlugField(max_length=24, default="wagvid")
+    environment = models.SlugField(max_length=16, default="production")
+    region = models.CharField(max_length=40, default="eu-central-1")
+    endpoint = models.URLField(max_length=300)
+    auth_mode = models.CharField(
+        max_length=20,
+        choices=[("access-key", "Access key"), ("workload-identity", "Workload identity")],
+        default="access-key",
+    )
+    role_arn = models.CharField(max_length=300, blank=True)
+    tls_verify = models.BooleanField(default=True)
+    custom_ca_secret_ref = models.CharField(max_length=200, blank=True)
+    addressing_style = models.CharField(
+        max_length=12, choices=[("virtual", "Virtual host"), ("path", "Path style")],
+        default="virtual",
+    )
+    governance_profile = models.CharField(
+        max_length=24,
+        choices=[
+            ("standard", "Standard"),
+            ("evidence-immutable", "Immutable evidence"),
+            ("backup-target", "Backup target"),
+        ],
+        default="standard",
+    )
+    provisioning_enabled = models.BooleanField(default=False)
+    existing_bucket_map = models.JSONField(default=dict, blank=True)
+    capability_snapshot = models.JSONField(default=dict)
+    support_state = models.CharField(
+        max_length=16,
+        choices=[
+            ("unvalidated", "Ikke valideret"),
+            ("validated", "Valideret"),
+            ("limited", "Begrænset"),
+            ("incompatible", "Inkompatibel"),
+        ],
+        default="unvalidated",
+    )
+    account_fingerprint = models.CharField(max_length=16)
+    access_key_secret_ref = models.CharField(max_length=200, blank=True)
+    secret_key_secret_ref = models.CharField(max_length=200, blank=True)
+    originals_shards = models.PositiveSmallIntegerField(default=2)
+    derivatives_shards = models.PositiveSmallIntegerField(default=2)
+    include_audit_bucket = models.BooleanField(default=True)
+    enable_versioning = models.BooleanField(default=True)
+    pricing_model = models.CharField(
+        max_length=20, choices=PricingModel.choices, default=PricingModel.PAY_GO
+    )
+    minimum_storage_days = models.PositiveSmallIntegerField(default=90)
+    routing_revision = models.PositiveIntegerField(default=1)
+    desired_plan_digest = models.CharField(max_length=64, blank=True)
+    last_preflight = models.JSONField(default=dict)
+    last_preflight_at = models.DateTimeField(null=True, blank=True)
+    active = models.BooleanField(default=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "name"], name="unique_storage_connection_name_per_org"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(originals_shards__gte=1, originals_shards__lte=32),
+                name="storage_original_shards_1_32",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(derivatives_shards__gte=1, derivatives_shards__lte=32),
+                name="storage_derivative_shards_1_32",
+            ),
+        ]
+
+
+class StorageBucket(TimestampedModel):
+    class State(models.TextChoices):
+        DESIRED = "desired", "Planlagt"
+        DISCOVERED = "discovered", "Fundet"
+        READY = "ready", "Klar"
+        CONFLICT = "conflict", "Konflikt"
+        RETIRED = "retired", "Udfaset"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    connection = models.ForeignKey(
+        StorageConnection, on_delete=models.CASCADE, related_name="buckets"
+    )
+    role = models.CharField(max_length=20)
+    shard = models.PositiveSmallIntegerField(default=0)
+    bucket_name = models.CharField(max_length=63)
+    region = models.CharField(max_length=40)
+    state = models.CharField(max_length=20, choices=State.choices, default=State.DESIRED)
+    routing_revision = models.PositiveIntegerField()
+    private = models.BooleanField(default=True)
+    versioning = models.BooleanField(default=False)
+    object_lock = models.BooleanField(default=False)
+    provider_metadata = models.JSONField(default=dict)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["connection", "role", "shard", "routing_revision"],
+                name="unique_storage_bucket_route",
+            ),
+            models.UniqueConstraint(
+                fields=["connection", "bucket_name"], name="unique_bucket_name_per_connection"
+            ),
+        ]
+
+
+class StorageRoleAssignment(TimestampedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="storage_role_assignments"
+    )
+    role = models.CharField(max_length=20)
+    connection = models.ForeignKey(
+        StorageConnection, on_delete=models.PROTECT, related_name="role_assignments"
+    )
+    active = models.BooleanField(default=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "role"], name="unique_storage_provider_per_role"
+            )
+        ]
+
+
+class StoredObjectRecord(TimestampedModel):
+    class State(models.TextChoices):
+        ACTIVE = "active", "Aktiv"
+        QUARANTINED = "quarantined", "Soft-delete karantæne"
+        PENDING_DELETE = "pending-delete", "Afventer fysisk sletning"
+        DELETED = "deleted", "Fysisk slettet"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.PROTECT, related_name="stored_objects"
+    )
+    connection = models.ForeignKey(
+        StorageConnection, on_delete=models.PROTECT, related_name="stored_object_records"
+    )
+    bucket = models.ForeignKey(
+        StorageBucket, on_delete=models.PROTECT, related_name="stored_object_records"
+    )
+    object_key = models.CharField(max_length=700)
+    version_id = models.CharField(max_length=240, blank=True)
+    role = models.CharField(max_length=20)
+    content_sha256 = models.CharField(max_length=64)
+    size_bytes = models.BigIntegerField(validators=[MinValueValidator(0)])
+    uploaded_at = models.DateTimeField()
+    billable_until = models.DateTimeField()
+    retention_until = models.DateTimeField(null=True, blank=True)
+    legal_hold = models.BooleanField(default=False)
+    state = models.CharField(max_length=20, choices=State.choices, default=State.ACTIVE)
+    delete_requested_at = models.DateTimeField(null=True, blank=True)
+    physical_delete_after = models.DateTimeField(null=True, blank=True)
+    deletion_reason = models.TextField(blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["connection", "bucket", "object_key", "version_id"],
+                name="unique_stored_object_version",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(billable_until__gte=models.F("uploaded_at")),
+                name="stored_object_billable_after_upload",
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=["organization", "state"], name="wagvid_app__organiz_663a0c_idx"
+            ),
+            models.Index(
+                fields=["billable_until", "state"], name="wagvid_app__billabl_bba1bb_idx"
+            ),
+        ]
+
+
+class StorageTransfer(TimestampedModel):
+    class State(models.TextChoices):
+        PLANNED = "planned", "Planlagt"
+        COPYING = "copying", "Kopierer"
+        VERIFYING = "verifying", "Verificerer"
+        COMPLETED = "completed", "Færdig"
+        FAILED = "failed", "Fejlet"
+        CANCELLED = "cancelled", "Annulleret"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.PROTECT, related_name="storage_transfers"
+    )
+    source_object = models.ForeignKey(
+        StoredObjectRecord, on_delete=models.PROTECT, related_name="outgoing_transfers"
+    )
+    target_connection = models.ForeignKey(
+        StorageConnection, on_delete=models.PROTECT, related_name="incoming_transfers"
+    )
+    target_bucket = models.ForeignKey(
+        StorageBucket, on_delete=models.PROTECT, related_name="incoming_transfers"
+    )
+    target_key = models.CharField(max_length=700)
+    target_version_id = models.CharField(max_length=240, blank=True)
+    expected_sha256 = models.CharField(max_length=64)
+    expected_size_bytes = models.BigIntegerField(validators=[MinValueValidator(0)])
+    bytes_copied = models.BigIntegerField(default=0, validators=[MinValueValidator(0)])
+    state = models.CharField(max_length=16, choices=State.choices, default=State.PLANNED)
+    client_request_id = models.CharField(max_length=160)
+    delete_source_approved = models.BooleanField(default=False)
+    error_code = models.CharField(max_length=80, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "client_request_id"],
+                name="unique_storage_transfer_request_per_org",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(bytes_copied__lte=models.F("expected_size_bytes")),
+                name="storage_transfer_progress_not_above_size",
+            ),
+        ]
+
+
 class AnalysisJob(TimestampedModel):
     class State(models.TextChoices):
         DRAFT = "draft", "Kladde"
@@ -403,6 +736,15 @@ class AnalysisJob(TimestampedModel):
     )
     lease_expires_at = models.DateTimeField(null=True, blank=True, db_index=True)
     attempts = models.PositiveIntegerField(default=0)
+    review_reason = models.CharField(max_length=80, blank=True)
+    review_assignee = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="assigned_wagvid_reviews",
+    )
+    review_priority = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
         constraints = [
@@ -561,6 +903,38 @@ class ScoreComparisonReview(models.Model):
         raise ValueError("Score comparison reviews are append-only")
 
 
+class KigaNotification(TimestampedModel):
+    class State(models.TextChoices):
+        PENDING = "pending", "Afventer levering"
+        DELIVERED = "delivered", "Leveret"
+        FAILED = "failed", "Fejlet"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="kiga_notifications"
+    )
+    event = models.ForeignKey(Event, on_delete=models.PROTECT, related_name="kiga_notifications")
+    destination_ref = models.CharField(max_length=240)
+    event_type = models.CharField(max_length=80, default="analysis.batch-ready")
+    idempotency_key = models.CharField(max_length=160)
+    export_digest = models.CharField(max_length=64)
+    payload = models.JSONField(default=dict)
+    state = models.CharField(max_length=16, choices=State.choices, default=State.PENDING)
+    attempts = models.PositiveIntegerField(default=0)
+    last_error = models.CharField(max_length=300, blank=True)
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "idempotency_key"],
+                name="unique_kiga_notification_idempotency_per_org",
+            )
+        ]
+        ordering = ["-created_at"]
+
+
 class ExchangeJob(TimestampedModel):
     class Direction(models.TextChoices):
         IMPORT = "import", "Import"
@@ -703,3 +1077,287 @@ class SystemAlert(TimestampedModel):
 
     class Meta:
         indexes = [models.Index(fields=["active", "severity"])]
+
+
+class SystemBackup(TimestampedModel):
+    class State(models.TextChoices):
+        CREATED = "created", "Oprettet"
+        VERIFYING = "verifying", "Verificerer"
+        VERIFIED = "verified", "Verificeret"
+        FAILED = "failed", "Fejlet"
+        EXPIRED = "expired", "Udløbet"
+
+    class Purpose(models.TextChoices):
+        MANUAL = "manual", "Manuel"
+        SCHEDULED = "scheduled", "Planlagt"
+        PRE_UPGRADE = "pre-upgrade", "Før opgradering"
+        PRE_MIGRATION = "pre-migration", "Før migrering"
+        PRE_DESTRUCTIVE = "pre-destructive", "Før destruktiv handling"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    state = models.CharField(max_length=16, choices=State.choices, default=State.CREATED)
+    purpose = models.CharField(max_length=24, choices=Purpose.choices)
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    destination = models.CharField(max_length=300)
+    retention_class = models.CharField(max_length=40, default="daily")
+    application_release = models.CharField(max_length=80)
+    git_sha = models.CharField(max_length=64)
+    migration_heads = models.JSONField(default=list)
+    manifest = models.JSONField(default=dict)
+    manifest_sha256 = models.CharField(max_length=64, blank=True)
+    verification = models.JSONField(default=dict)
+    verified_at = models.DateTimeField(null=True, blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+
+
+class MaintenanceState(TimestampedModel):
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
+    active = models.BooleanField(default=False)
+    read_only = models.BooleanField(default=True)
+    reason = models.CharField(max_length=300, blank=True)
+    entered_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True
+    )
+    entered_at = models.DateTimeField(null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        return super().save(*args, **kwargs)
+
+
+class UpgradeJournal(TimestampedModel):
+    class State(models.TextChoices):
+        PLANNED = "planned", "Planlagt"
+        BLOCKED = "blocked", "Blokeret"
+        APPROVED = "approved", "Godkendt"
+        RUNNING = "running", "Kører"
+        VERIFYING = "verifying", "Verificerer"
+        COMPLETED = "completed", "Færdig"
+        FAILED = "failed", "Fejlet"
+        ROLLBACK_STAGED = "rollback-staged", "Rollback klargjort"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    initiated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    source_release = models.CharField(max_length=80)
+    target_release = models.CharField(max_length=80)
+    target_manifest = models.JSONField(default=dict)
+    backup = models.ForeignKey(
+        SystemBackup, on_delete=models.PROTECT, null=True, blank=True, related_name="upgrades"
+    )
+    state = models.CharField(max_length=24, choices=State.choices, default=State.PLANNED)
+    preflight = models.JSONField(default=dict)
+    migrations_planned = models.JSONField(default=list)
+    config_migrations = models.JSONField(default=list)
+    verification = models.JSONField(default=dict)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    failure_code = models.CharField(max_length=100, blank=True)
+
+
+class OrganizationInvitation(TimestampedModel):
+    class State(models.TextChoices):
+        PENDING = "pending", "Afventer"
+        ACCEPTED = "accepted", "Accepteret"
+        REVOKED = "revoked", "Tilbagekaldt"
+        EXPIRED = "expired", "Udløbet"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="invitations")
+    email = models.EmailField()
+    role = models.CharField(max_length=32, choices=Membership.Role.choices)
+    token_hash = models.CharField(max_length=64, unique=True)
+    state = models.CharField(max_length=16, choices=State.choices, default=State.PENDING)
+    invited_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="sent_wagvid_invitations")
+    expires_at = models.DateTimeField(db_index=True)
+    accepted_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name="accepted_wagvid_invitations")
+    accepted_at = models.DateTimeField(null=True, blank=True)
+
+
+class ConfigurationRevision(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.PROTECT, related_name="configuration_revisions")
+    namespace = models.CharField(max_length=100)
+    revision = models.PositiveIntegerField()
+    state = models.CharField(max_length=16, choices=[("draft", "Kladde"), ("frozen", "Frosset"), ("superseded", "Erstattet")], default="draft")
+    values = models.JSONField(default=dict)
+    digest = models.CharField(max_length=64)
+    reason = models.TextField()
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    created_at = models.DateTimeField(auto_now_add=True)
+    frozen_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["organization", "namespace", "revision"], name="unique_configuration_revision")]
+        ordering = ["namespace", "-revision"]
+
+    def save(self, *args, **kwargs):
+        if self.pk and ConfigurationRevision.objects.filter(pk=self.pk, state="frozen").exists():
+            raise ValueError("Frozen configuration revisions are immutable")
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("Configuration revisions are append-only")
+
+
+class DatasetGovernanceRecord(TimestampedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="dataset_governance_records")
+    source_reference = models.CharField(max_length=500)
+    immutable_digest = models.CharField(max_length=64)
+    rights_reference = models.CharField(max_length=500)
+    consent_reference = models.CharField(max_length=500, blank=True)
+    analysis_allowed = models.BooleanField(default=False)
+    retention_allowed = models.BooleanField(default=False)
+    training_allowed = models.BooleanField(default=False)
+    export_allowed = models.BooleanField(default=False)
+    pseudonymous_athlete_key = models.CharField(max_length=64)
+    pseudonymous_event_key = models.CharField(max_length=64)
+    split_manifest_digest = models.CharField(max_length=64, blank=True)
+    label_provenance = models.JSONField(default=dict)
+    approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["organization", "immutable_digest"], name="unique_dataset_digest_per_org")]
+
+    def save(self, *args, **kwargs):
+        if self.pk and DatasetGovernanceRecord.objects.filter(pk=self.pk).exists():
+            raise ValueError("Dataset governance records are append-only")
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("Dataset governance records are append-only")
+
+
+class EvidenceShareGrant(TimestampedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="evidence_share_grants")
+    media = models.ForeignKey(MediaAsset, on_delete=models.PROTECT, related_name="share_grants")
+    recipient = models.CharField(max_length=320)
+    actions = models.JSONField(default=list)
+    token_hash = models.CharField(max_length=64, unique=True)
+    expires_at = models.DateTimeField(db_index=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="created_evidence_grants")
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    revoked_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name="revoked_evidence_grants")
+    revoke_reason = models.TextField(blank=True)
+
+
+class AnalysisDeliverable(models.Model):
+    class Kind(models.TextChoices):
+        SCORE_VERIFICATION = "score-verification", "Scoreverifikation"
+        PERFORMANCE = "performance", "Performance"
+        LONGITUDINAL = "longitudinal", "Longitudinal"
+        EVENT_SUMMARY = "event-summary", "Konkurrencesammendrag"
+        TEMPORAL_RECOGNITION = "temporal-recognition", "Tidslig genkendelse"
+        DSCORE_LEDGER = "dscore-ledger", "D-score-ledger"
+        DEDUCTION_LEDGER = "deduction-ledger", "Fradragsledger"
+        APPARATUS_ANALYSIS = "apparatus-analysis", "Apparatusanalyse"
+        VALIDATION_MANIFEST = "validation-manifest", "Valideringsmanifest"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.PROTECT, related_name="analysis_deliverables")
+    kind = models.CharField(max_length=24, choices=Kind.choices)
+    schema_id = models.CharField(max_length=120)
+    analysis_job = models.ForeignKey(AnalysisJob, on_delete=models.PROTECT, null=True, blank=True, related_name="deliverables")
+    gymnast = models.ForeignKey(Gymnast, on_delete=models.PROTECT, null=True, blank=True, related_name="deliverables")
+    event = models.ForeignKey(Event, on_delete=models.PROTECT, null=True, blank=True, related_name="deliverables")
+    revision = models.PositiveIntegerField(default=1)
+    payload = models.JSONField(default=dict)
+    payload_digest = models.CharField(max_length=64)
+    provenance = models.JSONField(default=dict)
+    generated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    generated_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["analysis_job", "kind", "revision"], condition=models.Q(analysis_job__isnull=False), name="unique_job_deliverable_revision")
+        ]
+        ordering = ["-generated_at"]
+
+    def save(self, *args, **kwargs):
+        if self.pk and AnalysisDeliverable.objects.filter(pk=self.pk).exists():
+            raise ValueError("Analysis deliverables are immutable")
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("Analysis deliverables are immutable")
+
+
+class EvidenceAnnotationRevision(models.Model):
+    class Kind(models.TextChoices):
+        ROUTINE = "routine", "Routine"
+        PHASE = "phase", "Fase"
+        ELEMENT = "element", "Element"
+        CONTACT = "contact", "Kontakt"
+        LANDING = "landing", "Landing"
+        DEDUCTION = "deduction", "Fradrag"
+        COMMENT = "comment", "Kommentar"
+
+    class State(models.TextChoices):
+        DRAFT = "draft", "Kladde"
+        SUBMITTED = "submitted", "Til review"
+        ACCEPTED = "accepted", "Godkendt"
+        REJECTED = "rejected", "Afvist"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.PROTECT, related_name="evidence_annotations")
+    analysis_job = models.ForeignKey(AnalysisJob, on_delete=models.PROTECT, related_name="annotation_revisions")
+    parent = models.ForeignKey("self", on_delete=models.PROTECT, null=True, blank=True, related_name="revisions")
+    revision = models.PositiveIntegerField(default=1)
+    kind = models.CharField(max_length=16, choices=Kind.choices)
+    label = models.CharField(max_length=240)
+    state = models.CharField(max_length=16, choices=State.choices, default=State.DRAFT)
+    source_sha256 = models.CharField(max_length=64)
+    timeline_digest = models.CharField(max_length=64)
+    stream_index = models.PositiveIntegerField(default=0)
+    start_frame_index = models.PositiveIntegerField()
+    end_frame_index = models.PositiveIntegerField()
+    start_timestamp_ticks = models.BigIntegerField()
+    end_timestamp_ticks = models.BigIntegerField()
+    time_base_numerator = models.PositiveIntegerField()
+    time_base_denominator = models.PositiveIntegerField()
+    calibration = models.JSONField(default=dict)
+    attributes = models.JSONField(default=dict)
+    rule_reference = models.CharField(max_length=240, blank=True)
+    comment = models.TextField(blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["analysis_job", "parent", "revision"], name="unique_annotation_revision"),
+            models.CheckConstraint(condition=models.Q(end_frame_index__gte=models.F("start_frame_index")), name="annotation_frame_order"),
+            models.CheckConstraint(condition=models.Q(end_timestamp_ticks__gte=models.F("start_timestamp_ticks")), name="annotation_tick_order"),
+        ]
+        ordering = ["start_frame_index", "created_at"]
+
+    def save(self, *args, **kwargs):
+        if self.pk and EvidenceAnnotationRevision.objects.filter(pk=self.pk).exists():
+            raise ValueError("Evidence annotation revisions are immutable")
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("Evidence annotation revisions are immutable")
+
+
+class CompetitionBatchRun(TimestampedModel):
+    class State(models.TextChoices):
+        PLANNED = "planned", "Planlagt"
+        QUEUED = "queued", "I kø"
+        RUNNING = "running", "Kører"
+        FROZEN = "frozen", "AI frosset"
+        OFFICIAL_REVEALED = "official-revealed", "Officielt resultat frigivet"
+        COMPLETED = "completed", "Færdig"
+        FAILED = "failed", "Fejlet"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.PROTECT, related_name="competition_batches")
+    event = models.ForeignKey(Event, on_delete=models.PROTECT, related_name="analysis_batches")
+    state = models.CharField(max_length=24, choices=State.choices, default=State.PLANNED)
+    analysis_profile_digest = models.CharField(max_length=64)
+    plan_digest = models.CharField(max_length=64, unique=True)
+    task_count = models.PositiveIntegerField()
+    excluded_count = models.PositiveIntegerField()
+    control_plan = models.JSONField(default=dict)
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    failure_code = models.CharField(max_length=100, blank=True)

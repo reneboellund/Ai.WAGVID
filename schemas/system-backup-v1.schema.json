@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/reneboellund/Ai.WAGVID/schemas/system-backup-v1.schema.json",
+  "title": "Ai.WAGVID full-system backup manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "backup_id", "created_at", "application", "database", "config_bundle", "object_inventory", "secret_refs", "included_components", "retention_class", "encryption", "verification"],
+  "properties": {
+    "schema": {"const": "ai.wagvid.system-backup.v1"},
+    "backup_id": {"type": "string", "minLength": 1},
+    "created_at": {"type": "string", "format": "date-time"},
+    "application": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "git_sha", "migration_heads"],
+      "properties": {
+        "version": {"type": "string", "minLength": 1},
+        "git_sha": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+        "image_digest": {"type": ["string", "null"]},
+        "migration_heads": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "database": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["engine", "server_version", "archive", "sha256"],
+      "properties": {
+        "engine": {"const": "postgresql"},
+        "server_version": {"type": "string", "minLength": 1},
+        "client_version": {"type": ["string", "null"]},
+        "format": {"enum": ["custom", "directory"]},
+        "archive": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      }
+    },
+    "config_bundle": {"$ref": "#/$defs/artifact"},
+    "object_inventory": {"$ref": "#/$defs/artifact"},
+    "provider_inventory": {"type": "array", "items": {"type": "object", "required": ["provider_id", "provider_type"], "properties": {"provider_id": {"type": "string", "minLength": 1}, "provider_type": {"type": "string", "minLength": 1}, "capabilities": {"type": "array", "items": {"type": "string"}}}, "additionalProperties": true}},
+    "rule_artifacts": {"type": "array", "items": {"$ref": "#/$defs/digestedRef"}},
+    "model_artifacts": {"type": "array", "items": {"$ref": "#/$defs/digestedRef"}},
+    "secret_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1, "pattern": "^(?!.*(?i:password|secret)=).+$"}},
+    "included_components": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "excluded_components": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "retention_class": {"type": "string", "minLength": 1},
+    "encryption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["encrypted"],
+      "properties": {"encrypted": {"type": "boolean"}, "method": {"type": ["string", "null"]}, "key_reference": {"type": ["string", "null"]}}
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state"],
+      "properties": {"state": {"enum": ["created", "verifying", "verified", "failed", "expired"]}, "verified_at": {"type": ["string", "null"], "format": "date-time"}, "failure_reason": {"type": ["string", "null"]}}
+    },
+    "parent_backup_id": {"type": ["string", "null"]}
+  },
+  "$defs": {
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {"path": {"type": "string", "minLength": 1}, "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "size_bytes": {"type": ["integer", "null"], "minimum": 0}}
+    },
+    "digestedRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "sha256"],
+      "properties": {"id": {"type": "string", "minLength": 1}, "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+    }
+  }
+}
