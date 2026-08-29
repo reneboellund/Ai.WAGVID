@@ -21,8 +21,9 @@ from wagvid_app.models import (
     Membership,
     Organization,
     SystemBackup,
+    UpgradeJournal,
 )
-from wagvid_app.upgrade_ops import upgrade_preflight
+from wagvid_app.upgrade_ops import transition_upgrade, upgrade_preflight
 
 
 def admin_context(label="ops"):
@@ -133,6 +134,57 @@ def test_maintenance_blocks_writes_but_keeps_health_available(client):
     assert response.json()["error"] == "maintenance-read-only"
     assert client.get(reverse("health")).status_code == 200
     assert not organization.gymnasts.exists()
+
+
+@pytest.mark.django_db
+def test_upgrade_transaction_requires_backup_maintenance_and_complete_verification():
+    user, organization, _ = admin_context("upgrade-transaction")
+    backup = create_backup_plan(
+        requested_by=user, purpose=SystemBackup.Purpose.PRE_UPGRADE,
+        destination="offline:test", release="0.1", git_sha="a" * 40,
+    )
+    verify_backup(backup.id, database_sha256="b" * 64, actor=user)
+    journal = UpgradeJournal.objects.create(
+        initiated_by=user, source_release="0.1", target_release="0.2",
+        target_manifest={"version": "0.2"}, backup=backup,
+        state=UpgradeJournal.State.PLANNED, preflight={"ready": True, "blockers": []},
+    )
+    transition_upgrade(journal_id=journal.id, actor=user, action="approve")
+    with pytest.raises(ValueError, match="maintenance"):
+        transition_upgrade(journal_id=journal.id, actor=user, action="start")
+    MaintenanceState.objects.create(active=True, read_only=True, reason="Upgrade", entered_by=user)
+    transition_upgrade(journal_id=journal.id, actor=user, action="start")
+    transition_upgrade(journal_id=journal.id, actor=user, action="begin-verification")
+    with pytest.raises(ValueError, match="post-upgrade verification failed"):
+        transition_upgrade(
+            journal_id=journal.id, actor=user, action="complete",
+            verification={"migrations_match": True},
+        )
+    checks = {
+        "migrations_match": True, "django_checks_pass": True, "storage_healthy": True,
+        "backup_catalog_readable": True, "authentication_works": True,
+    }
+    completed = transition_upgrade(
+        journal_id=journal.id, actor=user, action="complete", verification=checks,
+    )
+    assert completed.state == UpgradeJournal.State.COMPLETED
+    assert completed.finished_at is not None
+    assert organization.audit_events.filter(action="system.upgrade-complete").exists()
+
+
+@pytest.mark.django_db
+def test_failed_upgrade_can_stage_rollback_but_cannot_skip_states():
+    user, _, _ = admin_context("upgrade-failure")
+    journal = UpgradeJournal.objects.create(
+        initiated_by=user, source_release="0.1", target_release="0.2",
+        state=UpgradeJournal.State.RUNNING, preflight={"ready": True},
+    )
+    failed = transition_upgrade(journal_id=journal.id, actor=user, action="fail")
+    assert failed.state == UpgradeJournal.State.FAILED
+    staged = transition_upgrade(journal_id=journal.id, actor=user, action="stage-rollback")
+    assert staged.state == UpgradeJournal.State.ROLLBACK_STAGED
+    with pytest.raises(ValueError, match="invalid upgrade transition"):
+        transition_upgrade(journal_id=journal.id, actor=user, action="complete", verification={})
 
 
 @pytest.mark.django_db

@@ -102,3 +102,52 @@ def set_maintenance(*, actor, active: bool, reason: str) -> MaintenanceState:
         reason=reason.strip(),
     )
     return state
+
+
+@transaction.atomic
+def transition_upgrade(*, journal_id, actor, action: str, verification: dict | None = None):
+    journal = UpgradeJournal.objects.select_for_update().get(pk=journal_id)
+    transitions = {
+        (UpgradeJournal.State.PLANNED, "approve"): UpgradeJournal.State.APPROVED,
+        (UpgradeJournal.State.APPROVED, "start"): UpgradeJournal.State.RUNNING,
+        (UpgradeJournal.State.RUNNING, "begin-verification"): UpgradeJournal.State.VERIFYING,
+        (UpgradeJournal.State.VERIFYING, "complete"): UpgradeJournal.State.COMPLETED,
+        (UpgradeJournal.State.RUNNING, "fail"): UpgradeJournal.State.FAILED,
+        (UpgradeJournal.State.VERIFYING, "fail"): UpgradeJournal.State.FAILED,
+        (UpgradeJournal.State.FAILED, "stage-rollback"): UpgradeJournal.State.ROLLBACK_STAGED,
+    }
+    target = transitions.get((journal.state, action))
+    if not target:
+        raise ValueError(f"invalid upgrade transition: {journal.state} -> {action}")
+    if action == "approve" and (not journal.preflight.get("ready") or not journal.backup_id):
+        raise ValueError("upgrade approval requires passed preflight and verified backup")
+    if action == "start":
+        if not MaintenanceState.objects.filter(pk=1, active=True, read_only=True).exists():
+            raise ValueError("maintenance read-only mode is required before upgrade start")
+        journal.started_at = timezone.now()
+    if action == "complete":
+        required = {
+            "migrations_match", "django_checks_pass", "storage_healthy",
+            "backup_catalog_readable", "authentication_works",
+        }
+        supplied = verification or {}
+        missing = sorted(key for key in required if supplied.get(key) is not True)
+        if missing:
+            raise ValueError(f"post-upgrade verification failed: {', '.join(missing)}")
+        journal.verification = supplied
+        journal.finished_at = timezone.now()
+    if action == "fail":
+        journal.failure_code = str((verification or {}).get("failure_code", "operator-reported"))[:100]
+        journal.finished_at = timezone.now()
+    journal.state = target
+    journal.save()
+    membership = actor.wagvid_memberships.filter(active=True).first()
+    if membership:
+        membership.organization.audit_events.create(
+            actor=actor,
+            action=f"system.upgrade-{action}",
+            object_type="upgrade-journal",
+            object_id=str(journal.id),
+            metadata={"state": target, "backup_id": str(journal.backup_id or "")},
+        )
+    return journal

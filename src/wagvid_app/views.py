@@ -61,7 +61,7 @@ from .storage_lifecycle import (
     storage_cost_summary,
 )
 from .storage_types import BucketRole
-from .upgrade_ops import plan_upgrade, set_maintenance, upgrade_preflight
+from .upgrade_ops import plan_upgrade, set_maintenance, transition_upgrade, upgrade_preflight
 from .wasabi_provider import WasabiSetupError
 
 
@@ -980,7 +980,22 @@ def system_updates(request):
                     target_manifest=manifest,
                 )
                 messages.success(request, f"Opgraderingsplanen er gemt med status {journal.state}.")
-        except ValueError as error:
+            elif action in {"approve", "start", "begin-verification", "complete", "fail", "stage-rollback"}:
+                verification = None
+                if action == "complete":
+                    verification = {
+                        key: request.POST.get(key) == "on"
+                        for key in (
+                            "migrations_match", "django_checks_pass", "storage_healthy",
+                            "backup_catalog_readable", "authentication_works",
+                        )
+                    }
+                journal = transition_upgrade(
+                    journal_id=request.POST.get("journal_id"), actor=request.user,
+                    action=action, verification=verification,
+                )
+                messages.success(request, f"Opgraderingen er nu: {journal.get_state_display()}.")
+        except (ValueError, UpgradeJournal.DoesNotExist) as error:
             messages.error(request, str(error))
         return redirect("system-updates")
     preflight = upgrade_preflight(target_manifest=manifest)
