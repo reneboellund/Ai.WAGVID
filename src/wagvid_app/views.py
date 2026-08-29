@@ -676,12 +676,17 @@ def competitions(request):
     events = (
         organization.events.filter(kind=Event.Kind.COMPETITION)
         .prefetch_related("routines__gymnast", "routines__external_media_references")
+        .prefetch_related("kiga_notifications")
         .order_by("-starts_at")
     )
     return render(
         request,
         "wagvid/competitions.html",
-        {"organization": organization, "events": events},
+        {
+            "organization": organization,
+            "events": events,
+            "can_manage": can_manage_master_data(request, organization),
+        },
     )
 
 

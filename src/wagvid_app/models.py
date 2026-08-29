@@ -903,6 +903,38 @@ class ScoreComparisonReview(models.Model):
         raise ValueError("Score comparison reviews are append-only")
 
 
+class KigaNotification(TimestampedModel):
+    class State(models.TextChoices):
+        PENDING = "pending", "Afventer levering"
+        DELIVERED = "delivered", "Leveret"
+        FAILED = "failed", "Fejlet"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="kiga_notifications"
+    )
+    event = models.ForeignKey(Event, on_delete=models.PROTECT, related_name="kiga_notifications")
+    destination_ref = models.CharField(max_length=240)
+    event_type = models.CharField(max_length=80, default="analysis.batch-ready")
+    idempotency_key = models.CharField(max_length=160)
+    export_digest = models.CharField(max_length=64)
+    payload = models.JSONField(default=dict)
+    state = models.CharField(max_length=16, choices=State.choices, default=State.PENDING)
+    attempts = models.PositiveIntegerField(default=0)
+    last_error = models.CharField(max_length=300, blank=True)
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "idempotency_key"],
+                name="unique_kiga_notification_idempotency_per_org",
+            )
+        ]
+        ordering = ["-created_at"]
+
+
 class ExchangeJob(TimestampedModel):
     class Direction(models.TextChoices):
         IMPORT = "import", "Import"
