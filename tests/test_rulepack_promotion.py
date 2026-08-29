@@ -17,6 +17,16 @@ def test_current_repository_example_rulepack_is_not_release_ready():
     assert any(item.startswith("rulepack-source-not-approved:") for item in result.blockers)
 
 
+def test_current_release_candidate_stays_blocked_until_qualified_review():
+    manifest = load_yaml(ROOT / "rules" / "rulepack-manifest.release-candidate.yaml")
+    registry = load_yaml(ROOT / "rules" / "registry.yaml")
+    result = evaluate_rulepack_readiness(manifest=manifest, registry=registry)
+    assert result.ready is False
+    assert "rulepack-manifest-not-approved" in result.blockers
+    assert "rulepack-review-metadata-missing" in result.blockers
+    assert any(item.startswith("rulepack-source-not-approved:") for item in result.blockers)
+
+
 def test_reviewed_frozen_rulepack_snapshot_can_be_release_ready():
     source_id = "wag-source-fixture"
     registry = {

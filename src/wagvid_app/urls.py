@@ -2,6 +2,7 @@ from django.urls import path
 
 from . import (
     analysis_api,
+    annotation_views,
     device_api,
     governance_views,
     invitation_views,
@@ -68,6 +69,7 @@ urlpatterns = [
     path("competitions/", views.competitions, name="competitions"),
     path("competitions/routines/<uuid:routine_id>/kiga.json", views.kiga_routine_export, name="kiga-routine-export"),
     path("analyses/<uuid:job_id>/review/", views.analysis_review, name="analysis-review"),
+    path("analyses/<uuid:job_id>/annotations/new/", annotation_views.annotation_create, name="annotation-create"),
     path("analyses/<uuid:job_id>/score-review/", views.score_comparison_review, name="score-comparison-review"),
     path("analyses/deductions/<uuid:candidate_id>/decision/", views.review_decision, name="review-decision"),
     path("imports-exports/", views.exchange, name="exchange"),

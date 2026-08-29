@@ -36,6 +36,7 @@ from .models import (
     DeductionCandidate,
     Device,
     Event,
+    EvidenceAnnotationRevision,
     ExchangeJob,
     Gymnast,
     MaintenanceState,
@@ -472,6 +473,7 @@ def analysis_review(request, job_id):
     )
     result = getattr(job, "result", None)
     deductions = result.deductions.prefetch_related("decisions__reviewer") if result else []
+    annotations = job.annotation_revisions.select_related("created_by", "parent").all()
     return render(
         request,
         "wagvid/analysis_review.html",
@@ -480,6 +482,8 @@ def analysis_review(request, job_id):
             "job": job,
             "result": result,
             "deductions": deductions,
+            "annotations": annotations,
+            "annotation_kinds": EvidenceAnnotationRevision.Kind.choices,
             "score_review_form": ScoreComparisonReviewForm(),
         },
     )

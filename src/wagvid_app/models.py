@@ -1169,6 +1169,63 @@ class AnalysisDeliverable(models.Model):
         raise ValueError("Analysis deliverables are immutable")
 
 
+class EvidenceAnnotationRevision(models.Model):
+    class Kind(models.TextChoices):
+        ROUTINE = "routine", "Routine"
+        PHASE = "phase", "Fase"
+        ELEMENT = "element", "Element"
+        CONTACT = "contact", "Kontakt"
+        LANDING = "landing", "Landing"
+        DEDUCTION = "deduction", "Fradrag"
+        COMMENT = "comment", "Kommentar"
+
+    class State(models.TextChoices):
+        DRAFT = "draft", "Kladde"
+        SUBMITTED = "submitted", "Til review"
+        ACCEPTED = "accepted", "Godkendt"
+        REJECTED = "rejected", "Afvist"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.PROTECT, related_name="evidence_annotations")
+    analysis_job = models.ForeignKey(AnalysisJob, on_delete=models.PROTECT, related_name="annotation_revisions")
+    parent = models.ForeignKey("self", on_delete=models.PROTECT, null=True, blank=True, related_name="revisions")
+    revision = models.PositiveIntegerField(default=1)
+    kind = models.CharField(max_length=16, choices=Kind.choices)
+    label = models.CharField(max_length=240)
+    state = models.CharField(max_length=16, choices=State.choices, default=State.DRAFT)
+    source_sha256 = models.CharField(max_length=64)
+    timeline_digest = models.CharField(max_length=64)
+    stream_index = models.PositiveIntegerField(default=0)
+    start_frame_index = models.PositiveIntegerField()
+    end_frame_index = models.PositiveIntegerField()
+    start_timestamp_ticks = models.BigIntegerField()
+    end_timestamp_ticks = models.BigIntegerField()
+    time_base_numerator = models.PositiveIntegerField()
+    time_base_denominator = models.PositiveIntegerField()
+    calibration = models.JSONField(default=dict)
+    attributes = models.JSONField(default=dict)
+    rule_reference = models.CharField(max_length=240, blank=True)
+    comment = models.TextField(blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["analysis_job", "parent", "revision"], name="unique_annotation_revision"),
+            models.CheckConstraint(condition=models.Q(end_frame_index__gte=models.F("start_frame_index")), name="annotation_frame_order"),
+            models.CheckConstraint(condition=models.Q(end_timestamp_ticks__gte=models.F("start_timestamp_ticks")), name="annotation_tick_order"),
+        ]
+        ordering = ["start_frame_index", "created_at"]
+
+    def save(self, *args, **kwargs):
+        if self.pk and EvidenceAnnotationRevision.objects.filter(pk=self.pk).exists():
+            raise ValueError("Evidence annotation revisions are immutable")
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("Evidence annotation revisions are immutable")
+
+
 class CompetitionBatchRun(TimestampedModel):
     class State(models.TextChoices):
         PLANNED = "planned", "Planlagt"

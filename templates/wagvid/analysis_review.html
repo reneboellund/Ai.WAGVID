@@ -22,12 +22,13 @@
         <button class="button" type="button" data-frame-next>Næste frame →</button>
         <button class="button" type="button" data-nudge-ms="-100">−100 ms</button>
         <button class="button" type="button" data-nudge-ms="100">+100 ms</button>
+        <label class="field-group" style="min-width:130px"><span>Hastighed</span><select data-playback-rate><option value="0.25">0,25×</option><option value="0.5">0,5×</option><option value="1" selected>1×</option><option value="1.5">1,5×</option><option value="2">2×</option></select></label>
       </div>
       <span class="status-badge neutral">Frame <strong data-evidence-frame>—</strong></span>
       <span class="status-badge neutral">Timecode <strong data-evidence-time>00:00.000</strong></span>
       <span class="status-badge info" data-evidence-status>Ikke indlæst</span>
     </div>
-    <p><small>Frame-knapperne bruger kun den canonical PTS/DTS-timeline, når et valideret sidecar-manifest findes for præcis denne source SHA-256. Hvis manifestet ikke er klar, forbliver millisekund-navigationen tilgængelig; systemet opfinder ikke frame-numre.</small></p>
+    <p><small>Frame-knapperne bruger kun den canonical PTS/DTS-timeline, når et valideret sidecar-manifest findes for præcis denne source SHA-256; systemet opfinder ikke frame-numre. Genveje: mellemrum afspil/pause, ←/→ frame, J/L ±100 ms og [/] markér start/slut. Genveje ignoreres, mens du skriver i et felt.</small></p>
   {% else %}
     <div class="empty-state"><span class="empty-visual"><svg><use href="#i-play"/></svg></span><h3>Source-video er ikke tilgængelig som verified stored object</h3><p>Review kan fortsætte på eksisterende evidensmetadata, men originalen kan først afspilles efter færdig ingest og checksum-verifikation.</p></div>
   {% endif %}
@@ -65,6 +66,23 @@
     <div class="page-actions"><button class="button button-primary" type="submit"><svg><use href="#i-shield"/></svg>Valider og frys</button></div>
   </form>
 </section>
-{% else %}<section class="surface" style="margin-top:18px"><div class="empty-state"><span class="empty-visual"><svg><use href="#i-analysis"/></svg></span><h3>Resultat ikke klar endnu</h3><p>Analysejobbet har endnu intet reviewbart resultat.</p><a class="button" href="{% url 'analyses' %}">Tilbage til analysekøen</a></div></section>{% endif %}
+
+{% endif %}
+<section class="surface surface-pad" style="margin-top:18px">
+  <header class="section-head"><div><h2>Canonical annotationer</h2><p>Markér et interval direkte på den verificerede frame-timeline. Hver gemning er en uforanderlig revision med source-hash og tidsbase.</p></div><span class="status-badge neutral">{{ annotations|length }} revisioner</span></header>
+  <form method="post" action="{% url 'annotation-create' job.id %}" class="form-stack" data-annotation-form>{% csrf_token %}
+    <div class="filter-grid">
+      <div class="field-group"><label>Type</label><div class="select-wrap"><select name="kind" required>{% for value, label in annotation_kinds %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select><svg><use href="#i-chevron"/></svg></div></div>
+      <div class="field-group"><label>Label</label><input name="label" required maxlength="240" placeholder="Fx landing med stort skridt"></div>
+      <div class="field-group"><label>Startframe (0-baseret)</label><div class="page-actions"><input name="start_frame_index" type="number" min="0" required data-annotation-start><button class="button" type="button" data-mark-start>Brug aktuel</button></div></div>
+      <div class="field-group"><label>Slutframe (0-baseret)</label><div class="page-actions"><input name="end_frame_index" type="number" min="0" required data-annotation-end><button class="button" type="button" data-mark-end>Brug aktuel</button></div></div>
+    </div>
+    <div class="filter-grid"><div class="field-group"><label>Status</label><div class="select-wrap"><select name="state"><option value="draft">Kladde</option><option value="submitted">Til review</option></select><svg><use href="#i-chevron"/></svg></div></div><div class="field-group"><label>Regelreference</label><input name="rule_reference" maxlength="240" placeholder="Fx WAG COP BB 8.3"></div></div>
+    <div class="field-group"><label>Kommentar</label><textarea name="comment" placeholder="Observation og begrundelse"></textarea></div>
+    <div class="page-actions"><button class="button button-primary" type="submit"><svg><use href="#i-check"/></svg>Gem immutable revision</button></div>
+  </form>
+  <div class="activity-list" style="margin-top:18px">{% for annotation in annotations %}<article class="activity-item"><span class="activity-icon"><svg><use href="#i-analysis"/></svg></span><span class="activity-copy"><strong>{{ annotation.get_kind_display }} · {{ annotation.label }}</strong><small>Frame {{ annotation.start_frame_index }}–{{ annotation.end_frame_index }} · revision {{ annotation.revision }} · {{ annotation.get_state_display }} · timeline {{ annotation.timeline_digest|slice:":12" }}…{% if annotation.rule_reference %} · {{ annotation.rule_reference }}{% endif %}</small><small>{{ annotation.created_by }} · {{ annotation.comment|default:"Ingen kommentar" }}</small></span><time class="activity-time">{{ annotation.created_at|date:"d.m.Y H:i" }}</time></article>{% empty %}<div class="empty-state"><h3>Ingen annotationer endnu</h3><p>Åbn videoen, vælg start og slut og gem den første canonical annotation.</p></div>{% endfor %}</div>
+</section>
+{% if not result %}<section class="surface" style="margin-top:18px"><div class="empty-state"><span class="empty-visual"><svg><use href="#i-analysis"/></svg></span><h3>Resultat ikke klar endnu</h3><p>Analysejobbet har endnu intet reviewbart resultat.</p><a class="button" href="{% url 'analyses' %}">Tilbage til analysekøen</a></div></section>{% endif %}
 <script src="{% static 'wagvid/evidence-review.js' %}" defer></script>
 {% endblock %}

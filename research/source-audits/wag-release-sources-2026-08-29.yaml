@@ -1,0 +1,32 @@
+schema: ai.wagvid.rule-source-audit.v1
+audited_at: "2026-08-29"
+landing_page: https://www.gymnastics.sport/site/rules/index.php
+retention: metadata-and-digest-only
+documents:
+  - source_id: wag-cop-2025-2028-2026-08
+    listing_date: "2026-08-27"
+    bytes: 25315051
+    sha256: cd04978ed860ebb08bf7eb10fee3acb3ba5c52fb94e906fc61ecbcd13129878f
+    direct_url: https://www.gymnastics.sport/publicdir/rules/files/en_1.1%20-%20WAG%20COP%202025-2028.pdf
+  - source_id: wag-cop-appendix-2025-2028-2026-05
+    listing_date: "2026-05-25"
+    document_version: "3.0 - May 2026"
+    bytes: 575075
+    sha256: 6efb8e91e04d327db043b388945150af7db0952a10b6b8b01b1f85055cd9ee35
+    direct_url: https://www.gymnastics.sport/publicdir/rules/files/en_1.2%20-%20Appendix%20to%20the%20Code%20of%20Points%202025-2028.pdf
+  - source_id: wag-specific-judges-rules-2025-2028-2026-03
+    listing_date: "2026-03-27"
+    bytes: 234304
+    sha256: 1ca584ac9b9977bcd91058bb7d84a80821987c5de121cb9c61f81361c1bd7f15
+    direct_url: https://www.gymnastics.sport/publicdir/rules/files/en_1.3%20-%20WAG%20Specific%20Judges%27%20Rules%202025-2028.pdf
+  - source_id: wag-help-desk-cycle-16-edition-2-2026-08
+    listing_date: "2026-08-10"
+    document_version: "2nd Edition, 16th cycle - August 2026"
+    bytes: 11958218
+    sha256: c45304f8423eef9f21fb95586e24d4ce53a3a6afa26c3e4830847624f9765b06
+    direct_url: https://www.gymnastics.sport/publicdir/rules/files/en_WAG%20Help%20Desk%202%C2%BA%20Edition%2016%20th%20cycle%20%E2%80%93%20August%202026.pdf
+qualification:
+  source_bytes_verified: true
+  interpretation_reviewed_by_qualified_wag_judge: false
+  release_promotion_allowed: false
+  blocker: qualified-wag-rule-review-required

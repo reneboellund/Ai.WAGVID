@@ -1,5 +1,18 @@
 # WAG rule source review — 2026-08-17
 
+## Follow-up verification — 2026-08-29
+
+The official rules listing changed again: it now lists the WAG Code of Points on
+2026-08-27, Appendix Version 3.0 / May 2026, WAG Specific Judges' Rules on
+2026-03-27 and the second-edition August 2026 Help Desk on 2026-08-10. All four
+direct official documents were fetched in memory and SHA-256 verified; only URLs,
+sizes and digests are retained in `research/source-audits/wag-release-sources-2026-08-29.yaml`.
+Historical March/April discovery records remain traceable in the registry.
+
+The new `rulepack-manifest.release-candidate.yaml` is intentionally `draft`.
+Source-byte verification is not qualified interpretation review, so neither sources
+nor manifest are marked approved and apparatus promotion remains blocked.
+
 This note records the source-refresh investigation for release-target rulepack issue #76. It is not a qualified rules interpretation or an approval record.
 
 ## Verified official landing-page state
