@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/reneboellund/Ai.WAGVID/schemas/kiga-analysis-export-v1.schema.json",
+  "title": "Ai.WAGVID KIGA analysis export envelope v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "export_id", "competition_external_id", "routine_external_id",
+    "athlete_external_id", "team_external_id", "analysis_id", "analysis_revision_id",
+    "analysis_revision_digest", "analysis_schema", "analysis_payload_digest", "review_state",
+    "disclosure", "rulepack_digest", "model_bundle_digest", "software_digest",
+    "training_eligibility", "created_at", "supersedes_export_id", "analysis"
+  ],
+  "properties": {
+    "schema": {"const": "ai.wagvid.kiga-analysis-export.v1"},
+    "export_id": {"type": "string", "pattern": "^kiga-export:"},
+    "competition_external_id": {"type": "string", "minLength": 1},
+    "routine_external_id": {"type": "string", "minLength": 1},
+    "athlete_external_id": {"type": "string", "minLength": 1},
+    "team_external_id": {"type": ["string", "null"]},
+    "analysis_id": {"type": "string", "minLength": 1},
+    "analysis_revision_id": {"type": "string", "minLength": 1},
+    "analysis_revision_digest": {"$ref": "#/$defs/sha256"},
+    "analysis_schema": {"type": "string", "pattern": "^[A-Za-z0-9._-]+-v[1-9][0-9]*$"},
+    "analysis_payload_digest": {"$ref": "#/$defs/sha256"},
+    "review_state": {"enum": ["draft", "needs-review", "reviewed"]},
+    "disclosure": {"enum": ["provisional", "confirmed"]},
+    "rulepack_digest": {"$ref": "#/$defs/sha256"},
+    "model_bundle_digest": {"$ref": "#/$defs/sha256"},
+    "software_digest": {"$ref": "#/$defs/sha256"},
+    "training_eligibility": {"enum": ["unknown", "denied", "allowed"]},
+    "created_at": {"type": "string", "format": "date-time"},
+    "supersedes_export_id": {"type": ["string", "null"]},
+    "analysis": {"type": "object"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"review_state": {"const": "reviewed"}}, "required": ["review_state"]},
+      "then": {"properties": {"disclosure": {"const": "confirmed"}}},
+      "else": {"properties": {"disclosure": {"const": "provisional"}}}
+    }
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}
