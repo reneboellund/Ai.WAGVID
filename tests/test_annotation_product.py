@@ -6,7 +6,7 @@ from django.contrib.auth.models import User
 from django.urls import reverse
 
 from ai_wagvid.media_timeline import FrameTimestamp, build_timeline
-from wagvid_app.annotation_operations import create_annotation_revision
+from wagvid_app.annotation_operations import create_annotation_revision, revise_annotation
 from wagvid_app.models import (
     AnalysisJob,
     EvidenceAnnotationRevision,
@@ -106,3 +106,54 @@ def test_review_page_exposes_annotation_controls_and_history(client):
     assert "Element X" in body
     assert reverse("annotation-create", args=[job.id]) in body
     assert "data-mark-start" in body
+
+
+@pytest.mark.django_db
+def test_review_revision_is_append_only_and_export_contains_only_latest_accepted(monkeypatch, client):
+    _, user, job, timeline = setup_job()
+    monkeypatch.setattr("wagvid_app.annotation_operations.load_media_timeline", lambda media: timeline)
+    first = create_annotation_revision(
+        job=job, actor=user, kind="element", label="Element X", start_frame_index=1,
+        end_frame_index=3, state=EvidenceAnnotationRevision.State.SUBMITTED, timeline=timeline,
+    )
+    accepted = revise_annotation(
+        annotation=first, actor=user, state=EvidenceAnnotationRevision.State.ACCEPTED,
+        label="Element Y", comment="Reviewed against canonical frames",
+    )
+    assert accepted.parent_id == first.id
+    assert accepted.revision == 2
+    assert first.state == EvidenceAnnotationRevision.State.SUBMITTED
+    client.force_login(user)
+    response = client.get(reverse("annotation-export", args=[job.id]))
+    payload = response.json()
+    assert response.status_code == 200
+    assert response["Cache-Control"] == "private, no-store"
+    assert len(payload["labels"]) == 1
+    assert payload["labels"][0]["label"] == "Element Y"
+    assert payload["labels"][0]["time_base"] == [1, 1000]
+    assert "display_name" not in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_annotator_cannot_self_accept_and_old_revision_cannot_be_revised(monkeypatch):
+    _, user, job, timeline = setup_job(Membership.Role.ANNOTATOR)
+    monkeypatch.setattr("wagvid_app.annotation_operations.load_media_timeline", lambda media: timeline)
+    first = create_annotation_revision(
+        job=job, actor=user, kind="phase", label="Flight", start_frame_index=0,
+        end_frame_index=2, timeline=timeline,
+    )
+    with pytest.raises(PermissionError, match="reviewer role"):
+        revise_annotation(
+            annotation=first, actor=user, state=EvidenceAnnotationRevision.State.ACCEPTED,
+            comment="self approval",
+        )
+    second = revise_annotation(
+        annotation=first, actor=user, state=EvidenceAnnotationRevision.State.SUBMITTED,
+        comment="submit",
+    )
+    assert second.revision == 2
+    with pytest.raises(ValueError, match="latest"):
+        revise_annotation(
+            annotation=first, actor=user, state=EvidenceAnnotationRevision.State.SUBMITTED,
+            comment="stale",
+        )

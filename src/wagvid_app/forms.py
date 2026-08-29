@@ -1,7 +1,14 @@
 from django import forms
 from django.db.models import Q
 
-from .models import Gymnast, Level, ReviewDecision, ScoreComparisonReview, StorageConnection
+from .models import (
+    Gymnast,
+    Level,
+    NetworkCamera,
+    ReviewDecision,
+    ScoreComparisonReview,
+    StorageConnection,
+)
 from .storage_providers import StorageCapability, provider_definition
 from .storage_types import BucketRole
 from .wasabi import WASABI_REGION_ENDPOINTS
@@ -25,6 +32,37 @@ class LevelForm(forms.ModelForm):
     class Meta:
         model = Level
         fields = ["name", "active"]
+
+
+class NetworkCameraForm(forms.ModelForm):
+    capability_json = forms.JSONField(
+        required=False,
+        label="Capability-snapshot",
+        help_text="Valgfrit valideret output fra ONVIF/Dahua-proben. Ingen credentials.",
+        widget=forms.Textarea(attrs={"rows": 8}),
+    )
+
+    class Meta:
+        model = NetworkCamera
+        fields = [
+            "name", "provider", "endpoint", "username_secret_ref", "password_secret_ref",
+            "tls_verify", "apparatus", "canonical_profile_id", "preview_profile_id",
+            "preset_id", "calibration_digest",
+        ]
+
+    def clean(self):
+        cleaned = super().clean()
+        for field in ("username_secret_ref", "password_secret_ref"):
+            value = cleaned.get(field, "")
+            if value and not value.startswith(("env:", "vault:", "secret:")):
+                self.add_error(field, "Brug en secret-reference; credentials må ikke gemmes her.")
+        endpoint = cleaned.get("endpoint", "")
+        if endpoint and not endpoint.startswith("https://") and cleaned.get("tls_verify"):
+            self.add_error("endpoint", "HTTPS er påkrævet, når TLS-verifikation er aktiv.")
+        digest = cleaned.get("calibration_digest", "")
+        if digest and (len(digest) != 64 or any(char not in "0123456789abcdef" for char in digest)):
+            self.add_error("calibration_digest", "Kalibrering skal være en lowercase SHA-256.")
+        return cleaned
 
 
 class GymnastImportForm(forms.Form):

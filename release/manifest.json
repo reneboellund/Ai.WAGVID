@@ -2,7 +2,7 @@
   "schema": "ai.wagvid.release-manifest.v1",
   "version": "0.1.0-dev",
   "git_sha": "development",
-  "migration_heads": ["wagvid_app.0020_evidenceannotationrevision"],
+  "migration_heads": ["wagvid_app.0021_networkcamera_networkcameraaction_and_more"],
   "config_migrations": [],
   "android": {"minimum_api": 26, "protocol": "device-api-v1"},
   "rollback": {"code_only": true, "database_restore_required_after_forward_only_migrations": true}

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from django.db import transaction
+from django.db.models import Max
 
 from .media_timeline_store import load_media_timeline
 from .models import AnalysisJob, EvidenceAnnotationRevision, Membership
@@ -52,7 +53,7 @@ def create_annotation_revision(
     if parent and (parent.organization_id != job.organization_id or parent.analysis_job_id != job.id):
         raise ValueError("annotation parent belongs to another job or organization")
     root = (parent.parent or parent) if parent else None
-    revision = 1 if root is None else root.revisions.count() + 2
+    revision = 1 if root is None else (root.revisions.aggregate(value=Max("revision"))["value"] or 1) + 1
     start = canonical.frames[start_frame_index]
     end = canonical.frames[end_frame_index]
     value = EvidenceAnnotationRevision.objects.create(
@@ -86,3 +87,39 @@ def create_annotation_revision(
         metadata={"analysis_job_id": str(job.id), "revision": revision, "timeline_digest": canonical.digest},
     )
     return value
+
+
+def _require_annotation_reviewer(actor, organization) -> None:
+    roles = {
+        Membership.Role.SYSTEM_ADMIN,
+        Membership.Role.ORGANIZATION_ADMIN,
+        Membership.Role.REVIEWER,
+        Membership.Role.DOMAIN_REVIEWER,
+    }
+    if not actor.wagvid_memberships.filter(
+        organization=organization, active=True, role__in=roles
+    ).exists():
+        raise PermissionError("annotation reviewer role is required")
+
+
+def revise_annotation(*, annotation, actor, state: str, label: str = "", comment: str = ""):
+    if state in {EvidenceAnnotationRevision.State.ACCEPTED, EvidenceAnnotationRevision.State.REJECTED}:
+        _require_annotation_reviewer(actor, annotation.organization)
+    root = annotation.parent or annotation
+    latest = root.revisions.order_by("-revision").first() or root
+    if latest.id != annotation.id:
+        raise ValueError("only the latest annotation revision can be revised")
+    return create_annotation_revision(
+        job=annotation.analysis_job,
+        actor=actor,
+        kind=annotation.kind,
+        label=label.strip() or annotation.label,
+        start_frame_index=annotation.start_frame_index,
+        end_frame_index=annotation.end_frame_index,
+        state=state,
+        parent=root,
+        calibration=annotation.calibration,
+        attributes=annotation.attributes,
+        rule_reference=annotation.rule_reference,
+        comment=comment,
+    )

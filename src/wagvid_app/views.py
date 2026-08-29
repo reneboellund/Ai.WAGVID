@@ -387,6 +387,7 @@ def operate(request):
     context = {
         "organization": organization,
         "devices": organization.devices.prefetch_related("commands"),
+        "network_cameras": organization.network_cameras.prefetch_related("actions"),
         "gymnasts": organization.gymnasts.filter(archived_at__isnull=True),
         "kind_choices": MediaAsset.Kind.choices,
         "apparatus_choices": Routine.Apparatus.choices,

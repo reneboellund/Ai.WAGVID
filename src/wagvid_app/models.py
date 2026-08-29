@@ -281,6 +281,88 @@ class Device(TimestampedModel):
         return bool(self.api_token_hash) and check_password(raw_token, self.api_token_hash)
 
 
+class NetworkCamera(TimestampedModel):
+    class Provider(models.TextChoices):
+        DAHUA = "dahua", "Dahua"
+        ONVIF = "onvif", "Generisk ONVIF"
+
+    class State(models.TextChoices):
+        CONFIGURED = "configured", "Konfigureret"
+        ONLINE = "online", "Online"
+        DEGRADED = "degraded", "Begrænset"
+        OFFLINE = "offline", "Offline"
+        DISABLED = "disabled", "Deaktiveret"
+
+    class TrackingMode(models.TextChoices):
+        OFF = "off", "Fra"
+        MANUAL = "manual", "Manuel PTZ"
+        NATIVE = "native", "Kameraets auto-tracking"
+        WAGVID = "wagvid-assisted", "Ai.WAGVID-assisteret"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="network_cameras"
+    )
+    name = models.CharField(max_length=120)
+    provider = models.CharField(max_length=16, choices=Provider.choices)
+    endpoint = models.URLField(max_length=300)
+    username_secret_ref = models.CharField(max_length=200)
+    password_secret_ref = models.CharField(max_length=200)
+    tls_verify = models.BooleanField(default=True)
+    state = models.CharField(max_length=16, choices=State.choices, default=State.CONFIGURED)
+    stable_device_id = models.CharField(max_length=160, blank=True)
+    manufacturer = models.CharField(max_length=120, blank=True)
+    model = models.CharField(max_length=120, blank=True)
+    firmware = models.CharField(max_length=120, blank=True)
+    capability_snapshot = models.JSONField(default=dict)
+    capability_digest = models.CharField(max_length=64, blank=True)
+    canonical_profile_id = models.CharField(max_length=120, blank=True)
+    preview_profile_id = models.CharField(max_length=120, blank=True)
+    apparatus = models.CharField(max_length=8, choices=Routine.Apparatus.choices, blank=True)
+    preset_id = models.CharField(max_length=120, blank=True)
+    calibration_digest = models.CharField(max_length=64, blank=True)
+    calibration_valid = models.BooleanField(default=False)
+    tracking_mode = models.CharField(
+        max_length=20, choices=TrackingMode.choices, default=TrackingMode.OFF
+    )
+    ptz_owner = models.CharField(max_length=24, default="none")
+    ptz_generation = models.PositiveIntegerField(default=0)
+    last_probe_at = models.DateTimeField(null=True, blank=True)
+    last_error = models.CharField(max_length=300, blank=True)
+    enabled = models.BooleanField(default=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "name"], name="unique_network_camera_name_per_org"
+            ),
+            models.UniqueConstraint(
+                fields=["organization", "stable_device_id"],
+                condition=~models.Q(stable_device_id=""),
+                name="unique_network_camera_device_id_per_org",
+            ),
+        ]
+
+
+class NetworkCameraAction(TimestampedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="network_camera_actions"
+    )
+    camera = models.ForeignKey(NetworkCamera, on_delete=models.CASCADE, related_name="actions")
+    action = models.CharField(max_length=40)
+    payload = models.JSONField(default=dict)
+    result = models.CharField(
+        max_length=16,
+        choices=[("accepted", "Accepteret"), ("rejected", "Afvist"), ("failed", "Fejlet")],
+    )
+    message = models.CharField(max_length=300, blank=True)
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
 class DevicePairingSession(TimestampedModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     organization = models.ForeignKey(
