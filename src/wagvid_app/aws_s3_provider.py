@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, Iterable
+from typing import Any
 
 from .object_provider import (
     ProviderType,
@@ -13,7 +14,6 @@ from .object_provider import (
     StoragePreflight,
 )
 from .s3_provider import S3DataClient, S3ObjectStorageProvider, S3TransferTuning
-
 
 AWS_REFERENCE_FEATURES = frozenset(
     {

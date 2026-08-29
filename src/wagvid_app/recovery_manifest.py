@@ -7,9 +7,9 @@ provider-neutral.
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Iterable, Mapping
+from datetime import UTC, datetime
 
 
 @dataclass(frozen=True)
@@ -64,7 +64,7 @@ class InventoryObject:
 def build_object_inventory(
     objects: Iterable[InventoryObject], *, generated_at: datetime | None = None
 ) -> dict:
-    timestamp = generated_at or datetime.now(timezone.utc)
+    timestamp = generated_at or datetime.now(UTC)
     entries = [item.as_manifest_entry() for item in objects]
     entries.sort(
         key=lambda item: (

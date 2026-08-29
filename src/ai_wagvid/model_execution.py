@@ -7,8 +7,9 @@ contract. This prevents marketing/device-name guesses from becoming runtime poli
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, Iterable
+from typing import Any
 
 from .compute_runtime import ComputeBackend, ExecutionRequirement, Precision
 

@@ -158,6 +158,11 @@ def member_edit(request, membership_id):
     ):
         return HttpResponseForbidden()
 
+    # ModelForm validation mutates its instance before this view evaluates the
+    # transition. Preserve the locked database state for authorization checks.
+    original_role = membership.role
+    original_active = membership.active
+
     form = MembershipEditForm(
         request.POST or None,
         instance=membership,
@@ -167,16 +172,16 @@ def member_edit(request, membership_id):
         role = form.cleaned_data["role"]
         active = form.cleaned_data["active"]
         removing_admin = (
-            membership.active
-            and membership.role in ADMIN_ROLES
+            original_active
+            and original_role in ADMIN_ROLES
             and not (active and role in ADMIN_ROLES)
         )
         active_admin_ids = _locked_active_admin_ids(organization) if removing_admin else []
         if removing_admin and len(active_admin_ids) <= 1:
             form.add_error(None, "Organisationens sidste aktive administrator kan ikke fjernes.")
         else:
-            old_role = membership.role
-            old_active = membership.active
+            old_role = original_role
+            old_active = original_active
             updated = form.save()
             _audit(
                 organization,

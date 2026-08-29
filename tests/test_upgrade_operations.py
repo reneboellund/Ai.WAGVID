@@ -21,7 +21,6 @@ from wagvid_app.upgrade_operations import (
     validate_data_preservation_plan,
 )
 
-
 NOW = datetime(2026, 8, 17, 8, 0, tzinfo=UTC)
 IDENTITY = UpgradeIdentity(
     upgrade_id="upgrade-001",

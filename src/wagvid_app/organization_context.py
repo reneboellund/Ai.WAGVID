@@ -6,7 +6,9 @@ from django.http import HttpResponseForbidden
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
-SESSION_KEY = "wagvid_active_organization_id"
+# Keep the established session contract used by governance, invitations and
+# existing installations. A second key can split authorization context between views.
+SESSION_KEY = "wagvid_organization_id"
 
 
 def active_memberships(request):

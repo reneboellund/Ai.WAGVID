@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai.wagvid.local/schemas/system-backup-plan-v1.schema.json",
+  "title": "Ai.WAGVID system backup control plan v1",
+  "type": "object",
+  "required": ["schema", "backup_id", "created_at", "release", "git_sha", "migration_heads", "database", "configuration", "object_inventory", "secret_values_included", "media_bytes_included"],
+  "properties": {
+    "schema": {"const": "ai.wagvid.system-backup-plan.v1"},
+    "backup_id": {"type": "string", "format": "uuid"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "release": {"type": "string", "minLength": 1},
+    "git_sha": {"type": "string", "minLength": 1, "maxLength": 64},
+    "migration_heads": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "database": {"type": "object", "required": ["format", "artifact", "sha256"], "properties": {"format": {"const": "pg_dump-custom"}, "artifact": {"type": "string"}, "sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"}}},
+    "configuration": {"$ref": "#/$defs/artifact"},
+    "object_inventory": {"allOf": [{"$ref": "#/$defs/artifact"}, {"type": "object", "required": ["count"], "properties": {"count": {"type": "integer", "minimum": 0}}}]},
+    "required_secret_references": {"type": "array", "items": {"type": "string", "pattern": "^(env|vault|secret):"}, "uniqueItems": true},
+    "secret_values_included": {"const": false},
+    "media_bytes_included": {"const": false}
+  },
+  "$defs": {"artifact": {"type": "object", "required": ["artifact", "sha256"], "properties": {"artifact": {"type": "string", "minLength": 1}, "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}}},
+  "additionalProperties": false
+}

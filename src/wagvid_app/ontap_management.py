@@ -7,10 +7,10 @@ based on NetApp's documented ONTAP S3 feature introductions.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 from functools import total_ordering
-from typing import Mapping
 
 
 @total_ordering
@@ -21,7 +21,7 @@ class OntapVersion:
     patch: int = 0
 
     @classmethod
-    def parse(cls, value: str) -> "OntapVersion":
+    def parse(cls, value: str) -> OntapVersion:
         text = value.strip().removeprefix("ONTAP ")
         parts = text.split(".")
         if len(parts) < 2:

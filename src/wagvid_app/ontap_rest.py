@@ -11,8 +11,9 @@ import json
 import ssl
 import urllib.error
 import urllib.request
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
-from typing import Any, Callable, Mapping
+from typing import Any
 
 
 class OntapRestError(RuntimeError):

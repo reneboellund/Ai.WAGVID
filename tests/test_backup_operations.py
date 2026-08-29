@@ -20,7 +20,6 @@ from wagvid_app.backup_operations import (
     write_final_manifest,
 )
 
-
 NOW = datetime(2026, 8, 17, 8, 0, tzinfo=UTC)
 
 

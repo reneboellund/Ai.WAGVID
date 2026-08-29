@@ -12,7 +12,6 @@ from ai_wagvid.media_publication import (
 )
 from ai_wagvid.media_worker import CommandResult, MediaWorkerError, process_media
 
-
 NOW = datetime(2026, 8, 17, 10, 0, tzinfo=UTC)
 
 

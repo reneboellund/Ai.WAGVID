@@ -10,7 +10,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ("wagvid_app", "0011_mediaasset_source_metadata"),
+        ("wagvid_app", "0017_alter_analysisdeliverable_kind"),
     ]
 
     operations = [

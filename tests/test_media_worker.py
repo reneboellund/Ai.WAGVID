@@ -17,7 +17,6 @@ from ai_wagvid.media_worker import (
     read_journal,
 )
 
-
 NOW = datetime(2026, 8, 17, 9, 30, tzinfo=UTC)
 
 

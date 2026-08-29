@@ -14,7 +14,6 @@ from ai_wagvid.kiga_integration import (
 )
 from wagvid_rules.validation import load_schema
 
-
 ROOT = Path(__file__).parents[1]
 EXPORT_SCHEMA = load_schema(ROOT / "schemas" / "kiga-analysis-export-v1.schema.json")
 NOTIFICATION_SCHEMA = load_schema(ROOT / "schemas" / "kiga-notification-v1.schema.json")

@@ -10,8 +10,9 @@ from __future__ import annotations
 import hashlib
 import importlib
 import tempfile
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, BinaryIO, Iterable, Protocol
+from typing import Any, BinaryIO, Protocol
 
 from .object_provider import (
     ObjectLocation,
@@ -237,7 +238,8 @@ def _read_all_verified(
         raise ValueError("expected_sha256 must be a lowercase-compatible SHA-256 hex digest")
     digest = hashlib.sha256()
     size = 0
-    spool = tempfile.SpooledTemporaryFile(max_size=8 * 1024 * 1024, mode="w+b")
+    # Ownership is transferred to the caller on success, so a context manager cannot close it here.
+    spool = tempfile.SpooledTemporaryFile(max_size=8 * 1024 * 1024, mode="w+b")  # noqa: SIM115
     try:
         while chunk := source.read(1024 * 1024):
             digest.update(chunk)

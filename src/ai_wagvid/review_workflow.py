@@ -8,10 +8,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Iterable, Mapping
 
 from .domain import Apparatus
 
@@ -104,13 +104,12 @@ class ReviewItem:
             raise ReviewWorkflowError("review/organization/analysis/revision identity is required")
         _require_sha256("analysis revision digest", self.analysis_revision_digest)
         _require_aware("review created_at", self.created_at)
-        if self.confidence_milli is not None:
-            if (
-                isinstance(self.confidence_milli, bool)
-                or not isinstance(self.confidence_milli, int)
-                or not 0 <= self.confidence_milli <= 1000
-            ):
-                raise ReviewWorkflowError("confidence_milli must be integer [0, 1000]")
+        if self.confidence_milli is not None and (
+            isinstance(self.confidence_milli, bool)
+            or not isinstance(self.confidence_milli, int)
+            or not 0 <= self.confidence_milli <= 1000
+        ):
+            raise ReviewWorkflowError("confidence_milli must be integer [0, 1000]")
         if not self.evidence:
             raise ReviewWorkflowError("review item requires at least one evidence reference")
         if any(item.kind is not ReviewArtifactKind.EVIDENCE for item in self.evidence):
@@ -305,28 +304,27 @@ class ReviewFilter:
     def __post_init__(self) -> None:
         if self.assignee_id is not None and self.unassigned_only:
             raise ReviewWorkflowError("cannot filter by assignee and unassigned_only together")
-        if self.confidence_at_most_milli is not None:
-            if (
-                isinstance(self.confidence_at_most_milli, bool)
-                or not isinstance(self.confidence_at_most_milli, int)
-                or not 0 <= self.confidence_at_most_milli <= 1000
-            ):
-                raise ReviewWorkflowError("confidence filter must be integer [0, 1000]")
-        if self.minimum_age_seconds is not None:
-            if (
-                isinstance(self.minimum_age_seconds, bool)
-                or not isinstance(self.minimum_age_seconds, int)
-                or self.minimum_age_seconds < 0
-            ):
-                raise ReviewWorkflowError("minimum age must be non-negative integer seconds")
+        if self.confidence_at_most_milli is not None and (
+            isinstance(self.confidence_at_most_milli, bool)
+            or not isinstance(self.confidence_at_most_milli, int)
+            or not 0 <= self.confidence_at_most_milli <= 1000
+        ):
+            raise ReviewWorkflowError("confidence filter must be integer [0, 1000]")
+        if self.minimum_age_seconds is not None and (
+            isinstance(self.minimum_age_seconds, bool)
+            or not isinstance(self.minimum_age_seconds, int)
+            or self.minimum_age_seconds < 0
+        ):
+            raise ReviewWorkflowError("minimum age must be non-negative integer seconds")
 
 
 def filter_review_inbox(
     items: Iterable[ReviewItem],
     *,
-    filter: ReviewFilter = ReviewFilter(),
+    filter: ReviewFilter | None = None,
     now: datetime,
 ) -> tuple[ReviewItem, ...]:
+    filter = filter or ReviewFilter()
     _require_aware("review inbox time", now)
     result = []
     for item in items:
@@ -340,9 +338,11 @@ def filter_review_inbox(
             continue
         if filter.material_only and not item.material:
             continue
-        if filter.confidence_at_most_milli is not None:
-            if item.confidence_milli is None or item.confidence_milli > filter.confidence_at_most_milli:
-                continue
+        if filter.confidence_at_most_milli is not None and (
+            item.confidence_milli is None
+            or item.confidence_milli > filter.confidence_at_most_milli
+        ):
+            continue
         if filter.minimum_age_seconds is not None:
             age_seconds = int((now - item.created_at).total_seconds())
             if age_seconds < filter.minimum_age_seconds:

@@ -27,7 +27,6 @@ from ai_wagvid.kiga_integration import (
     negotiate_schema,
 )
 
-
 T0 = datetime(2026, 8, 17, 16, 0, tzinfo=UTC)
 ANALYSIS_SCHEMA = PublicSchemaVersion("analysis", 1)
 

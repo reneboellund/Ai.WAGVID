@@ -15,7 +15,6 @@ from ai_wagvid.annotations import (
 from ai_wagvid.evidence import CanonicalEvidenceReference, canonical_interval_from_timeline
 from ai_wagvid.media_timeline import FrameTimestamp, build_timeline
 
-
 T0 = datetime(2026, 8, 17, 10, 30, tzinfo=UTC)
 
 

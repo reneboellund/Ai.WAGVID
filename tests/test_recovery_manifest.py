@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -10,7 +10,7 @@ from wagvid_app.recovery_manifest import (
 
 
 def test_object_inventory_is_deterministic_and_provider_neutral():
-    timestamp = datetime(2026, 8, 17, 1, 30, tzinfo=timezone.utc)
+    timestamp = datetime(2026, 8, 17, 1, 30, tzinfo=UTC)
     inventory = build_object_inventory(
         [
             InventoryObject(
@@ -77,7 +77,7 @@ def test_inventory_rejects_unlocated_or_unhashed_evidence():
 def test_backup_manifest_builder_sorts_references_without_secret_values():
     manifest = build_system_backup_manifest(
         backup_id="backup-1",
-        created_at=datetime(2026, 8, 17, 1, 30, tzinfo=timezone.utc),
+        created_at=datetime(2026, 8, 17, 1, 30, tzinfo=UTC),
         application={"version": "1.0.0", "git_sha": "a" * 40, "migration_heads": ["0011"]},
         database={
             "engine": "postgresql",
@@ -109,7 +109,7 @@ def test_backup_manifest_builder_rejects_inline_secret_assignment():
     with pytest.raises(ValueError, match="inline secret"):
         build_system_backup_manifest(
             backup_id="backup-1",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
             application={},
             database={},
             config_bundle={},

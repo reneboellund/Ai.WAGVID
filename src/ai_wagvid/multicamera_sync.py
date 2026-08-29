@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import bisect
+import itertools
 import math
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Iterable, Mapping
 
 
 class SynchronizationError(ValueError):
@@ -139,8 +140,9 @@ def fit_affine_clock_model(
     camera_id: str,
     anchors: Iterable[SyncAnchor],
     *,
-    policy: ClockFitPolicy = ClockFitPolicy(),
+    policy: ClockFitPolicy | None = None,
 ) -> AffineClockModel:
+    policy = policy or ClockFitPolicy()
     values = tuple(anchor for anchor in anchors if anchor.camera_id == camera_id)
     if len(values) < 2:
         raise SynchronizationError("at least two anchors are required for drift estimation")
@@ -154,7 +156,7 @@ def fit_affine_clock_model(
         )
     if any(
         right.source_time_seconds <= left.source_time_seconds
-        for left, right in zip(ordered, ordered[1:])
+        for left, right in itertools.pairwise(ordered)
     ):
         raise SynchronizationError("source anchor timestamps must be strictly increasing")
 
@@ -216,7 +218,7 @@ def validate_frame_timeline(frames: Iterable[FrameStamp]) -> tuple[FrameStamp, .
         raise SynchronizationError("frame indices must be contiguous from zero")
     if any(
         right.presentation_time_seconds < left.presentation_time_seconds
-        for left, right in zip(ordered, ordered[1:])
+        for left, right in itertools.pairwise(ordered)
     ):
         raise SynchronizationError("frame presentation timestamps must be monotonic")
     return ordered

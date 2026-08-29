@@ -18,7 +18,6 @@ from .object_provider import (
 )
 from .s3_provider import S3DataClient, S3ObjectStorageProvider
 
-
 WASABI_DATA_PLANE_FEATURES = frozenset(
     {
         StorageFeature.RANGE_GET,

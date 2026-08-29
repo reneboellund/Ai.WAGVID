@@ -61,6 +61,7 @@ def test_profile_requirement_intersects_backends_and_precision():
                 backends=("cuda",),
                 precisions=("fp16",),
                 minimum_vram_mb=16000,
+                recommended_vram_mb=16000,
             ),
         ],
         preferred_backends=(ComputeBackend.CUDA, ComputeBackend.ROCM),

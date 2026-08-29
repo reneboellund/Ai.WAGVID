@@ -15,7 +15,6 @@ from ai_wagvid.review_workflow import (
 )
 from wagvid_rules.validation import load_schema
 
-
 ROOT = Path(__file__).parents[1]
 ITEM_SCHEMA = load_schema(ROOT / "schemas" / "review-item-v1.schema.json")
 DECISION_SCHEMA = load_schema(ROOT / "schemas" / "review-decision-v1.schema.json")

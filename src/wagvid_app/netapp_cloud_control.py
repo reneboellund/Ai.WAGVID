@@ -8,10 +8,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Mapping, Protocol
+from typing import Protocol
 
 from .netapp_cloud import NetAppCloudResource, NetAppCloudService, ProtectionFeature
 
@@ -193,7 +194,7 @@ def _reject_secret_material(value: object, *, path: str = "details") -> None:
     if isinstance(value, Mapping):
         for key, item in value.items():
             key_text = str(key).casefold()
-            if key_text in sensitive or key_text.endswith("_password") or key_text.endswith("_secret"):
+            if key_text in sensitive or key_text.endswith(("_password", "_secret")):
                 raise ValueError(f"Secret material is not allowed in cloud action plans: {path}.{key}")
             _reject_secret_material(item, path=f"{path}.{key}")
     elif isinstance(value, (list, tuple)):

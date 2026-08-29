@@ -13,7 +13,6 @@ from ai_wagvid.data_governance import (
     DeletionRequest,
     EvidenceKind,
     EvidenceProvenanceRef,
-    FrozenConfigSnapshot,
     GovernedPermission,
     ProductionDecisionLedger,
     ProductionDecisionProvenance,
@@ -23,7 +22,6 @@ from ai_wagvid.data_governance import (
     freeze_configuration,
     pseudonymous_group_id,
 )
-
 
 T0 = datetime(2026, 8, 17, 18, 0, tzinfo=UTC)
 

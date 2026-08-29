@@ -10,7 +10,11 @@ from wagvid_app.object_provider import (
     StorageConnectionProfile,
     StorageFeature,
 )
-from wagvid_app.s3_provider import S3ObjectStorageProvider, inspect_bucket, preflight_existing_buckets
+from wagvid_app.s3_provider import (
+    S3ObjectStorageProvider,
+    inspect_bucket,
+    preflight_existing_buckets,
+)
 from wagvid_app.storage import ObjectIntegrityError
 from wagvid_app.wasabi_object_provider import build_wasabi_object_provider
 

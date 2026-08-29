@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Mapping, Protocol
+from typing import Protocol
 
 from .media_timeline_handoff import ffprobe_import_payload, load_worker_timeline
 from .media_worker import (

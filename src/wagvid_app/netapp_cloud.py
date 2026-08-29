@@ -158,15 +158,17 @@ def protection_recommendations(
                     "Long-lived evidence should have protection distinct from live storage",
                 )
             )
-    if logical_role in {"metadata", "results", "originals"}:
-        if ProtectionFeature.SNAPSHOT in available:
-            recommendations.append(
-                ProtectionRecommendation(
-                    ProtectionFeature.SNAPSHOT,
-                    "medium",
-                    "Fast point-in-time recovery is useful before migrations or operator changes",
-                )
+    if (
+        logical_role in {"metadata", "results", "originals"}
+        and ProtectionFeature.SNAPSHOT in available
+    ):
+        recommendations.append(
+            ProtectionRecommendation(
+                ProtectionFeature.SNAPSHOT,
+                "medium",
+                "Fast point-in-time recovery is useful before migrations or operator changes",
             )
+        )
     return tuple(recommendations)
 
 

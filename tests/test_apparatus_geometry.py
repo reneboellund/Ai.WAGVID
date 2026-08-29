@@ -17,7 +17,6 @@ from ai_wagvid.apparatus_geometry import (
     require_geometry_capabilities,
 )
 
-
 T0 = datetime(2026, 8, 17, 9, 0, tzinfo=UTC)
 SOURCE_SHA = "b" * 64
 

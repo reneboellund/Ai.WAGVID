@@ -7,9 +7,9 @@ job scheduling independent of CUDA/ROCm/OpenVINO/AWS/Azure/GCP APIs.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Iterable
 
 
 class ComputeBackend(StrEnum):
@@ -120,14 +120,18 @@ def _compatible(
         return False, "worker-unhealthy"
     if requirement.model_bundle not in worker.model_bundles:
         return False, "model-bundle-unavailable"
-    if device.backend not in requirement.allowed_backends:
-        if not (device.backend == ComputeBackend.CPU and requirement.allow_cpu_fallback):
-            return False, "backend-not-allowed"
+    if device.backend not in requirement.allowed_backends and not (
+        device.backend == ComputeBackend.CPU and requirement.allow_cpu_fallback
+    ):
+        return False, "backend-not-allowed"
     if worker.provider != "local" and not requirement.allow_cloud:
         return False, "cloud-disabled"
-    if requirement.max_hourly_cost is not None and worker.hourly_cost is not None:
-        if worker.hourly_cost > requirement.max_hourly_cost:
-            return False, "cost-guard"
+    if (
+        requirement.max_hourly_cost is not None
+        and worker.hourly_cost is not None
+        and worker.hourly_cost > requirement.max_hourly_cost
+    ):
+        return False, "cost-guard"
     if requirement.storage_locality:
         local = requirement.storage_locality in worker.storage_locality
         if requirement.require_storage_locality and not local:

@@ -10,11 +10,11 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import asdict, dataclass
+from collections.abc import Iterable
+from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
 from fractions import Fraction
-from typing import Iterable
 
 from .calibration import ApparatusCalibration
 from .media_timeline import CanonicalTimeline, FrameTimestamp
@@ -164,7 +164,7 @@ class CanonicalEvidenceInterval:
     end_timestamp_ticks: int
     time_base_numerator: int
     time_base_denominator: int
-    calibration: EvidenceCalibrationBinding = EvidenceCalibrationBinding()
+    calibration: EvidenceCalibrationBinding = field(default_factory=EvidenceCalibrationBinding)
 
     def __post_init__(self) -> None:
         _validate_sha256("source_media_sha256", self.source_media_sha256)
@@ -280,8 +280,9 @@ def canonical_interval_from_timeline(
     camera_id: str,
     start_frame_index: int,
     end_frame_index: int,
-    calibration: EvidenceCalibrationBinding = EvidenceCalibrationBinding(),
+    calibration: EvidenceCalibrationBinding | None = None,
 ) -> CanonicalEvidenceInterval:
+    calibration = calibration or EvidenceCalibrationBinding()
     if start_frame_index < 0 or end_frame_index < start_frame_index:
         raise ValueError("requested canonical evidence frame interval is invalid")
     try:

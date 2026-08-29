@@ -11,13 +11,13 @@ import hashlib
 import json
 import os
 import subprocess
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from pathlib import Path
-from typing import Callable, Iterable, Mapping, Sequence
 
-from .recovery import sha256_file, safe_relative_path, verify_artifact
+from .recovery import safe_relative_path, sha256_file, verify_artifact
 
 
 class BackupCatalogError(RuntimeError):
@@ -348,11 +348,15 @@ def retention_keep_ids(
         week = stamp.isocalendar()
         week_key = (week.year, week.week)
         month_key = (stamp.year, stamp.month)
-        if policy.keep_daily and age <= timedelta(days=policy.keep_daily - 1):
-            if len(daily) < policy.keep_daily and day_key not in daily:
-                daily.add(day_key)
-                keep.add(backup_id)
-                continue
+        if (
+            policy.keep_daily
+            and age <= timedelta(days=policy.keep_daily - 1)
+            and len(daily) < policy.keep_daily
+            and day_key not in daily
+        ):
+            daily.add(day_key)
+            keep.add(backup_id)
+            continue
         if policy.keep_weekly and len(weekly) < policy.keep_weekly and week_key not in weekly:
             weekly.add(week_key)
             keep.add(backup_id)

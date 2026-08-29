@@ -11,10 +11,11 @@ import hashlib
 import hmac
 import json
 import math
+from collections.abc import Iterable, Mapping
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any, Iterable, Mapping
+from typing import Any
 
 
 class DataGovernanceError(ValueError):
@@ -114,9 +115,7 @@ class DatasetRightsRecord:
             return False
         if self.lifecycle is RightsLifecycle.REVOKED:
             return False
-        if self.revoked_at is not None and at >= self.revoked_at:
-            return False
-        return True
+        return not (self.revoked_at is not None and at >= self.revoked_at)
 
     @property
     def digest(self) -> str:
@@ -517,20 +516,20 @@ class ProductionDecisionProvenance:
             raise DataGovernanceError("production decision requires evidence provenance")
         if len({item.digest for item in self.evidence}) != len(self.evidence):
             raise DataGovernanceError("production decision evidence references must be unique")
-        if self.material and self.state is DecisionState.CONFIRMED:
-            if not any(item.kind is EvidenceKind.SOURCE_INTERVAL for item in self.evidence):
-                raise DataGovernanceError(
-                    "confirmed material decision requires canonical source-interval evidence"
-                )
+        if self.material and self.state is DecisionState.CONFIRMED and not any(
+            item.kind is EvidenceKind.SOURCE_INTERVAL for item in self.evidence
+        ):
+            raise DataGovernanceError(
+                "confirmed material decision requires canonical source-interval evidence"
+            )
         if self.calibration_digest is None and self.semantic_layer in {
             DecisionSemanticLayer.OBSERVED_FACT,
             DecisionSemanticLayer.JUDGING_INTERPRETATION,
             DecisionSemanticLayer.SCORE_EFFECT,
-        }:
-            if not any("calibration-unavailable" in item for item in self.limitations):
-                raise DataGovernanceError(
-                    "missing calibration provenance must be explicitly recorded as a limitation"
-                )
+        } and not any("calibration-unavailable" in item for item in self.limitations):
+            raise DataGovernanceError(
+                "missing calibration provenance must be explicitly recorded as a limitation"
+            )
         if len(self.limitations) != len(set(self.limitations)):
             raise DataGovernanceError("decision limitations must be unique")
 
@@ -622,7 +621,7 @@ def _reject_plaintext_secret_fields(value: Any, *, path: str = "$") -> None:
             if not isinstance(raw_key, str):
                 raise DataGovernanceError(f"configuration key at {path} must be a string")
             normalized = raw_key.casefold().replace("-", "_")
-            if normalized.endswith("_ref") or normalized.endswith("_reference"):
+            if normalized.endswith(("_ref", "_reference")):
                 pass
             elif normalized in _SECRET_FIELD_NAMES or any(
                 normalized.endswith(f"_{suffix}") for suffix in _SECRET_FIELD_NAMES

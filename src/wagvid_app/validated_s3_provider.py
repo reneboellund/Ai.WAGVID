@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Iterable
 
-from .object_provider import StorageCapabilities, StorageConnectionProfile, StorageFeature, StoragePreflight
+from .object_provider import (
+    StorageCapabilities,
+    StorageConnectionProfile,
+    StorageFeature,
+    StoragePreflight,
+)
 from .s3_provider import S3DataClient, S3ObjectStorageProvider, S3TransferTuning
 from .s3_validation import S3ContractValidation
 

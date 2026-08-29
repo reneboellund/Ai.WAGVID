@@ -16,7 +16,6 @@ from ai_wagvid.placement_orchestrator import (
     plan_analysis_placement,
 )
 
-
 NOW = datetime(2026, 8, 17, 9, 0, tzinfo=UTC)
 
 
@@ -79,19 +78,19 @@ def cloud_policy(max_cost=2.0):
 
 
 def request(**overrides):
-    values = dict(
-        job_id="job-1",
-        model_bundle="competition@1",
-        allowed_backends=frozenset({ComputeBackend.CUDA}),
-        allowed_precisions=frozenset({Precision.FP16}),
-        minimum_vram_mb=8_000,
-        preferred_backends=(ComputeBackend.CUDA,),
-        preferred_providers=("local", "aws"),
-        required_capabilities=frozenset({"video-decode"}),
-        allow_cpu_fallback=False,
-        allow_cloud=True,
-        max_hourly_cost=2.0,
-    )
+    values = {
+        "job_id": "job-1",
+        "model_bundle": "competition@1",
+        "allowed_backends": frozenset({ComputeBackend.CUDA}),
+        "allowed_precisions": frozenset({Precision.FP16}),
+        "minimum_vram_mb": 8_000,
+        "preferred_backends": (ComputeBackend.CUDA,),
+        "preferred_providers": ("local", "aws"),
+        "required_capabilities": frozenset({"video-decode"}),
+        "allow_cpu_fallback": False,
+        "allow_cloud": True,
+        "max_hourly_cost": 2.0,
+    }
     values.update(overrides)
     return AnalysisPlacementRequest(**values)
 

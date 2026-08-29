@@ -7,7 +7,8 @@ schema migration adds a dedicated persisted provider type; identity/notes remain
 
 from __future__ import annotations
 
-from typing import BinaryIO, Iterable
+from collections.abc import Iterable
+from typing import BinaryIO
 
 from .object_provider import (
     ObjectLocation,
@@ -19,7 +20,6 @@ from .object_provider import (
 )
 from .s3_provider import S3DataClient, S3ObjectStorageProvider, S3TransferTuning
 from .storage import StoredObject
-
 
 FSX_ACCESS_POINT_MAX_OBJECT_SIZE = 50 * 1024**3
 FSX_ACCESS_POINT_SAFE_FEATURES = frozenset({StorageFeature.RANGE_GET})

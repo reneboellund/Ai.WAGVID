@@ -13,10 +13,11 @@ from __future__ import annotations
 import hashlib
 import json
 import secrets
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
 
 
 class KigaIntegrationError(ValueError):
@@ -84,7 +85,7 @@ class PublicSchemaVersion:
         return f"{self.family}-v{self.major}"
 
     @classmethod
-    def parse(cls, value: str) -> "PublicSchemaVersion":
+    def parse(cls, value: str) -> PublicSchemaVersion:
         if not isinstance(value, str) or "-v" not in value:
             raise KigaIntegrationError(f"invalid public schema identifier: {value!r}")
         family, major_text = value.rsplit("-v", 1)
@@ -169,11 +170,12 @@ class TrainingRightsAssertion:
     rights_digest: str | None
 
     def __post_init__(self) -> None:
-        if self.eligibility is TrainingEligibility.ALLOWED:
-            if not self.rights_reference or not self.rights_digest:
-                raise KigaIntegrationError(
-                    "training allowed requires explicit rights reference and digest"
-                )
+        if self.eligibility is TrainingEligibility.ALLOWED and (
+            not self.rights_reference or not self.rights_digest
+        ):
+            raise KigaIntegrationError(
+                "training allowed requires explicit rights reference and digest"
+            )
         if self.rights_digest is not None:
             _require_sha256("training rights digest", self.rights_digest)
         if self.eligibility is TrainingEligibility.UNKNOWN and (

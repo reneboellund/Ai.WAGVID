@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Iterable
 
 from .object_provider import (
     ProviderType,
@@ -14,7 +14,6 @@ from .object_provider import (
 from .ontap_management import OntapCapabilities, OntapFeature
 from .s3_provider import S3DataClient, S3ObjectStorageProvider, S3TransferTuning
 from .s3_validation import S3ContractValidation
-
 
 ONTAP_CORE_DATA_FEATURES = frozenset({StorageFeature.RANGE_GET, StorageFeature.MULTIPART})
 

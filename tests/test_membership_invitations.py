@@ -121,7 +121,7 @@ def test_revoked_and_expired_invitations_cannot_be_accepted():
 
 @pytest.mark.django_db
 def test_admin_create_view_shows_raw_link_once_but_list_never_contains_token(client):
-    organization, admin = organization_with_admin()
+    _organization, admin = organization_with_admin()
     client.force_login(admin)
     response = client.post(
         reverse("membership-invitation-create"),

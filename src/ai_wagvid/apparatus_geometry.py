@@ -11,10 +11,11 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Iterable, Protocol
+from typing import Protocol
 
 
 class ApparatusGeometryError(ValueError):
@@ -39,7 +40,7 @@ class ImagePoint:
         if not 0.0 <= self.x <= 1.0 or not 0.0 <= self.y <= 1.0:
             raise ApparatusGeometryError("image point coordinates must be normalized to [0, 1]")
 
-    def distance_to(self, other: "ImagePoint") -> float:
+    def distance_to(self, other: ImagePoint) -> float:
         return math.hypot(self.x - other.x, self.y - other.y)
 
 
@@ -334,12 +335,7 @@ def _segments_intersect(a: ImagePoint, b: ImagePoint, c: ImagePoint, d: ImagePoi
     cd_a = _orientation(c, d, a)
     cd_b = _orientation(c, d, b)
     epsilon = 1e-12
-    if (
-        ((ab_c > epsilon and ab_d < -epsilon) or (ab_c < -epsilon and ab_d > epsilon))
-        and ((cd_a > epsilon and cd_b < -epsilon) or (cd_a < -epsilon and cd_b > epsilon))
-    ):
-        return True
-    return False
+    return bool((ab_c > epsilon and ab_d < -epsilon or ab_c < -epsilon and ab_d > epsilon) and (cd_a > epsilon and cd_b < -epsilon or cd_a < -epsilon and cd_b > epsilon))
 
 
 def _polygon_self_intersects(vertices: tuple[ImagePoint, ...]) -> bool:

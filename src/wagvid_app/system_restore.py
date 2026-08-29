@@ -7,11 +7,11 @@ logic can validate media on Wasabi, AWS S3, ONTAP, VAST, Ootbi or shared file st
 from __future__ import annotations
 
 import json
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Mapping
 
-from .recovery import pg_restore_command, sha256_file, safe_relative_path, verify_artifact
+from .recovery import pg_restore_command, safe_relative_path, sha256_file, verify_artifact
 
 
 @dataclass(frozen=True)
@@ -31,7 +31,7 @@ def _load_json(path: Path) -> dict:
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise ValueError(f"Cannot read recovery artifact {path.name}: {type(exc).__name__}") from exc
     if not isinstance(value, dict):
-        raise ValueError(f"Recovery artifact {path.name} must contain a JSON object")
+        raise TypeError(f"Recovery artifact {path.name} must contain a JSON object")
     return value
 
 

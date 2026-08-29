@@ -6,9 +6,14 @@ bucket passes the explicit S3 contract probe; no appliance management API is use
 
 from __future__ import annotations
 
-from typing import Callable, Iterable
+from collections.abc import Callable, Iterable
 
-from .object_provider import ProviderType, StorageCapabilities, StorageConnectionProfile, StoragePreflight
+from .object_provider import (
+    ProviderType,
+    StorageCapabilities,
+    StorageConnectionProfile,
+    StoragePreflight,
+)
 from .s3_provider import S3DataClient, S3TransferTuning
 from .s3_validation import ProviderSupportState, S3ContractValidation
 from .validated_s3_provider import ContractValidatedS3Provider
@@ -85,7 +90,7 @@ class OotbiS3ObjectStorageProvider(ContractValidatedS3Provider):
     def delete(self, location) -> None:
         try:
             super().delete(location)
-        except Exception as error:  # noqa: BLE001 - appliance/provider errors are classifier input
+        except Exception as error:
             if self.retention_error_classifier and self.retention_error_classifier(error):
                 raise RetentionProtectedError(
                     "Ootbi rejected deletion due to appliance-enforced retention"

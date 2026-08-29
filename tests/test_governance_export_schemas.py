@@ -18,7 +18,6 @@ from ai_wagvid.governance_exports import (
 )
 from wagvid_rules.validation import load_schema
 
-
 ROOT = Path(__file__).parents[1]
 RIGHTS_SCHEMA = load_schema(ROOT / "schemas" / "dataset-rights-v1.schema.json")
 DECISION_SCHEMA = load_schema(

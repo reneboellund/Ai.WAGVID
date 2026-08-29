@@ -8,10 +8,10 @@ operational layer with secrets supplied through environment/secret injection.
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass, field
+from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import dataclass
 from fnmatch import fnmatchcase
 from pathlib import Path
-from typing import Iterable, Mapping, Sequence
 
 
 @dataclass(frozen=True)

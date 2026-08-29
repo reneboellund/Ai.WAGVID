@@ -10,10 +10,10 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Callable, Iterable, Mapping, Sequence
 
 from .recovery import pg_dump_command, sha256_file
 from .recovery_manifest import (
@@ -94,9 +94,13 @@ def validate_portable_config(value, *, path: str = "config") -> None:
         for key, item in value.items():
             child = f"{path}.{key}"
             normalized = str(key).casefold().replace("-", "_")
-            if normalized in _SENSITIVE_KEYS and item is not None and item != "":
-                if not (isinstance(item, str) and item.startswith("secret://")):
-                    raise BackupError(f"Portable config contains inline secret at {child}")
+            if (
+                normalized in _SENSITIVE_KEYS
+                and item is not None
+                and item != ""
+                and not (isinstance(item, str) and item.startswith("secret://"))
+            ):
+                raise BackupError(f"Portable config contains inline secret at {child}")
             validate_portable_config(item, path=child)
     elif isinstance(value, (list, tuple)):
         for index, item in enumerate(value):
@@ -127,7 +131,7 @@ def create_backup_set(
     mechanism (for example PGPASSFILE/service configuration).
     """
     validate_portable_config(portable_config)
-    timestamp = created_at or datetime.now(timezone.utc)
+    timestamp = created_at or datetime.now(UTC)
     if timestamp.tzinfo is None or timestamp.utcoffset() is None:
         raise BackupError("Backup timestamp must be timezone-aware")
     backup_root = Path(root).resolve() / backup_id

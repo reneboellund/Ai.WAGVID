@@ -12,11 +12,12 @@ import hashlib
 import json
 import os
 import shlex
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Mapping, Protocol, Sequence
+from typing import Protocol
 
 
 class MediaWorkerError(RuntimeError):
@@ -474,10 +475,12 @@ def process_media(
     *,
     work_root: Path,
     runner: CommandRunner,
-    tools: WorkerTools = WorkerTools(),
-    profile: ProxyProfile = ProxyProfile(),
+    tools: WorkerTools | None = None,
+    profile: ProxyProfile | None = None,
     now: datetime | None = None,
 ) -> ProcessingManifest:
+    tools = tools or WorkerTools()
+    profile = profile or ProxyProfile()
     current = now or datetime.now(UTC)
     if current.tzinfo is None or current.utcoffset() is None:
         raise ValueError("now must be timezone-aware")

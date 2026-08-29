@@ -1,6 +1,6 @@
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from wagvid_app.recovery_manifest import InventoryObject
@@ -49,7 +49,7 @@ def _create_backup(tmp_path):
             )
         ],
         secret_refs=["secret://database/password", "secret://storage/primary"],
-        created_at=datetime(2026, 8, 17, 1, 30, tzinfo=timezone.utc),
+        created_at=datetime(2026, 8, 17, 1, 30, tzinfo=UTC),
         runner=_fake_pg_dump,
     )
     manifest = json.loads(backup.manifest_path.read_text())

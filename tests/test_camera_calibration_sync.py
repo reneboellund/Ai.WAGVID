@@ -15,14 +15,13 @@ from ai_wagvid.multicamera_sync import (
     FrameStamp,
     MultiCameraSyncSet,
     SyncAnchor,
-    SyncMethod,
     SynchronizationError,
+    SyncMethod,
     fit_affine_clock_model,
     select_synchronized_frame,
     synchronize_frame_set,
     validate_frame_timeline,
 )
-
 
 PROVENANCE = "a" * 64
 T0 = datetime(2026, 8, 17, 8, 0, tzinfo=UTC)
@@ -147,7 +146,7 @@ def test_selection_before_first_calibration_fails_closed_with_warnings():
 
 def test_extrinsic_rotation_must_be_a_proper_rotation_not_a_reflection():
     reflection = (1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0)
-    with pytest.raises(CalibrationError, match="determinant must be \+1"):
+    with pytest.raises(CalibrationError, match=r"determinant must be \+1"):
         extrinsic("extrinsic-reflection", rotation=reflection)
 
 

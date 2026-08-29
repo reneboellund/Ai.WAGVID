@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Mapping, Protocol
+from typing import Protocol
 
 from .netapp_cloud import NetAppCloudService
 from .netapp_cloud_control import NetAppCloudAction, NetAppCloudOperation, NetAppCloudPlan

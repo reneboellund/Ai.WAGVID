@@ -4,7 +4,12 @@ from io import BytesIO
 import pytest
 
 from wagvid_app.aws_s3_provider import AwsS3ObjectStorageProvider, plan_aws_bucket_provisioning
-from wagvid_app.object_provider import ObjectLocation, ProviderType, StorageConnectionProfile, StorageFeature
+from wagvid_app.object_provider import (
+    ObjectLocation,
+    ProviderType,
+    StorageConnectionProfile,
+    StorageFeature,
+)
 from wagvid_app.ontap_management import OntapCapabilities, OntapVersion
 from wagvid_app.ontap_s3_provider import OntapS3ObjectStorageProvider
 from wagvid_app.ootbi_s3_provider import OotbiS3ObjectStorageProvider, RetentionProtectedError

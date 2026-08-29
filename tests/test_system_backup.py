@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -72,7 +72,7 @@ def test_backup_set_is_created_without_embedding_database_password(tmp_path):
         },
         inventory_objects=inventory(),
         secret_refs=["secret://database/password", "secret://storage/primary"],
-        created_at=datetime(2026, 8, 17, 1, 0, tzinfo=timezone.utc),
+        created_at=datetime(2026, 8, 17, 1, 0, tzinfo=UTC),
         runner=runner,
     )
     assert backup.manifest_path.is_file()
@@ -117,7 +117,7 @@ def test_backup_set_requires_timezone_aware_timestamp(tmp_path):
             database=database(),
             portable_config={},
             inventory_objects=[],
-            created_at=datetime(2026, 8, 17, 1, 0),
+            created_at=datetime(2026, 8, 17, 1, 0),  # noqa: DTZ001 - verifies naive timestamps fail closed
             runner=fake_pg_dump,
         )
 

@@ -13,7 +13,7 @@ from django.utils import timezone
 
 from .models import StorageConnection, StoredObjectRecord, SystemBackup
 
-BACKUP_SCHEMA = "ai.wagvid.system-backup.v1"
+BACKUP_SCHEMA = "ai.wagvid.system-backup-plan.v1"
 
 
 def canonical_digest(value) -> str:

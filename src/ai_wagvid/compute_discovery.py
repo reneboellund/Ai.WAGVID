@@ -11,11 +11,10 @@ import csv
 import io
 import json
 import subprocess
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Callable, Sequence
 
 from .compute_runtime import AcceleratorDevice, ComputeBackend, Precision
-
 
 CommandRunner = Callable[[Sequence[str]], str]
 
@@ -146,7 +145,7 @@ def discover_amd_rocm(*, runner: CommandRunner = _default_runner) -> DiscoveryRe
             (
                 _int_or_none(value)
                 for name, value in normalized.items()
-                if "vram used" in name
+                if "vram" in name and "used" in name
             ),
             None,
         )
@@ -195,7 +194,7 @@ def discover_openvino_gpus(*, core_factory=None) -> DiscoveryResult:
             continue
         try:
             model = str(core.get_property(device_name, "FULL_DEVICE_NAME"))
-        except Exception:  # optional runtime properties vary by OpenVINO/device generation
+        except Exception:  # noqa: BLE001 - optional OpenVINO backends expose provider-specific errors
             model = device_name
         devices.append(
             AcceleratorDevice(
