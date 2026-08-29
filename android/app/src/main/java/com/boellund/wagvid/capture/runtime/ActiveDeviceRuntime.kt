@@ -1,0 +1,110 @@
+package com.boellund.wagvid.capture.runtime
+
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.os.BatteryManager
+import com.boellund.wagvid.capture.BuildConfig
+import com.boellund.wagvid.capture.WagvidApplication
+import com.boellund.wagvid.capture.control.CommandCoordinator
+import com.boellund.wagvid.capture.control.LocalCaptureControl
+import com.boellund.wagvid.capture.data.RoomCommandReceiptStore
+import com.boellund.wagvid.capture.network.ApiFactory
+import com.boellund.wagvid.capture.network.HeartbeatRequest
+import com.boellund.wagvid.capture.security.BackendCredential
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+
+class ActiveDeviceRuntime(
+    context: Context,
+    private val credential: BackendCredential,
+    control: LocalCaptureControl,
+    private val activeCaptureId: () -> String?,
+) {
+    private val applicationContext = context.applicationContext
+    private val database = (applicationContext as WagvidApplication).database
+    private val captureDao = database.captures()
+    private val receiptStore = RoomCommandReceiptStore(database.commandReceipts())
+    private val api = ApiFactory.create(credential.baseUrl, credential.certificateFingerprint)
+    private val bearer = "Bearer ${credential.apiToken}"
+    private val coordinator = CommandCoordinator(credential, control, receiptStore)
+    private val controlState = control
+    private val batteryManager = applicationContext.getSystemService(BatteryManager::class.java)
+    private val connectivityManager =
+        applicationContext.getSystemService(ConnectivityManager::class.java)
+
+    suspend fun runWhileActive(
+        onConnected: () -> Unit,
+        onConnectionError: (String) -> Unit,
+    ) {
+        // Command IDs are short-lived server commands. Keep enough durable history to make ACK
+        // loss/restart safe without allowing the receipt table to grow forever.
+        receiptStore.prune(System.currentTimeMillis() - COMMAND_RECEIPT_RETENTION_MS)
+        var lastHeartbeatAttemptAt = 0L
+        while (currentCoroutineContext().isActive) {
+            var connected = false
+            var lastError: String? = null
+
+            try {
+                coordinator.pollOnce()
+                connected = true
+            } catch (error: Exception) {
+                lastError = error.message ?: error.javaClass.simpleName
+            }
+
+            val now = System.currentTimeMillis()
+            if (now - lastHeartbeatAttemptAt >= HEARTBEAT_INTERVAL_MS) {
+                lastHeartbeatAttemptAt = now
+                try {
+                    sendHeartbeat()
+                    connected = true
+                } catch (error: Exception) {
+                    lastError = error.message ?: error.javaClass.simpleName
+                }
+            }
+
+            if (connected) onConnected() else onConnectionError(lastError ?: "Backend unavailable")
+            delay(POLL_INTERVAL_MS)
+        }
+    }
+
+    private suspend fun sendHeartbeat() {
+        val response = api.heartbeat(
+            credential.deviceKey,
+            bearer,
+            HeartbeatRequest(
+                state = controlState.state.wire,
+                battery_percent = batteryPercent(),
+                free_storage_bytes = applicationContext.filesDir.usableSpace,
+                queued_uploads = captureDao.queuedCountSnapshot(),
+                network_type = networkType(),
+                app_version = BuildConfig.VERSION_NAME,
+                active_capture_id = activeCaptureId(),
+            ),
+        )
+        check(response.isSuccessful) { "Heartbeat failed (${response.code()})" }
+    }
+
+    private fun batteryPercent(): Int? =
+        batteryManager?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+            ?.takeIf { it in 0..100 }
+
+    private fun networkType(): String {
+        val network = connectivityManager?.activeNetwork ?: return "offline"
+        val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return "unknown"
+        return when {
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "wifi"
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "ethernet"
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "cellular"
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN) -> "vpn"
+            else -> "other"
+        }
+    }
+
+    private companion object {
+        const val POLL_INTERVAL_MS = 2_000L
+        const val HEARTBEAT_INTERVAL_MS = 15_000L
+        const val COMMAND_RECEIPT_RETENTION_MS = 30L * 24L * 60L * 60L * 1_000L
+    }
+}

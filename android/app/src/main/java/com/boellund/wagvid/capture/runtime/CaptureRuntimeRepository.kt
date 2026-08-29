@@ -15,6 +15,10 @@ class CaptureRuntimeRepository(context: Context) {
 
     fun credential(): BackendCredential? = credentialStore.load()
 
+    fun disconnect() {
+        credentialStore.clear()
+    }
+
     suspend fun pair(
         baseUrl: String,
         pairingId: String,
@@ -32,14 +36,19 @@ class CaptureRuntimeRepository(context: Context) {
             PairingRepository.installationId(androidId),
             deviceName.trim().ifBlank { "Ai.WAGVID Android" },
         )
-        return credential to captureContext(credential)
+        return try {
+            credential to captureContext(credential)
+        } catch (error: Exception) {
+            credentialStore.clear()
+            throw error
+        }
     }
 
     suspend fun captureContext(
         credential: BackendCredential = credential()
             ?: error("Device is not paired"),
     ): CaptureContextResponse {
-        val api = ApiFactory.create(credential.baseUrl)
+        val api = ApiFactory.create(credential.baseUrl, credential.certificateFingerprint)
         return api.captureContext(
             credential.deviceKey,
             "Bearer ${credential.apiToken}",
